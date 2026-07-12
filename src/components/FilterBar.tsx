@@ -1,0 +1,61 @@
+import type { DesignCondition, Member, JointType, SteelGrade, BoltGrade } from '../engine/types.ts';
+
+const PRESETS = [100, 95, 90, 85, 80, 75, 70, 65, 60, 50];
+
+export default function FilterBar({ cond, onChange }: {
+  cond: DesignCondition; onChange: (c: DesignCondition) => void;
+}) {
+  const set = <K extends keyof DesignCondition>(k: K, v: DesignCondition[K]) =>
+    onChange({ ...cond, [k]: v });
+  const pct = Math.round(cond.strengthRatio * 100);
+  const setAlpha = (p: number) => set('strengthRatio', Math.min(100, Math.max(10, p)) / 100);
+
+  return (
+    <div className="filterbar">
+      <Seg label="부재" value={cond.member} opts={['보', '기둥']} onPick={v => set('member', v as Member)} />
+      <Seg label="접합" value={cond.jointType} opts={['마찰', '지압']} onPick={v => set('jointType', v as JointType)} />
+
+      <div className="fld">
+        <label>강종</label>
+        <select value={cond.steel} onChange={e => set('steel', e.target.value as SteelGrade)}>
+          <option value="SHN490">SHN490</option><option value="SS400">SS400</option>
+          <option value="SM490">SM490</option><option value="SN490">SN490</option>
+        </select>
+      </div>
+      <div className="fld">
+        <label>볼트</label>
+        <select value={cond.bolt} onChange={e => set('bolt', e.target.value as BoltGrade)}>
+          <option value="F10T">F10T</option><option value="F13T">F13T</option>
+        </select>
+      </div>
+
+      <div className="fld alpha">
+        <label>부분강도비 α</label>
+        <div className="alpha-ctl">
+          <select value={PRESETS.includes(pct) ? pct : 'custom'} onChange={e => e.target.value !== 'custom' && setAlpha(Number(e.target.value))}>
+            {PRESETS.map(p => <option key={p} value={p}>{p}%</option>)}
+            {!PRESETS.includes(pct) && <option value="custom">{pct}% (직접)</option>}
+          </select>
+          <input type="number" min={10} max={100} step={5} value={pct}
+            onChange={e => setAlpha(Number(e.target.value))} aria-label="부분강도비 직접입력" />
+          <span className="pct">%</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Seg({ label, value, opts, onPick }: {
+  label: string; value: string; opts: string[]; onPick: (v: string) => void;
+}) {
+  return (
+    <div className="fld">
+      <label>{label}</label>
+      <div className="seg">
+        {opts.map(o => (
+          <button key={o} className={o === value ? 'on' : ''} onClick={() => onPick(o)}>{o}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
