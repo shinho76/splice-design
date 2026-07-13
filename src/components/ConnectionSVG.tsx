@@ -59,15 +59,16 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
   const yHead = 8, hHead = 34;
   const yWeb = yHead + hHead + 50, webPx = H * sc1;
   const yFl = yWeb + webPx + 88, flPx = outerW * sc2;
-  const yTbl = yFl + flPx + 56, Htot = yTbl + 92;
+  const yTbl = yFl + flPx + 56, Htot = yTbl + 104;
   const fbT = Math.max(4, oT * sc1), ibT = Math.max(3, iT * sc1);
   const beamW = Math.max(Lpf, webWid) + 40;
 
   const Cross = ({ x, y, s = 4.2 }: { x: number; y: number; s?: number }) => (
     <g transform={`translate(${x},${y})`}>
-      <circle r={s} className="svg-bolt" /><line x1={-s - 2} x2={s + 2} className="svg-thin" /><line y1={-s - 2} y2={s + 2} className="svg-thin" />
+      <circle r={s} className="svg-boltc" /><line x1={-s - 2} x2={s + 2} className="svg-boltx" /><line y1={-s - 2} y2={s + 2} className="svg-boltx" />
     </g>
   );
+  const gpl = (t?: number, w?: number, l?: number, n?: number) => t == null ? '-' : `G.PL. ${t}x${w}x${l}x${n}EA`;
   const DimV = ({ x, cy, vals, sc }: { x: number; cy: number; vals: number[]; sc: number }) => {
     const tot = vals.reduce((a, b) => a + b, 0); let acc = cy - tot * sc / 2; const st = [acc];
     vals.forEach(v => { acc += v * sc; st.push(acc); });
@@ -101,20 +102,20 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
           <rect x={-beamW * sc1 / 2} y={-webPx / 2} width={beamW * sc1} height={Math.max(3, tf * sc1)} className="svg-flange-band" />
           <rect x={-beamW * sc1 / 2} y={webPx / 2 - Math.max(3, tf * sc1)} width={beamW * sc1} height={Math.max(3, tf * sc1)} className="svg-flange-band" />
           {/* 플랜지 외첨판(외측, 해칭) */}
-          <rect x={-Lpf * sc1 / 2} y={-webPx / 2 - fbT} width={Lpf * sc1} height={fbT} className="svg-plate-h" />
-          <rect x={-Lpf * sc1 / 2} y={webPx / 2} width={Lpf * sc1} height={fbT} className="svg-plate-h" />
+          <rect x={-Lpf * sc1 / 2} y={-webPx / 2 - fbT} width={Lpf * sc1} height={fbT} className="svg-flg" />
+          <rect x={-Lpf * sc1 / 2} y={webPx / 2} width={Lpf * sc1} height={fbT} className="svg-flg" />
           {/* 플랜지 내첨판(내측, 해칭) */}
           {inner && <>
-            <rect x={-(inner.L) * sc1 / 2} y={-webPx / 2 + Math.max(3, tf * sc1)} width={inner.L * sc1} height={ibT} className="svg-plate-h" />
-            <rect x={-(inner.L) * sc1 / 2} y={webPx / 2 - Math.max(3, tf * sc1) - ibT} width={inner.L * sc1} height={ibT} className="svg-plate-h" />
+            <rect x={-(inner.L) * sc1 / 2} y={-webPx / 2 + Math.max(3, tf * sc1)} width={inner.L * sc1} height={ibT} className="svg-flg" />
+            <rect x={-(inner.L) * sc1 / 2} y={webPx / 2 - Math.max(3, tf * sc1) - ibT} width={inner.L * sc1} height={ibT} className="svg-flg" />
           </>}
           {/* 플랜지 볼트(입면) */}
           {fPosX.flatMap(x => [x, -x]).map((x, i) => <g key={`fb${i}`}>
-            <line x1={x * sc1} y1={-webPx / 2 - fbT} x2={x * sc1} y2={-webPx / 2 + Math.max(3, tf * sc1) + ibT} className="svg-thin" />
-            <line x1={x * sc1} y1={webPx / 2 + fbT} x2={x * sc1} y2={webPx / 2 - Math.max(3, tf * sc1) - ibT} className="svg-thin" />
+            <line x1={x * sc1} y1={-webPx / 2 - fbT} x2={x * sc1} y2={-webPx / 2 + Math.max(3, tf * sc1) + ibT} className="svg-ver" />
+            <line x1={x * sc1} y1={webPx / 2 + fbT} x2={x * sc1} y2={webPx / 2 - Math.max(3, tf * sc1) - ibT} className="svg-ver" />
           </g>)}
           {/* 웨브 첨판(해칭) + 볼트 */}
-          <rect x={-webWid * sc1 / 2} y={-chum * sc1 / 2} width={webWid * sc1} height={chum * sc1} className="svg-plate-h" />
+          <rect x={-webWid * sc1 / 2} y={-chum * sc1 / 2} width={webWid * sc1} height={chum * sc1} className="svg-web" />
           {([1, -1] as const).flatMap(s => webPosX.flatMap((wx, xi) => webRowY.map((wy, yi) =>
             <Cross key={`w${s}${xi}${yi}`} x={s * wx * sc1} y={wy * sc1} />)))}
           <line x1={0} y1={-webPx / 2 - fbT - 4} x2={0} y2={webPx / 2 + fbT + 4} className="svg-gap" />
@@ -125,7 +126,7 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
         {/* ── 플랜지 평면도 ── */}
         <text x={30} y={yFl - 8} className="svg-cap">플랜지 평면도 (외첨판)</text>
         <g transform={`translate(${mid},${yFl + flPx / 2})`}>
-          <rect x={-Lpf * sc2 / 2} y={-flPx / 2} width={Lpf * sc2} height={flPx} className="svg-plate-h" />
+          <rect x={-Lpf * sc2 / 2} y={-flPx / 2} width={Lpf * sc2} height={flPx} className="svg-flg" />
           <line x1={-Lpf * sc2 / 2} y1={-tw * sc2 / 2} x2={Lpf * sc2 / 2} y2={-tw * sc2 / 2} className="svg-hidden" />
           <line x1={-Lpf * sc2 / 2} y1={tw * sc2 / 2} x2={Lpf * sc2 / 2} y2={tw * sc2 / 2} className="svg-hidden" />
           <line x1={0} y1={-flPx / 2 - 6} x2={0} y2={flPx / 2 + 6} className="svg-gap" />
@@ -135,17 +136,24 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
         <text x={mid + Lpf * sc2 / 2 + 9} y={yFl + flPx / 2 + 3} className="svg-dim-t">t{tw}</text>
         <DimH y={yFl + flPx + 16} cx={mid} vals={flHCh} sc={sc2} />
 
-        {/* ── 요약표 ── */}
-        <rect x={30} y={yTbl} width={W - 60} height={72} className="svg-cell" />
-        <line x1={30} y1={yTbl + 36} x2={W - 30} y2={yTbl + 36} className="svg-dim-l" />
-        <line x1={130} y1={yTbl} x2={130} y2={yTbl + 72} className="svg-dim-l" /><line x1={255} y1={yTbl} x2={255} y2={yTbl + 72} className="svg-dim-l" />
-        <text x={80} y={yTbl + 23} className="svg-tblk" textAnchor="middle">Flange</text>
-        <text x={192} y={yTbl + 23} className="svg-tblk" textAnchor="middle">{fB.m * Math.round(fB.n) * 4}-M{dia}</text>
-        <text x={365} y={yTbl + 16} className="svg-tblv" textAnchor="middle">2매- {oT}×{outerW}×{Lpf}</text>
-        {inner && <text x={365} y={yTbl + 30} className="svg-tblv" textAnchor="middle">4매- {iT}×{inner.w}×{inner.L}</text>}
-        <text x={80} y={yTbl + 59} className="svg-tblk" textAnchor="middle">Web</text>
-        <text x={192} y={yTbl + 59} className="svg-tblk" textAnchor="middle">{mW * nW * 2}-M{dia}</text>
-        <text x={365} y={yTbl + 59} className="svg-tblv" textAnchor="middle">2매- {wT}×{chum}×{webWid}</text>
+        {/* ── 정보표 (MINI_BOX, JointDetailDWG 형식) ── */}
+        <rect x={30} y={yTbl} width={W - 60} height={88} className="svg-cell" />
+        {[1, 2, 3].map(i => <line key={i} x1={30} y1={yTbl + 22 * i} x2={W - 30} y2={yTbl + 22 * i} className="svg-dim-l" />)}
+        {[108, 238, 316].map((x, i) => <line key={i} x1={x} y1={yTbl} x2={x} y2={yTbl + 88} className="svg-dim-l" />)}
+        {([
+          ['Title', r.section, 'Steel', cond.steel],
+          ['Web PL.', gpl(wT, chum, webWid, 2), 'O-Flg PL.', gpl(oT, outerW, Lpf, 2)],
+          ['Web Bolt', `${mW * nW * 2}-M${dia} H.T.B`, 'I-Flg PL.', inner ? gpl(iT, inner.w, inner.L, 4) : '-'],
+          ['Joint', `${cond.member} ${cond.jointType}`, 'Flg Bolt', `${fB.m * Math.round(fB.n) * 4}-M${dia} H.T.B`],
+        ] as const).map(([l1, v1, l2, v2], i) => {
+          const y = yTbl + 22 * i + 15;
+          return <g key={i}>
+            <text x={35} y={y} className="svg-tblk" style={{ fontSize: '9px' }}>{l1}</text>
+            <text x={113} y={y} className="svg-tblv" style={{ fontSize: '8.3px' }}>{v1}</text>
+            <text x={243} y={y} className="svg-tblk" style={{ fontSize: '9px' }}>{l2}</text>
+            <text x={321} y={y} className="svg-tblv" style={{ fontSize: '8.3px' }}>{v2}</text>
+          </g>;
+        })}
       </svg>
     </div>
   );

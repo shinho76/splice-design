@@ -31,7 +31,7 @@ export default function QuantityPanel({ cond, onClose }: { cond: DesignCondition
         <h2>물량산정</h2>
         <p className="cond-line">
           {cond.member} · {cond.jointType}접합 · α = {Math.round(cond.strengthRatio * 100)}% · {cond.steel} · {cond.bolt}
-          <span className="qty-badge">총 볼트 {nf(agg.totalBolts)}개 · 첨판 {nf(agg.totalWeightKg)} kg</span>
+          <span className="qty-badge">볼트 {nf(agg.totalBolts)}개 · {nf(agg.boltWeightKg)} kg · 첨판 {nf(agg.plateWeightKg)} kg</span>
         </p>
         <div className="tablewrap">
           <table className="design-table qty-table">
@@ -40,6 +40,8 @@ export default function QuantityPanel({ cond, onClose }: { cond: DesignCondition
                 <th className="col-name gcol">단면치수</th>
                 <th className="gcol">볼트</th>
                 <th className="gcol">개수</th>
+                <th>볼트길이 F/W</th>
+                <th className="gcol">볼트중량(kg)</th>
                 <th>플랜지 외첨판</th>
                 <th>플랜지 내첨판</th>
                 <th className="gcol">웨브 첨판</th>
@@ -52,6 +54,8 @@ export default function QuantityPanel({ cond, onClose }: { cond: DesignCondition
                   <td className="col-name gcol">{q.section}</td>
                   <td className="gcol">{q.bolts[0].name}</td>
                   <td className="gcol">{q.boltCount}</td>
+                  <td>L{q.boltSpec.flange.length}/{q.boltSpec.web.length}</td>
+                  <td className="gcol">{nf(q.boltWeightKg)}</td>
                   <td>{plateStr(q, '외첨판')}</td>
                   <td>{plateStr(q, '내첨판')}</td>
                   <td className="gcol">{plateStr(q, '웨브')}</td>
@@ -63,13 +67,16 @@ export default function QuantityPanel({ cond, onClose }: { cond: DesignCondition
               <tr className="qty-total">
                 <td className="col-name gcol">합계 ({qs.length}종)</td>
                 <td className="gcol" colSpan={2}>{Object.entries(agg.boltByName).map(([k, v]) => `${k} ${nf(v)}`).join(' / ')}</td>
+                <td></td>
+                <td className="gcol">{nf(agg.boltWeightKg)}</td>
                 <td colSpan={3}></td>
-                <td>{nf(agg.totalWeightKg)}</td>
+                <td>{nf(agg.plateWeightKg)}</td>
               </tr>
             </tfoot>
           </table>
         </div>
-        <p className="note">※ 첨판 중량 = 부피 × 7,850 kg/m³. 외첨판 2매·내첨판 4매·웨브첨판 2매/부재 기준. 볼트 = 플랜지(열×행×4) + 웨브(열×행×2).</p>
+        <p className="note">※ 첨판 중량 = 부피 × 7,850 kg/m³. 외첨판 2매·내첨판 4매·웨브첨판 2매/부재 기준. 볼트 = 플랜지(열×행×4) + 웨브(열×행×2).
+          볼트 표준길이 = 조임두께(그립) + 부가길이 → 5mm 올림, 세트중량(볼트+너트+와셔2매)은 <b>KS B 1010</b> 기반(F/W = 플랜지/웨브 길이).</p>
       </div>
     </div>
   );

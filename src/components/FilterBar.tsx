@@ -36,9 +36,6 @@ export default function FilterBar({ cond, onChange }: {
             {PRESETS.map(p => <option key={p} value={p}>{p}%</option>)}
             {!PRESETS.includes(pct) && <option value="custom">{pct}% (직접)</option>}
           </select>
-          <input type="number" min={10} max={100} step={5} value={pct}
-            onChange={e => setAlpha(Number(e.target.value))} aria-label="부분강도비 직접입력" />
-          <span className="pct">%</span>
         </div>
       </div>
     </div>
