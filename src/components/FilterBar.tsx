@@ -25,13 +25,17 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
       <div className="fld">
         <label>강종</label>
         <select value={cond.steel} onChange={e => set('steel', e.target.value as SteelGrade)}>
-          <optgroup label="KS">
+          <optgroup label="KS (현행)">
+            <option value="SS275">SS275</option><option value="SM355">SM355</option><option value="SN355">SN355</option>
+          </optgroup>
+          <optgroup label="KS (구)">
             <option value="SHN490">SHN490</option><option value="SS400">SS400</option>
             <option value="SM490">SM490</option><option value="SN490">SN490</option>
             <option value="SM520">SM520</option><option value="SM570">SM570</option>
           </optgroup>
           <optgroup label="ASTM">
-            <option value="A992">A992</option><option value="A572">A572-50</option><option value="A36">A36</option>
+            <option value="A992">A992</option><option value="A572">A572 Gr50</option>
+            <option value="A36">A36</option><option value="A588">A588</option>
           </optgroup>
         </select>
       </div>
@@ -39,7 +43,7 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
         <label>볼트</label>
         <select value={cond.bolt} onChange={e => set('bolt', e.target.value as BoltGrade)}>
           <optgroup label="KS">
-            <option value="F10T">F10T</option><option value="F13T">F13T</option><option value="S10T">S10T</option>
+            <option value="F10T">F10T, S10T</option><option value="F13T">F13T</option>
           </optgroup>
           <optgroup label="ASTM">
             <option value="A325">A325</option><option value="A490">A490</option>

@@ -10,9 +10,10 @@ const fmtW = (w: number) => w.toLocaleString('en-US');                   // 단�
 
 const DIAS = [16, 20, 22, 24];   // 사용 직경(표준구멍 d+2 자동 적용)
 
-export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, onSetDia }: {
+export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, onSetDia, selectedSection }: {
   cond: DesignCondition; onSelect: (r: DesignResult) => void; onView3D: (r: DesignResult) => void;
   custom?: boolean; diaAt?: (i: number) => number | undefined; onSetDia?: (i: number, d: number) => void;
+  selectedSection?: string;
 }) {
   const rows = SECTIONS.map((s, i) => ({ s, r: designConnection(cond, s, diaAt?.(i)) }));
   const isCol = cond.member === '기둥';
@@ -56,9 +57,13 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
             const nominal = nominalOf(s.H, s.B);
             const newSeries = i === 0 || nominal !== nominalOf(rows[i - 1].s.H, rows[i - 1].s.B);
             const inner = fmtPlate(r.flange.innerPlate);
+            const ng = r.steps.some(st => st.check === 'NG');
+            const sel = r.section === selectedSection;
             return (
-              <tr key={r.section} onClick={() => onSelect(r)} className={newSeries ? 'series-top' : ''}>
-                <td className="col-name"><span className="cn-txt">{r.section}</span>
+              <tr key={r.section} onClick={() => onSelect(r)} className={`${newSeries ? 'series-top' : ''}${sel ? ' row-sel' : ''}`}>
+                <td className="col-name">
+                  <span className={`st-dot${ng ? ' ng' : ''}`} title={ng ? '재검토' : '적합'} />
+                  <span className="cn-txt">{r.section}</span>
                   <button className="t3d" title="3D 보기" onClick={e => { e.stopPropagation(); onView3D(r); }}>3D</button></td>
                 <td>{s.r}</td>
                 <td className="gcol">{fmtW(unitWeightOf(s))}</td>

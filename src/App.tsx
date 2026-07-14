@@ -105,11 +105,11 @@ export default function App() {
         </div>
 
         <div className="cbody">
-          <div className="cgrid"><ResultTable cond={cond} onSelect={setSelected} onView3D={setView3D} custom={boltMode === 'Custom'} diaAt={diaAt} onSetDia={setDiaAt} /></div>
+          <div className="cgrid"><ResultTable cond={cond} onSelect={setSelected} onView3D={setView3D} custom={boltMode === 'Custom'} diaAt={diaAt} onSetDia={setDiaAt} selectedSection={selected?.section} /></div>
           <aside className="cdetail">
             {selected ? (
               <>
-                <div className="dh">{selected.section}</div>
+                <div className="dh">{selected.section}<span className="dbadge">선택됨</span></div>
                 <div className="dsub">{cond.member} · {cond.jointType}접합 · {cond.steel} · {cond.bolt}</div>
                 <div className="dspecs">
                   <div><span>{isCol ? '압축강도' : '휨모멘트'}</span><b>{nf(isCol ? selected.Puf_kN : selected.Mu_kNm)} kN{isCol ? '' : '·m'}</b></div>

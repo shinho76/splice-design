@@ -207,5 +207,7 @@ function designWeb(cond: DesignCondition, sec: HSection, bolt: BoltName, fy: num
     { group:'바) 웨브 볼트 · 첨판', label:'웨브 볼트 배열', value:mW, unit:`(춤)×${nW}(축), Pc=${Pc ?? '—'}${stagger?' · 엇모':''}`, ref:'5.8.2' },
     { group:'바) 웨브 볼트 · 첨판', label:'웨브 첨판 (두께×춤×너비)', value:tpw, unit:`× ${dpw} × ${wpw}`, ref:'5.9' },
   );
-  return { bolt:{ m:mW, n:nW, count:mW*nW }, Pc:Pc ?? undefined, webPlate:{ t:tpw, w:dpw, L:wpw }, pitch: webP, edge: 40 };
+  // stagger=웨브 춤≤200: 웨브볼트를 플랜지볼트 대비 절반피치(30mm) 바깥으로 엇갈림(체결 간섭 회피, [그림 3.4]).
+  //   → 첨판폭 +60(=2×30)이 이 이동분을 이미 포함 → 도면에서 실제 이동해야 연단거리 40 유지.
+  return { bolt:{ m:mW, n:nW, count:mW*nW }, Pc:Pc ?? undefined, webPlate:{ t:tpw, w:dpw, L:wpw }, staggered: stagger, pitch: webP, edge: 40 };
 }

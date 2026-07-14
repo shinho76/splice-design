@@ -248,7 +248,8 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   }));
   const fPosX = [...new Set(fBolts.filter(b => b.x > 0).map(b => b.x))].sort((a, b) => a - b);
   const chum = r.web.webPlate?.w ?? 140, Pc = r.web.Pc ?? 60;
-  const webPosX = Array.from({ length: wB.n }, (_, i) => base + i * wp);
+  const webOff = (r.web.staggered ?? false) ? 30 : 0;   // 웨브볼트 절반피치 엇갈림(체결 간섭 회피)
+  const webPosX = Array.from({ length: wB.n }, (_, i) => base + webOff + i * wp);
   const webRowY = Array.from({ length: wB.m }, (_, i) => (i - (wB.m - 1) / 2) * Pc);
 
   // ── 웨브 입면도 (yW) : 부재 연장 + 파단선 ──

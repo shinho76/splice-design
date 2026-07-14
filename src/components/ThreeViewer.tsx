@@ -69,6 +69,7 @@ export default function ThreeViewer({ r, cond, onClose }: { r: DesignResult; con
     grid.position.y = isCol ? -(P.segLen + P.gap / 2) - 40 : -P.H / 2 - 80; scene.add(grid);
 
     const steel = new THREE.MeshStandardMaterial({ color: 0x9aa7b4, metalness: 0.75, roughness: 0.42 });
+    const steel2 = new THREE.MeshStandardMaterial({ color: 0x7c8894, metalness: 0.75, roughness: 0.46 });  // 반대측 부재(맞댐면 톤 구분)
     const flgMat = new THREE.MeshStandardMaterial({ color: 0x39c46e, metalness: 0.5, roughness: 0.5, transparent: true, opacity: 0.9 });
     const webMat = new THREE.MeshStandardMaterial({ color: 0x2bb6d6, metalness: 0.5, roughness: 0.5, transparent: true, opacity: 0.9 });
     const boltMat = new THREE.MeshStandardMaterial({ color: 0x2e3138, metalness: 0.9, roughness: 0.34 });
@@ -76,10 +77,19 @@ export default function ThreeViewer({ r, cond, onClose }: { r: DesignResult; con
     const washMat = new THREE.MeshStandardMaterial({ color: 0x8b929c, metalness: 0.85, roughness: 0.4 });
 
     const model = new THREE.Group(); scene.add(model);
-    const beamGeo = new THREE.ExtrudeGeometry(hShape(P.B, P.H, P.tw, P.tf, P.r), { depth: P.segLen, bevelEnabled: false });
+    const hSh = hShape(P.B, P.H, P.tw, P.tf, P.r);
+    const beamGeo = new THREE.ExtrudeGeometry(hSh, { depth: P.segLen, bevelEnabled: false });
     for (const sgn of [1, -1] as const) {
-      const m = new THREE.Mesh(beamGeo, steel);
+      const m = new THREE.Mesh(beamGeo, sgn > 0 ? steel : steel2);   // 좌우 부재 톤 구분
       m.position.z = sgn > 0 ? P.gap / 2 : -P.gap / 2 - P.segLen; model.add(m);
+    }
+    // 맞댐면(z=0) 이음선 — 갭이 작아 두 부재 단면이 맞닿을 때 접합면을 뚜렷이 표시
+    if (P.gap <= 2) {
+      const seam = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.ShapeGeometry(hSh)),
+        new THREE.LineBasicMaterial({ color: 0xffb84d, depthTest: false, transparent: true }),
+      );
+      seam.position.z = 0; seam.renderOrder = 2; model.add(seam);
     }
     for (const bx of P.boxes) {
       const m = new THREE.Mesh(new THREE.BoxGeometry(bx.sx, bx.sy, bx.sz), bx.kind === 'web' ? webMat : flgMat);

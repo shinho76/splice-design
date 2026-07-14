@@ -3,7 +3,7 @@
 
 export type Member = '보' | '기둥';
 export type JointType = '마찰' | '지압';
-export type SteelGrade = 'SS400' | 'SM490' | 'SM520' | 'SM570' | 'SN490' | 'SHN490' | 'A36' | 'A572' | 'A992';
+export type SteelGrade = 'SS275' | 'SM355' | 'SN355' | 'SS400' | 'SM490' | 'SM520' | 'SM570' | 'SN490' | 'SHN490' | 'A36' | 'A572' | 'A992' | 'A588';
 export type BoltGrade = 'F10T' | 'F13T' | 'S10T' | 'A325' | 'A490';
 export type BoltName = 'M16' | 'M18' | 'M20' | 'M22' | 'M24';
 export type BoltDia = 16 | 18 | 20 | 22 | 24;

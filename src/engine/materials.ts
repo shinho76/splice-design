@@ -13,16 +13,22 @@ interface SteelSpec {
 
 // [표 1.2] 주요 구조용 강재의 강도 (MPa)
 export const STEEL: Record<SteelGrade, SteelSpec> = {
+  // KS D (현행 명칭 — 항복강도 기준): SS275·SM355·SN355
+  SS275:  { Fy_le40: 275, Fy_gt40: 255, Fu: 410 }, // 일반구조용(구 SS400)
+  SM355:  { Fy_le40: 355, Fy_gt40: 335, Fu: 490 }, // 용접구조용(구 SM490)
+  SN355:  { Fy_le40: 355, Fy_gt40: 335, Fu: 490 }, // 건축구조용(구 SN490)
+  // KS D (구 명칭 — 호환 유지)
   SS400:  { Fy_le40: 235, Fy_gt40: 215, Fu: 400 },
   SM490:  { Fy_le40: 325, Fy_gt40: 295, Fu: 490 },
   SN490:  { Fy_le40: 325, Fy_gt40: 295, Fu: 490 }, // SN490B,C
   SHN490: { Fy_le40: 325, Fy_gt40: 295, Fu: 490 },
   SM520:  { Fy_le40: 355, Fy_gt40: 325, Fu: 520 },
   SM570:  { Fy_le40: 420, Fy_gt40: 420, Fu: 570 },
-  // ASTM (MPa 환산): A36=36ksi/58ksi, A572-50·A992=50ksi/65ksi
+  // ASTM (MPa 환산): A36=36ksi/58ksi, A572-50·A992=50ksi/65ksi, A588=50ksi/70ksi(내후성)
   A36:    { Fy_le40: 250, Fy_gt40: 250, Fu: 400 },
   A572:   { Fy_le40: 345, Fy_gt40: 345, Fu: 450 }, // Gr.50
   A992:   { Fy_le40: 345, Fy_gt40: 345, Fu: 450 }, // W형강 표준
+  A588:   { Fy_le40: 345, Fy_gt40: 345, Fu: 485 }, // 내후성 강판
 };
 
 /** 판두께에 따른 설계기준항복강도 Fy (MPa) */

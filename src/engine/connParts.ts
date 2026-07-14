@@ -40,7 +40,8 @@ export function connParts(r: DesignResult): ConnParts {
     ? Array.from({ length: ci % 2 ? nLo : nHi }, (_, j) => base + (ci % 2 ? 45 : 0) + j * 90)
     : Array.from({ length: nHi }, (_, i) => base + i * fp);
   const Pc = r.web.Pc ?? 60;
-  const webZ = Array.from({ length: wB.n }, (_, i) => base + i * wp);
+  const webOff = (r.web.staggered ?? false) ? 30 : 0;                 // 웨브볼트 절반피치 엇갈림(체결 간섭 회피, [그림 3.4])
+  const webZ = Array.from({ length: wB.n }, (_, i) => base + webOff + i * wp);
   const webY = Array.from({ length: wB.m }, (_, i) => (i - (wB.m - 1) / 2) * Pc);
 
   const outer = r.flange.outerPlate, inner = r.flange.innerPlate, web = r.web.webPlate;
