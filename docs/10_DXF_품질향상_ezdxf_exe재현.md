@@ -166,29 +166,23 @@ doc.saveas('gold.dxf')
 
 ---
 
-## 11. AutoLISP(.lsp) 다운로드 — exe 동일 CAD (ezdxf 불필요)
+## 11. 다중 배치 & 단면도 (DXF)
 
-> Python/ezdxf 없이 **AutoCAD 내에서 `entmake`로 직접 도면 생성**. 웹에서 `.lsp`를 받아 AutoCAD에 로드(APPLOAD/드래그)하면 즉시 그려짐. `SPLICE` 명령으로 재실행.
+### 다중 배치 — exe(도곽 시트) 참고 (`placeGrid`)
+- exe는 **도면 1건 = 도곽 1장**(`FrameA4.dwg`). 이를 참고해 **전 단면의 최대 도곽으로 균일 셀**을 만들고 각 상세를 **셀 중앙 배치** → 열·행이 정렬된 시트세트(3열 그리드, `GAP=400`). `toDXFAll`이 `placeGrid` 사용.
+- 🐞 **지시선 이중변환 버그 수정**: 앵커를 `pt(tM,…)` 절대좌표로 계산 후 `leader(pf,…)`가 오프셋을 이중 적용 → 배치에서 지시선 폭주. 앵커를 **로컬 변환(`tMl`)** 으로 계산해 해결.
+- **단면도(우측 영역)**: `hSection()` 이 H형강 단면(필렛 R, ARC 4개)을 프레임 우측 확장 영역에 그림. 첨판 입면=두꺼운 폴리라인, 평면 내첨판·필렛=점선(HIDDEN), 내첨판 폭 치수.
 
-### 구조 (`src/engine/lsp.ts`)
-- **지오메트리 재사용**: `dxf.ts`의 `layout`·`emitMember`·`newDoc`를 그대로 호출 → DXF와 **좌표·구성 완전 동일**. 출력만 DXF 태그 → `(entmake (list ...))` 로 변환하는 트랜스파일러.
-- **변환 규칙**: 점 그룹(10/20/30)→`(list 10 x y z)`, 문자코드(1/2/6/7/8)→`(cons c "str")`, 정수코드(62/70/72/73)→정수, 그 외 수치→실수.
-- **테이블 선행생성**(`_spl_tables`): 레이어 7종(exe 색)·STYLE `OpenSansCondensed-Light`·블록 `_ARCHTICK` 를 `tblsearch` 후 없으면 `entmakex`.
-- **치수 처리**: 추상 `DIMENSION` 엔티티는 제외하고, `*Dn` 지오메트리 블록의 **가시요소(연장선·`_ARCHTICK` 틱·값 TEXT)를 최상위로 전개** → exe와 동일한 그림(절대좌표라 개별/일괄 모두 그대로 재현).
+## 12. 3D 뷰어 & IFC 내보내기 (앱)
 
-### 다운로드(UI)
-- 개별: 상세패널 **`DXF` 옆 `LSP`** 버튼 → `{단면}_{접합}.lsp`
-- 일괄: 좌측 레일 **`⤓`(전체 DXF) 옆 `≣`(전체 LSP)** → `splice_전체_{부재}_{접합}.lsp`
+> ~~AutoLISP(.lsp) 출력은 제거됨.~~ 3D 시각화와 IFC 표준 내보내기로 대체.
 
-### 다중 배치 — exe(도곽 시트) 참고 (`placeGrid`, DXF·LSP 공유)
-- exe는 **도면 1건 = 도곽 1장**(`FrameA4.dwg`). 이를 참고해 **전 단면의 최대 도곽으로 균일 셀**을 만들고 각 상세를 **셀 중앙 배치** → 열·행이 정렬된 시트세트(3열 그리드, `GAP=400`).
-- `placeGrid(rows, isCol, emit)` 를 `toDXFAll`·`toLSPAll` 이 **공유** → 개별/일괄/DXF/LSP 모두 동일 좌표.
+### 공유 지오메트리 `connParts.ts`
+- `DesignResult` → 부재·첨판(박스)·볼트(머리+그립+너트+**여장**) 프리미티브. 좌표계 X=폭·Y=높이·Z=축. Three.js·IFC 공유.
 
-> 🐞 **버그 수정(다중 배치)**: 지시선 앵커를 `pt(tM,…)` 절대좌표로 계산 후 `leader(pf,…)`가 오프셋을 **이중 적용** → 배치(offset≠0)에서 지시선이 다른 셀로 폭주. 앵커를 **로컬 변환(`tMl`, 오프셋 제외)** 으로 계산해 해결. 개별 도면(offset=0)은 무해했으나 기존 전체 DXF도 깨져 있던 문제.
+### 3D 뷰어 `ThreeViewer.tsx` (Three.js)
+- 단면치수 **옆 `3D` 버튼**·상세패널 `3D` → 모달. H형강=`ExtrudeGeometry`(필렛R Shape), 첨판 박스, 볼트=원기둥(머리·너트·**여장** = 축이 너트 아래로 `dir*(grip+nutH+protr)` 연장). OrbitControls.
 
-### 검증
-- 보/기둥 생성 → 괄호 균형 0·중간 음수 없음(구조 유효), 드로잉 `entmake` 452개.
-- `_ARCHTICK` INSERT 68개(34치수×2)·값 TEXT 전개 확인. 엔티티 문법(LINE/CIRCLE/TEXT/SOLID/INSERT) 표준 entmake 규약 일치.
-- 지오메트리가 DXF와 동일 소스(`emitMember`)라 §10 렌더와 동일.
-
-> ⚠️ 치수는 **가시 지오메트리로 전개**(연관 DIMENSION 객체 아님) — exe 그림과 픽셀 동일하되, AutoCAD에서 치수 스타일 변경 시 자동 갱신은 안 됨. 실측 exe도 결국 `*Dn` 블록에 구운 지오메트리라 시각적으로 동일.
+### IFC 내보내기 `ifcOut.ts` (IFC4 STEP)
+- H형강=**`IfcIShapeProfileDef`(필렛 R 내장)** 압출, 첨판=`IfcRectangleProfileDef` 압출, 볼트=`IfcCircleProfileDef` 압출. 공간위계 Project→Site→Building→Storey, 요소 `IfcBeam`/`IfcPlate`/`IfcMechanicalFastener`.
+- **검증**(`tools/verify_ifc.mjs`, web-ifc): IFC4·Beam2·Plate8·Fastener22·ExtrudedSolid32·IShape1 파싱 + **지오메트리 tessellation 32메시** 성공.

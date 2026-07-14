@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { DesignCondition, DesignResult } from './engine/types.ts';
 import FilterBar from './components/FilterBar.tsx';
 import ResultTable from './components/ResultTable.tsx';
@@ -6,11 +6,12 @@ import CalcReport from './components/CalcReport.tsx';
 import QuantityPanel from './components/QuantityPanel.tsx';
 import ProjectPanel from './components/ProjectPanel.tsx';
 import ConnectionSVG from './components/ConnectionSVG.tsx';
+import ThreeViewer from './components/ThreeViewer.tsx';
 import { loadProject, persistProject, newItem, type ProjectItem } from './engine/project.ts';
 import { SECTIONS } from './engine/sections.ts';
 import { designConnection } from './engine/engine.ts';
 import { toDXF, toDXFAll, downloadFile } from './engine/dxf.ts';
-import { toLSP, toLSPAll } from './engine/lsp.ts';
+import { toIFC } from './engine/ifcOut.ts';
 import { quantityOf } from './engine/quantity.ts';
 
 const DEFAULT: DesignCondition = {
@@ -25,6 +26,9 @@ export default function App() {
   const [showReport, setShowReport] = useState(false);
   const [showQty, setShowQty] = useState(false);
   const [showProj, setShowProj] = useState(false);
+  const [view3D, setView3D] = useState<DesignResult | null>(null);
+  const [boltMode, setBoltMode] = useState<'Default' | 'Custom'>('Default');
+  const [boltOv, setBoltOv] = useState<Record<number, number>>({});   // 행index → 지정직경(위 행 따름)
   const [project, setProject] = useState<ProjectItem[]>(loadProject);
   const [dark, setDark] = useState<boolean>(() => {
     const s = localStorage.getItem('splice_theme');
@@ -37,31 +41,36 @@ export default function App() {
   }, [dark]);
   useEffect(() => { persistProject(project); }, [project]);
 
-  // KPI 집계 (조건 변경 시)
+  // Custom 볼트직경 해석 : 해당 행 이상에서 가장 가까운 지정값(위 행을 따름)
+  const diaAt = useCallback((i: number): number | undefined => {
+    if (boltMode !== 'Custom') return undefined;
+    let bestK: number | undefined;
+    for (const k of Object.keys(boltOv).map(Number)) if (k <= i && (bestK === undefined || k > bestK)) bestK = k;
+    return bestK === undefined ? undefined : boltOv[bestK];
+  }, [boltMode, boltOv]);
+  const setDiaAt = (i: number, d: number) => setBoltOv(o => ({ ...o, [i]: d }));
+
+  // KPI 집계 (조건·Custom 변경 시)
   const stats = useMemo(() => {
     let bolts = 0, wt = 0, boltWt = 0, ok = 0;
-    for (const s of SECTIONS) {
-      const r = designConnection(cond, s);
+    SECTIONS.forEach((s, i) => {
+      const r = designConnection(cond, s, diaAt(i));
       const q = quantityOf(r, cond);
       bolts += q.boltCount; wt += q.plateWeightKg; boltWt += q.boltWeightKg;
       if (!r.steps.some(st => st.check === 'NG')) ok++;
-    }
+    });
     return { bolts, wt: Math.round(wt), boltWt: Math.round(boltWt), ok, total: SECTIONS.length };
-  }, [cond]);
+  }, [cond, diaAt]);
 
   const detailQ = useMemo(() => (selected ? quantityOf(selected, cond) : null), [selected, cond]);
 
   const addToProject = (r: DesignResult) => setProject(p => [...p, newItem(r.section, cond)]);
   const exportAllDXF = () => {
-    const rows = SECTIONS.map(s => designConnection(cond, s));
+    const rows = SECTIONS.map((s, i) => designConnection(cond, s, diaAt(i)));
     downloadFile(`splice_전체_${cond.member}_${cond.jointType}.dxf`, toDXFAll(rows, cond), 'application/dxf');
   };
   const exportOneDXF = (r: DesignResult) => downloadFile(`${r.section}_${cond.jointType}.dxf`, toDXF(r, cond), 'application/dxf');
-  const exportAllLSP = () => {
-    const rows = SECTIONS.map(s => designConnection(cond, s));
-    downloadFile(`splice_전체_${cond.member}_${cond.jointType}.lsp`, toLSPAll(rows, cond), 'text/plain');
-  };
-  const exportOneLSP = (r: DesignResult) => downloadFile(`${r.section}_${cond.jointType}.lsp`, toLSP(r, cond), 'text/plain');
+  const exportOneIFC = (r: DesignResult) => downloadFile(`${r.section}_${cond.jointType}.ifc`, toIFC(r, cond), 'application/x-step');
   const isCol = cond.member === '기둥';
   const pct = Math.round(cond.strengthRatio * 100);
 
@@ -73,14 +82,13 @@ export default function App() {
         <button className="rnav" title="물량산정" onClick={() => setShowQty(true)}>▦</button>
         <button className="rnav" title="프로젝트" onClick={() => setShowProj(true)}>◫{project.length ? <em className="rbadge">{project.length}</em> : null}</button>
         <button className="rnav" title="전체 DXF 다운로드" onClick={exportAllDXF}>⤓</button>
-        <button className="rnav" title="전체 LSP 다운로드 (AutoCAD·exe 동일)" onClick={exportAllLSP}>≣</button>
         <span className="rspace" />
       </aside>
 
       <div className="cmain">
         <header className="ctop">
           <div className="cbrand">SPLICE<span className="accent">DESIGN</span></div>
-          <FilterBar cond={cond} onChange={setCond} />
+          <FilterBar cond={cond} onChange={setCond} boltMode={boltMode} onBoltMode={setBoltMode} />
           <div className="ccond">{cond.steel} · {cond.bolt} · α{pct}%</div>
           <div className="seg-theme" role="group" aria-label="테마 전환">
             <button type="button" className={dark ? 'on' : ''} onClick={() => setDark(true)} aria-pressed={dark} title="다크 모드">☾ 다크</button>
@@ -97,7 +105,7 @@ export default function App() {
         </div>
 
         <div className="cbody">
-          <div className="cgrid"><ResultTable cond={cond} onSelect={setSelected} /></div>
+          <div className="cgrid"><ResultTable cond={cond} onSelect={setSelected} onView3D={setView3D} custom={boltMode === 'Custom'} diaAt={diaAt} onSetDia={setDiaAt} /></div>
           <aside className="cdetail">
             {selected ? (
               <>
@@ -119,7 +127,8 @@ export default function App() {
                 <div className="dact">
                   <button className="db primary" onClick={() => setShowReport(true)}>상세 계산서</button>
                   <button className="db" onClick={() => exportOneDXF(selected)}>DXF</button>
-                  <button className="db" onClick={() => exportOneLSP(selected)}>LSP</button>
+                  <button className="db" onClick={() => setView3D(selected)}>3D</button>
+                  <button className="db" onClick={() => exportOneIFC(selected)}>IFC</button>
                   <button className="db" onClick={() => addToProject(selected)}>＋ 프로젝트</button>
                 </div>
                 <div className="dprev"><ConnectionSVG r={selected} cond={cond} /></div>
@@ -141,8 +150,9 @@ export default function App() {
       </div>
 
       {showReport && selected && <CalcReport result={selected} cond={cond} onClose={() => setShowReport(false)} onAdd={addToProject} />}
-      {showQty && <QuantityPanel cond={cond} onClose={() => setShowQty(false)} />}
+      {showQty && <QuantityPanel cond={cond} diaAt={diaAt} onClose={() => setShowQty(false)} />}
       {showProj && <ProjectPanel items={project} onChange={setProject} onClose={() => setShowProj(false)} />}
+      {view3D && <ThreeViewer r={view3D} cond={cond} onClose={() => setView3D(null)} />}
     </div>
   );
 }

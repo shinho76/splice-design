@@ -13,32 +13,34 @@ export const PHI_SHEAR = 0.9;   // 전단 (5.6)
 export const MU = 0.5;          // 미끄럼계수 (블라스트+무도장)
 export const HSC = 1.0;         // 구멍계수 (표준구멍)
 
-// [표 1.5] 볼트 구멍 지름 & 응력방향 중심거리
+// [표 1.5] 볼트 구멍 지름 & 응력방향 중심거리  (M18·M24는 KS 공식 도출: hole=d+2)
 export const BOLT_HOLE: Record<BoltName, { dia: number; hole: number; pitchStress: 60 }> = {
   M16: { dia: 16, hole: 18, pitchStress: 60 },
+  M18: { dia: 18, hole: 20, pitchStress: 60 },
   M20: { dia: 20, hole: 22, pitchStress: 60 },
   M22: { dia: 22, hole: 24, pitchStress: 60 },
+  M24: { dia: 24, hole: 26, pitchStress: 60 },
 };
-export const boltNameByDia: Record<BoltDia, BoltName> = { 16: 'M16', 20: 'M20', 22: 'M22' };
+export const boltNameByDia: Record<BoltDia, BoltName> = { 16: 'M16', 18: 'M18', 20: 'M20', 22: 'M22', 24: 'M24' };
 
-// 공칭단면적 Ab (mm²)
-export const Ab: Record<BoltName, number> = { M16: 201, M20: 314, M22: 380 };
+// 공칭단면적 Ab (mm²) = π/4·d²
+export const Ab: Record<BoltName, number> = { M16: 201, M18: 254, M20: 314, M22: 380, M24: 452 };
 
-// [표 1.6] 설계볼트장력 To (kN)  = 0.7·Fu × 0.75·Ab
+// [표 1.6] 설계볼트장력 To (kN) = 0.7·Fu·0.75·Ab  (F10T 0.525·Ab / F13T 0.6825·Ab)  ※M18·M24 도출
 export const To_kN: Record<BoltGrade, Record<BoltName, number>> = {
-  F10T: { M16: 106, M20: 165, M22: 200 },
-  F13T: { M16: 137, M20: 214, M22: 259 },
+  F10T: { M16: 106, M18: 133, M20: 165, M22: 200, M24: 237 },
+  F13T: { M16: 137, M18: 173, M20: 214, M22: 259, M24: 308 },
 };
 // 표준볼트장력 (kN) = To × 1.1
 export const Tstd_kN: Record<BoltGrade, Record<BoltName, number>> = {
-  F10T: { M16: 117, M20: 182, M22: 220 },
-  F13T: { M16: 151, M20: 235, M22: 285 },
+  F10T: { M16: 117, M18: 146, M20: 182, M22: 220, M24: 261 },
+  F13T: { M16: 151, M18: 190, M20: 235, M22: 285, M24: 339 },
 };
 
-// [표 1.7] 1면전단 공칭미끄럼강도 Rn (kN)  (설계 = ×0.85)
+// [표 1.7] 1면전단 공칭미끄럼강도 Rn (kN) = μ·To(=0.5·To)  (설계 = ×0.85)  ※M18·M24 도출
 export const Rn_slip_kN: Record<BoltGrade, Record<BoltName, number>> = {
-  F10T: { M16: 52.8, M20: 82.4, M22: 99.7 },
-  F13T: { M16: 68.6, M20: 107.0, M22: 130.0 },
+  F10T: { M16: 52.8, M18: 66.7, M20: 82.4, M22: 99.7, M24: 118.7 },
+  F13T: { M16: 68.6, M18: 86.7, M20: 107.0, M22: 130.0, M24: 154.2 },
 };
 
 // [표 1.8] 지압접합 축부 공칭전단강도 Fnv (MPa) = 0.5·Fu

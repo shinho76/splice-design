@@ -9,7 +9,8 @@ import { parseName } from './sections.ts';
 //   g[]  : 길이 L0(mm)부터 5mm 간격 세트질량(그램). 표 원본값 그대로.
 //   nutG/washerG : 참고용(너트 1개·와셔 1매 질량). 세트질량에 이미 포함됨.
 export interface KsSet { L0: number; step: 5; g: number[]; nutG: number; washerG: number; }
-export const KS_B_1010_SET: Record<BoltName, KsSet> = {
+// 표에 없는 호칭(M18 등)은 공식 추정으로 대체(아래 boltSetWeight)
+export const KS_B_1010_SET: Partial<Record<BoltName, KsSet>> = {
   // M16: 35~120mm
   M16: { L0: 35, step: 5, nutG: 57, washerG: 20,
     g: [194, 202, 210, 217, 225, 233, 241, 249, 257, 265, 273, 281, 289, 296, 304, 312, 320, 328] },
@@ -22,7 +23,7 @@ export const KS_B_1010_SET: Record<BoltName, KsSet> = {
 };
 
 // ── 부가길이(그립에 더하는 길이: 너트+와셔2매+나사여장) mm ──  ※표준시방 관례값
-const ADD_LEN: Record<BoltName, number> = { M16: 25, M20: 30, M22: 35 };
+const ADD_LEN: Record<BoltName, number> = { M16: 25, M18: 28, M20: 30, M22: 35, M24: 40 };
 
 const ceil5 = (v: number) => Math.ceil(v / 5) * 5;
 
@@ -42,9 +43,14 @@ export function standardLength(grip: number, name: BoltName): number {
   return ceil5(grip + ADD_LEN[name]);
 }
 
-/** 세트 1개 질량(kg) — KS B 1010 표값 조회(범위 밖은 표 증분으로 선형 연장) */
+/** 세트 1개 질량(kg) — KS B 1010 표값 조회(범위 밖은 선형 연장). 표에 없는 호칭은 공식 추정 */
 export function boltSetWeight(name: BoltName, lengthMm: number): number {
   const t = KS_B_1010_SET[name];
+  if (!t) {   // M18 등 표 미수록 → 기하 추정: 축부(π/4·d²·ρ) + 머리·너트·와셔2매(≈축부 2.2d)
+    const d = parseInt(name.slice(1), 10);
+    const perMm = Math.PI / 4 * d * d * 7.85e-6;   // kg/mm
+    return +(perMm * lengthMm + perMm * d * 2.2).toFixed(4);
+  }
   const idx = Math.round((lengthMm - t.L0) / t.step);
   let g: number;
   if (idx <= 0) g = t.g[0] - idx * (t.g[1] - t.g[0]);                    // 하한 미만: 첫 증분으로 연장

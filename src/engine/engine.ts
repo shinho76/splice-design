@@ -13,7 +13,8 @@ import { flangeLB_Mn, webLB_Mn } from './nominal.ts';
 
 const ceil = Math.ceil;
 const ceilHalf = (x: number) => Math.ceil(x * 2) / 2;
-const boltDiaOf = (b: string): 16 | 20 | 22 => (b === 'M16' ? 16 : b === 'M20' ? 20 : 22);
+const boltDiaOf = (b: string) => parseInt(b.slice(1), 10) as import('./types.ts').BoltDia;
+const boltNameOf = (d: number) => ('M' + d) as import('./types.ts').BoltName;
 
 /**
  * 웨브용 볼트 1개 설계강도 (kN) — 마찰=미끄럼, 지압=중간부 지압강도 φRn₂ (6.8).
@@ -57,21 +58,21 @@ function requiredRows(force: number, m: number, cap: BoltCap, staggered: boolean
 }
 
 /** 통합 진입점 */
-export function designConnection(cond: DesignCondition, sec: HSection): DesignResult {
+export function designConnection(cond: DesignCondition, sec: HSection, forceDia?: number): DesignResult {
   return cond.member === '보'
-    ? designBeam(cond, sec)
-    : designColumn(cond, sec);
+    ? designBeam(cond, sec, forceDia)
+    : designColumn(cond, sec, forceDia);
 }
 export const designBeamFriction = (cond: DesignCondition, sec: HSection) =>
   designBeam({ ...cond, jointType: '마찰' }, sec); // 하위호환
 
 // ─────────────────────────────── 보 (제5·6장) ───────────────────────────────
-function designBeam(cond: DesignCondition, sec: HSection): DesignResult {
+function designBeam(cond: DesignCondition, sec: HSection, forceDia?: number): DesignResult {
   const steps: CalcStep[] = [];
   const fy = Fy(cond.steel, sec.tf);
   const fu = FuSteel(cond.steel);
   const alpha = cond.strengthRatio;
-  const std = flangeStdFor(sec.B);
+  const std = forceDia ? { ...flangeStdFor(sec.B), bolt: boltNameOf(forceDia) } : flangeStdFor(sec.B);
   const bearing = cond.jointType === '지압';
 
   // 가) 소요휨강도 → 플랜지 소요축력
@@ -100,12 +101,12 @@ function designBeam(cond: DesignCondition, sec: HSection): DesignResult {
 }
 
 // ─────────────────────────────── 기둥 (제7·8장) ───────────────────────────────
-function designColumn(cond: DesignCondition, sec: HSection): DesignResult {
+function designColumn(cond: DesignCondition, sec: HSection, forceDia?: number): DesignResult {
   const steps: CalcStep[] = [];
   const fy = Fy(cond.steel, sec.tf);
   const fu = FuSteel(cond.steel);
   const alpha = cond.strengthRatio;
-  const std = flangeStdFor(sec.B);
+  const std = forceDia ? { ...flangeStdFor(sec.B), bolt: boltNameOf(forceDia) } : flangeStdFor(sec.B);
   const bearing = cond.jointType === '지압';
 
   // 가) 플랜지 소요압축강도
@@ -143,7 +144,9 @@ function designFlange(cond: DesignCondition, sec: HSection, std: ReturnType<type
   const m = std.m;
   // 기둥 지압(밀착접합)은 엇모 대신 정렬 배치 — 부록 기둥 지압 공칭300 세칙
   const staggered = std.layout === '엇모' && !(cond.member === '기둥' && cond.jointType === '지압');
-  const pitchEff = staggered ? 90 : 60;   // 중간부 순간격 기준(엇모=동일선상 2×45=90)
+  // C안: 정렬 피치를 직경별 최소간격(2.667d, 5mm 올림) 이상으로 — 표준(≤M22)은 60 불변, M24만 상향
+  const alignP = Math.max(PITCH_ALIGNED, Math.ceil(2.667 * boltDiaOf(std.bolt) / 5) * 5);
+  const pitchEff = staggered ? 90 : alignP;   // 중간부 순간격 기준(엇모=동일선상 2×45=90)
   const tPlate = innerW ? tOuter + tInner : tOuter;            // 첨판 두께 합(6.4.1-3)
   const cap = boltCap(cond, std.bolt, Ns, sec.tf, tPlate, fu, pitchEff); // 모재 tf·첨판
   const n = requiredRows(Puf, m, cap, staggered);
@@ -155,15 +158,15 @@ function designFlange(cond: DesignCondition, sec: HSection, std: ReturnType<type
     { group:'다) 플랜지 볼트 설계강도·배열', label:'플랜지 볼트 배열', value:m, unit:`열 × ${n} 행 = ${m*n}개`, ref:'5.4' },
   );
 
-  const pitch = staggered ? PITCH_STAGGERED : PITCH_ALIGNED;
+  const pitch = staggered ? PITCH_STAGGERED : alignP;
   const Lpf = staggered ? 2*((2*n-1)*pitch+2*40)+10 : 2*((n-1)*pitch+2*40)+10;
-  steps.push({ group:'라) 플랜지 첨판 길이', label:'첨판 길이', formula: staggered?'2[(2n−1)·45+80]+10':'2[(n−1)·60+80]+10', value:Lpf, unit:'mm', ref:'5.5.2' });
+  steps.push({ group:'라) 플랜지 첨판 길이', label:'첨판 길이', formula: staggered?'2[(2n−1)·45+80]+10':`2[(n−1)·${alignP}+80]+10`, value:Lpf, unit:'mm', ref:'5.5.2' });
 
   return {
     bolt:{ m, n, count:m*n }, gauge:{ g1:std.g1, g2:std.g2 ?? undefined },
     outerPlate:{ t:tOuter, w:outerW, L:Lpf },
     innerPlate: innerW ? { t:tInner, w:innerW, L:Lpf } : undefined,
-    staggered, gap: 10,   // 도면 배치용: 실제 엇모여부 + 첨판 길이에 반영된 이격 10mm
+    staggered, gap: 10, pitch: pitchEff, edge: 40,   // 도면 배치용
   };
 }
 
@@ -188,7 +191,8 @@ function designWeb(cond: DesignCondition, sec: HSection, bolt: BoltName, fy: num
     chum = (mW-1)*(Pc ?? 60) + 80;
   }
   const dpw = chum;
-  const wpw = 2*((nW-1)*60 + 2*40) + 10 + (stagger?60:0);
+  const webP = Math.max(60, Math.ceil(2.667 * boltDiaOf(bolt) / 5) * 5);   // C안: 웨브 가로피치
+  const wpw = 2*((nW-1)*webP + 2*40) + 10 + (stagger?60:0);
   // 보=전단(0.6Fy), 기둥=압축(Fy). 양면 첨판이 소요력의 절반씩 분담.
   const nomFactor = cond.member === '기둥' ? 1.0 : 0.6;
   const tpw = roundUpThickness(Math.max(0.5*(soryeok*1e3)/(0.9*nomFactor*fy*dpw), 6), WEB_PLATE_T);
@@ -198,5 +202,5 @@ function designWeb(cond: DesignCondition, sec: HSection, bolt: BoltName, fy: num
     { group:'바) 웨브 볼트 · 첨판', label:'웨브 볼트 배열', value:mW, unit:`(춤)×${nW}(축), Pc=${Pc ?? '—'}${stagger?' · 엇모':''}`, ref:'5.8.2' },
     { group:'바) 웨브 볼트 · 첨판', label:'웨브 첨판 (두께×춤×너비)', value:tpw, unit:`× ${dpw} × ${wpw}`, ref:'5.9' },
   );
-  return { bolt:{ m:mW, n:nW, count:mW*nW }, Pc:Pc ?? undefined, webPlate:{ t:tpw, w:dpw, L:wpw } };
+  return { bolt:{ m:mW, n:nW, count:mW*nW }, Pc:Pc ?? undefined, webPlate:{ t:tpw, w:dpw, L:wpw }, pitch: webP, edge: 40 };
 }

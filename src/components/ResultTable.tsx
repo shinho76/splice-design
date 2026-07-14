@@ -8,10 +8,13 @@ const fmtPlate = (p?: Plate) => p ? `${p.t}×${nf(p.w)}×${nf(p.L)}` : null;
 const fmtBolt = (b: BoltArray) => `${b.m}×${b.n % 1 ? b.n.toFixed(1) : b.n}`;
 const fmtW = (w: number) => w.toLocaleString('en-US');                   // 단위무게
 
-export default function ResultTable({ cond, onSelect }: {
-  cond: DesignCondition; onSelect: (r: DesignResult) => void;
+const DIAS = [16, 20, 22, 24];   // 사용 직경(표준구멍 d+2 자동 적용)
+
+export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, onSetDia }: {
+  cond: DesignCondition; onSelect: (r: DesignResult) => void; onView3D: (r: DesignResult) => void;
+  custom?: boolean; diaAt?: (i: number) => number | undefined; onSetDia?: (i: number, d: number) => void;
 }) {
-  const rows = SECTIONS.map(s => ({ s, r: designConnection(cond, s) }));
+  const rows = SECTIONS.map((s, i) => ({ s, r: designConnection(cond, s, diaAt?.(i)) }));
   const isCol = cond.member === '기둥';
 
   return (
@@ -55,12 +58,18 @@ export default function ResultTable({ cond, onSelect }: {
             const inner = fmtPlate(r.flange.innerPlate);
             return (
               <tr key={r.section} onClick={() => onSelect(r)} className={newSeries ? 'series-top' : ''}>
-                <td className="col-name">{r.section}</td>
+                <td className="col-name"><span className="cn-txt">{r.section}</span>
+                  <button className="t3d" title="3D 보기" onClick={e => { e.stopPropagation(); onView3D(r); }}>3D</button></td>
                 <td>{s.r}</td>
                 <td className="gcol">{fmtW(unitWeightOf(s))}</td>
                 <td>{nf(isCol ? r.Puf_kN : r.Mu_kNm)}</td>
                 <td className="gcol">{nf(r.Vu_kN)}</td>
-                <td className="gcol">{r.boltDia}</td>
+                <td className="gcol">{custom
+                  ? <select className="dia-sel" value={r.boltDia} onClick={e => e.stopPropagation()}
+                      onChange={e => { e.stopPropagation(); onSetDia?.(i, Number(e.target.value)); }}>
+                      {DIAS.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  : r.boltDia}</td>
                 <td>{fmtBolt(r.flange.bolt)}</td>
                 <td>{r.flange.gauge?.g1}</td>
                 <td className="gcol">{r.flange.gauge?.g2 ?? <span className="dash">—</span>}</td>

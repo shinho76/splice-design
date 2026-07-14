@@ -13,6 +13,7 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
   const stag = r.flange.staggered ?? false;   // 엔진의 실제 엇모 여부(공칭300만) — m≥4로 판정 금지
   const gap = r.flange.gap ?? 10;             // 첨판 길이에 반영된 이격(엔진과 동일)
   const base = gap / 2 + 40;
+  const fp = r.flange.pitch ?? 60, wp = r.web.pitch ?? 60;   // 엔진 피치(Custom 대구경 상향)
 
   const Lpf = r.flange.outerPlate?.L ?? 300, outerW = r.flange.outerPlate?.w ?? 200;
   const oT = r.flange.outerPlate?.t ?? 9, inner = r.flange.innerPlate, iT = inner?.t ?? 0;
@@ -22,7 +23,7 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
   const nHi = Math.ceil(fB.n), nLo = Math.floor(fB.n);
   const fBolts: { x: number; y: number }[] = [];
   ([1, -1] as const).forEach(s => colY.forEach((cy, ci) => {
-    if (!stag) for (let i = 0; i < nHi; i++) fBolts.push({ x: s * (base + i * 60), y: cy });
+    if (!stag) for (let i = 0; i < nHi; i++) fBolts.push({ x: s * (base + i * fp), y: cy });
     else { const off = ci % 2 ? 45 : 0, rows = ci % 2 ? nLo : nHi; for (let j = 0; j < rows; j++) fBolts.push({ x: s * (base + off + j * 90), y: cy }); }
   }));
   const fPosX = [...new Set(fBolts.filter(b => b.x > 0).map(b => b.x))].sort((a, b) => a - b);
@@ -32,7 +33,7 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
   const webWid = r.web.webPlate?.L ?? 170, wT = r.web.webPlate?.t;
   const flOff = Math.round((H - chum) / 2);
   const webRowY = Array.from({ length: mW }, (_, i) => (i - (mW - 1) / 2) * Pc);
-  const webPosX = Array.from({ length: nW }, (_, i) => base + i * 60);
+  const webPosX = Array.from({ length: nW }, (_, i) => base + i * wp);
 
   // ── 치수체인: 실제 좌표·판치수에서 도출 ──
   const round = (x: number) => Math.round(x);

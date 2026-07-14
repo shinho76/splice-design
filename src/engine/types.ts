@@ -5,8 +5,8 @@ export type Member = '보' | '기둥';
 export type JointType = '마찰' | '지압';
 export type SteelGrade = 'SS400' | 'SM490' | 'SM520' | 'SM570' | 'SN490' | 'SHN490';
 export type BoltGrade = 'F10T' | 'F13T';
-export type BoltName = 'M16' | 'M20' | 'M22';
-export type BoltDia = 16 | 20 | 22;
+export type BoltName = 'M16' | 'M18' | 'M20' | 'M22' | 'M24';
+export type BoltDia = 16 | 18 | 20 | 22 | 24;
 export type SectionType = '압연' | '용접';
 /** 부분강도비 α (0.1~1.0). 프리셋 50/60/70/80/90/100% 또는 직접 입력. */
 export type StrengthRatio = number;
@@ -61,6 +61,8 @@ export interface JointDesign {
   webPlate?: Plate;                     // 웨브 첨판
   staggered?: boolean;                  // 엇모배치 여부(플랜지) — 도면 볼트 배치용
   gap?: number;                         // 이음부 이격(첨판 길이에 반영된 값)
+  pitch?: number;                       // 볼트 응력방향 피치(정렬=60, 엇모=90, Custom 대구경 상향)
+  edge?: number;                        // 연단거리(응력방향, mm)
 }
 
 /** 계산서 한 단계 */

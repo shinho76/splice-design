@@ -11,8 +11,8 @@ const plateStr = (q: ReturnType<typeof quantityOf>, role: string) => {
   return p ? `${p.t}×${p.w}×${p.L} ×${p.count}` : '—';
 };
 
-export default function QuantityPanel({ cond, onClose }: { cond: DesignCondition; onClose: () => void }) {
-  const qs = SECTIONS.map(s => quantityOf(designConnection(cond, s), cond));
+export default function QuantityPanel({ cond, onClose, diaAt }: { cond: DesignCondition; onClose: () => void; diaAt?: (i: number) => number | undefined }) {
+  const qs = SECTIONS.map((s, i) => quantityOf(designConnection(cond, s, diaAt?.(i)), cond));
   const agg = aggregate(qs);
   const stem = `물량_${cond.member}_${Math.round(cond.strengthRatio * 100)}_${cond.steel}_${cond.bolt}_${cond.jointType}`;
   const title = `물량산정 · ${cond.member} ${Math.round(cond.strengthRatio * 100)}% ${cond.steel} ${cond.bolt} ${cond.jointType}`;

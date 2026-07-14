@@ -2,7 +2,7 @@
 // 정식 DIMENSION(+지오메트리 블록)·이중치수·지시선(원형머리)·romans 스타일·레이어(MAIN/FLG_PL/WEB_PL/BOLT/VER_BOLT/DIM/MINI_BOX)
 // ·부재연장+파단선·외곽테두리·MINI_BOX 정보표. 보=가로배치, 기둥=세로배치(90° 회전). 단위 mm.
 import type { DesignResult, DesignCondition, Plate } from './types.ts';
-import { parseName } from './sections.ts';
+import { parseName, sectionByName } from './sections.ts';
 import { BOLT_HOLE, boltNameByDia } from './bolts.ts';
 
 const round = Math.round;
@@ -10,6 +10,7 @@ const TH = 20;   // 도면 문자높이
 const TB = 34;   // 정보표 문자높이
 const FONT = 'OpenSansCondensed-Light';  // exe 실측 폰트(TTF). 전 TEXT 스타일 참조명
 const ARROW = 5.0;                        // exe DIMSTYLE dimasz(41) = _ARCHTICK INSERT scale
+const PW = 4;                             // 입면 첨판 두꺼운 선 폭(POLYLINE width)
 
 // ── 좌표 변환(회전+평행이동) : 보 deg=0, 기둥 deg=90 ──
 interface Xf { c: number; s: number; ox: number; oy: number; deg: number; }
@@ -50,11 +51,28 @@ function pen(doc: Doc, t: Xf) {
   const PX = (x: number, y: number) => ff(Tx(t, x, y)), PY = (x: number, y: number) => ff(Ty(t, x, y));
   const line = (x1: number, y1: number, x2: number, y2: number, lay: string) =>
     doc.e.push('0', 'LINE', '8', lay, '10', PX(x1, y1), '20', PY(x1, y1), '30', '0', '11', PX(x2, y2), '21', PY(x2, y2), '31', '0');
+  // 점선(HIDDEN 선타입 오버라이드) — 내첨판 안쪽선·필렛
+  const dline = (x1: number, y1: number, x2: number, y2: number, lay: string) =>
+    doc.e.push('0', 'LINE', '8', lay, '6', 'HIDDEN', '10', PX(x1, y1), '20', PY(x1, y1), '30', '0', '11', PX(x2, y2), '21', PY(x2, y2), '31', '0');
   return {
-    line,
+    line, dline,
     dot: (cx: number, cy: number, lay: string) => doc.e.push(...roundDot(t, cx, cy, lay)),
+    // 두꺼운 닫힌 폴리라인(POLYLINE 폭) — 첨판을 두꺼운 선으로
+    prect: (x: number, y: number, w: number, h: number, lay: string, width: number) => {
+      const pts: [number, number][] = [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+      doc.e.push('0', 'POLYLINE', '8', lay, '66', '1', '70', '1', '40', ff(width), '41', ff(width));
+      for (const [px, py] of pts) doc.e.push('0', 'VERTEX', '8', lay, '10', PX(px, py), '20', PY(px, py), '30', '0');
+      doc.e.push('0', 'SEQEND', '8', lay);
+    },
+    // 점선 사각형(내첨판 외곽)
+    drect: (x: number, y: number, w: number, h: number, lay: string) => {
+      dline(x, y, x + w, y, lay); dline(x + w, y, x + w, y + h, lay);
+      dline(x + w, y + h, x, y + h, lay); dline(x, y + h, x, y, lay);
+    },
     circle: (cx: number, cy: number, r: number, lay: string) =>
       doc.e.push('0', 'CIRCLE', '8', lay, '10', PX(cx, cy), '20', PY(cx, cy), '30', '0', '40', ff(r)),
+    arc: (cx: number, cy: number, rad: number, a0: number, a1: number, lay: string) =>
+      doc.e.push('0', 'ARC', '8', lay, '10', PX(cx, cy), '20', PY(cx, cy), '30', '0', '40', ff(rad), '50', ff(a0 + t.deg), '51', ff(a1 + t.deg)),
     text: (x: number, y: number, h: number, s: string, lay: string, opt: { rot?: number; align?: 'l' | 'c' | 'r' } = {}) => {
       const tags = ['0', 'TEXT', '8', lay, '7', FONT, '10', PX(x, y), '20', PY(x, y), '30', '0', '40', ff(h), '1', s];
       const rot = (opt.rot ?? 0) + t.deg;
@@ -135,8 +153,33 @@ function boltPlan(p: Pen, x: number, y: number, rad: number) {
 }
 const gpl = (pl: Plate | undefined, n: number) => pl ? `G.PL. ${pl.t}x${pl.w}x${pl.L}x${n}EA` : '-';
 
+// H형강 단면 그리기(필렛 R 반영) — 중심 (cx,cy), 직선 외곽 + 4개 필렛 ARC
+function hSection(p: Pen, cx: number, cy: number, H: number, B: number, tw: number, tf: number, r: number, lay: string) {
+  const b = B / 2, h = H / 2, w = tw / 2, yi = h - tf;   // yi: 플랜지 안쪽면
+  const X = (x: number) => cx + x, Y = (y: number) => cy + y;
+  const rr = Math.min(r, yi - 1, b - w - 1);              // 안전 반경(치수 초과 방지)
+  p.line(X(-b), Y(h), X(b), Y(h), lay);                  // 상단 플랜지 윗변
+  p.line(X(b), Y(h), X(b), Y(yi), lay);                  // 우상 플랜지 옆변
+  p.line(X(b), Y(yi), X(w + rr), Y(yi), lay);            // 우상 플랜지 밑면
+  p.arc(X(w + rr), Y(yi - rr), rr, 90, 180, lay);        // 우상 필렛
+  p.line(X(w), Y(yi - rr), X(w), Y(-(yi - rr)), lay);    // 우측 웨브면
+  p.arc(X(w + rr), Y(-(yi - rr)), rr, 180, 270, lay);    // 우하 필렛
+  p.line(X(w + rr), Y(-yi), X(b), Y(-yi), lay);          // 우하 플랜지 윗면
+  p.line(X(b), Y(-yi), X(b), Y(-h), lay);                // 우하 플랜지 옆변
+  p.line(X(b), Y(-h), X(-b), Y(-h), lay);                // 하단 플랜지 아랫변
+  p.line(X(-b), Y(-h), X(-b), Y(-yi), lay);              // 좌하 플랜지 옆변
+  p.line(X(-b), Y(-yi), X(-(w + rr)), Y(-yi), lay);      // 좌하 플랜지 윗면
+  p.arc(X(-(w + rr)), Y(-(yi - rr)), rr, 270, 360, lay); // 좌하 필렛
+  p.line(X(-w), Y(-(yi - rr)), X(-w), Y(yi - rr), lay);  // 좌측 웨브면
+  p.arc(X(-(w + rr)), Y(yi - rr), rr, 0, 90, lay);       // 좌상 필렛
+  p.line(X(-(w + rr)), Y(yi), X(-b), Y(yi), lay);        // 좌상 플랜지 밑면
+  p.line(X(-b), Y(yi), X(-b), Y(h), lay);                // 좌상 플랜지 옆변(닫힘)
+  p.line(X(0), Y(-h - 12), X(0), Y(h + 12), 'MAIN');     // 중심선(웨브)
+}
+
 export function layout(r: DesignResult, isCol: boolean) {
-  const { H, tw, tf } = parseName(r.section);
+  const { H, B, tw, tf } = parseName(r.section);
+  const csStrip = B + 120;                        // 우측 단면도 영역 폭
   const oT = r.flange.outerPlate?.t ?? 9;
   const Lpf = r.flange.outerPlate?.L ?? 300, outerW = r.flange.outerPlate?.w ?? 200;
   const wB = r.web.bolt;
@@ -156,20 +199,24 @@ export function layout(r: DesignResult, isCol: boolean) {
     // 보: 가로부재, 뷰 상하 스택. display = local.
     const boxTop = yF - hf - 210, boxBot = boxTop - boxRow * 4;
     const boxHalf = Math.max(memHalf, 500) + 20;
+    const frameRC = boxHalf + 10, frameTop = yW + hw + 130, frameBot = boxBot - 16;
     return {
-      H, tw, tf, oT, Lpf, outerW, webWid, contentHalf, hf, hw, gap, base, yF, yW, memHalf, boxRow,
+      H, B, tw, tf, oT, Lpf, outerW, webWid, contentHalf, hf, hw, gap, base, yF, yW, memHalf, boxRow,
       mOx: 0, mOy: 0, deg: 0,
-      boxTop, boxBot, frameL: -boxHalf - 10, frameR: boxHalf + 10, frameTop: yW + hw + 130, frameBot: boxBot - 16,
+      boxTop, boxBot, frameL: -boxHalf - 10, frameRC, frameR: frameRC + csStrip, frameTop, frameBot,
+      csCx: frameRC + csStrip / 2, csCy: (frameTop + frameBot) / 2,
     };
   }
   // 기둥: 세로부재. display x = -localY + mOx(뷰 좌우), display y = localX(부재 세로).
   const mOx = (locYmax + locYmin) / 2;
   const dispHW = halfView + 40;                 // 프레임 가로 반
   const boxTop = -halfLen - 40, boxBot = boxTop - boxRow * 4;
+  const frameRC = dispHW + 10, frameTop = halfLen + 40, frameBot = boxBot - 16;
   return {
-    H, tw, tf, oT, Lpf, outerW, webWid, contentHalf, hf, hw, gap, base, yF, yW, memHalf, boxRow,
+    H, B, tw, tf, oT, Lpf, outerW, webWid, contentHalf, hf, hw, gap, base, yF, yW, memHalf, boxRow,
     mOx, mOy: 0, deg: 90,
-    boxTop, boxBot, frameL: -dispHW - 10, frameR: dispHW + 10, frameTop: halfLen + 40, frameBot: boxBot - 16,
+    boxTop, boxBot, frameL: -dispHW - 10, frameRC, frameR: frameRC + csStrip, frameTop, frameBot,
+    csCx: frameRC + csStrip / 2, csCy: (frameTop + frameBot) / 2,
   };
 }
 
@@ -193,14 +240,15 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
 
   const colY = fB.m === 2 ? [-g1 / 2, g1 / 2] : [-(g1 / 2 + g2), -g1 / 2, g1 / 2, g1 / 2 + g2];
   const nHi = Math.ceil(fB.n), nLo = Math.floor(fB.n);
+  const fp = r.flange.pitch ?? 60, wp = r.web.pitch ?? 60;   // 엔진 피치(Custom 대구경 상향)
   const fBolts: { x: number; y: number }[] = [];
   ([1, -1] as const).forEach(s => colY.forEach((cy, ci) => {
-    if (!stag) for (let i = 0; i < nHi; i++) fBolts.push({ x: s * (base + i * 60), y: cy });
+    if (!stag) for (let i = 0; i < nHi; i++) fBolts.push({ x: s * (base + i * fp), y: cy });
     else { const off = ci % 2 ? 45 : 0, rows = ci % 2 ? nLo : nHi; for (let j = 0; j < rows; j++) fBolts.push({ x: s * (base + off + j * 90), y: cy }); }
   }));
   const fPosX = [...new Set(fBolts.filter(b => b.x > 0).map(b => b.x))].sort((a, b) => a - b);
   const chum = r.web.webPlate?.w ?? 140, Pc = r.web.Pc ?? 60;
-  const webPosX = Array.from({ length: wB.n }, (_, i) => base + i * 60);
+  const webPosX = Array.from({ length: wB.n }, (_, i) => base + i * wp);
   const webRowY = Array.from({ length: wB.m }, (_, i) => (i - (wB.m - 1) / 2) * Pc);
 
   // ── 웨브 입면도 (yW) : 부재 연장 + 파단선 ──
@@ -211,9 +259,10 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
     });
   });
   breakV(p, -memHalf, yW, H / 2); breakV(p, memHalf, yW, H / 2);
-  p.rect(-Lpf / 2, yW + H / 2, Lpf, oT, 'FLG_PL'); p.rect(-Lpf / 2, yW - H / 2 - oT, Lpf, oT, 'FLG_PL');
-  if (inner) { p.rect(-inner.L / 2, yW + H / 2 - tf - inner.t, inner.L, inner.t, 'FLG_PL'); p.rect(-inner.L / 2, yW - H / 2 + tf, inner.L, inner.t, 'FLG_PL'); }
-  p.rect(-webWid / 2, yW - chum / 2, webWid, chum, 'WEB_PL');
+  // 플랜지 첨판(외·내) = green 두꺼운 선 / 웨브 첨판 = cyan 두꺼운 선
+  p.prect(-Lpf / 2, yW + H / 2, Lpf, oT, 'FLG_PL', PW); p.prect(-Lpf / 2, yW - H / 2 - oT, Lpf, oT, 'FLG_PL', PW);
+  if (inner) { p.prect(-inner.L / 2, yW + H / 2 - tf - inner.t, inner.L, inner.t, 'FLG_PL', PW); p.prect(-inner.L / 2, yW - H / 2 + tf, inner.L, inner.t, 'FLG_PL', PW); }
+  p.prect(-webWid / 2, yW - chum / 2, webWid, chum, 'WEB_PL', PW);
   fPosX.flatMap(x => [x, -x]).forEach(x => {
     p.line(x, yW + H / 2 + oT, x, yW + H / 2 - tf - (inner?.t ?? 0), 'VER_BOLT');
     p.line(x, yW - H / 2 - oT, x, yW - H / 2 + tf + (inner?.t ?? 0), 'VER_BOLT');
@@ -233,20 +282,31 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   breakV(p, -memHalf, yF, outerW / 2); breakV(p, memHalf, yF, outerW / 2);
   p.rect(-Lpf / 2, yF - outerW / 2, Lpf, outerW, 'FLG_PL');
   p.line(-Lpf / 2, yF - tw / 2, Lpf / 2, yF - tw / 2, 'MAIN'); p.line(-Lpf / 2, yF + tw / 2, Lpf / 2, yF + tw / 2, 'MAIN');
+  // 필렛(r) 위치 점선
+  const fr = sectionByName(r.section)?.r ?? 0;
+  if (fr) { p.dline(-Lpf / 2, yF - tw / 2 - fr, Lpf / 2, yF - tw / 2 - fr, 'MAIN'); p.dline(-Lpf / 2, yF + tw / 2 + fr, Lpf / 2, yF + tw / 2 + fr, 'MAIN'); }
+  // 내첨판 외곽(점선·안쪽선 포함) — 웨브 양측당 1장, 그 측 볼트열 중심에 폭 inner.w
+  const innerCy = [colY.filter(c => c < 0), colY.filter(c => c > 0)].map(a => a.reduce((x, y) => x + y, 0) / a.length);
+  if (inner) innerCy.forEach(cy => p.drect(-inner.L / 2, yF + cy - inner.w / 2, inner.L, inner.w, 'FLG_PL'));
   ([1, -1] as const).forEach(s => colY.forEach((cy, ci) => {
-    if (!stag) for (let i = 0; i < nHi; i++) boltPlan(p, s * (base + i * 60), cy, rad);
+    if (!stag) for (let i = 0; i < nHi; i++) boltPlan(p, s * (base + i * fp), cy, rad);
     else { const off = ci % 2 ? 45 : 0, rows = ci % 2 ? nLo : nHi; for (let j = 0; j < rows; j++) boltPlan(p, s * (base + off + j * 90), cy, rad); }
   }));
   const flYs = [outerW / 2, ...[...colY].sort((a, b) => b - a), -outerW / 2].map(y => yF + y);
   dimChainV(doc, tM, [...new Set(flYs)].sort((a, b) => b - a), Lpf / 2, Lpf / 2 + 46, Lpf / 2 + 120);
   const flXs = [-Lpf / 2, ...fPosX.map(x => -x).sort((a, b) => a - b), -gap / 2, gap / 2, ...fPosX, Lpf / 2];
   dimChainH(doc, tM, [...new Set(flXs)].sort((a, b) => a - b), yF - outerW / 2, yF - outerW / 2 - 46, yF - outerW / 2 - 100);
+  // 내첨판 폭 치수선(좌측) — inner.w (양측 중 +측 중심)
+  if (inner) {
+    const cyT = innerCy[1];
+    emitDim(doc, tM, [-Lpf / 2, yF + cyT - inner.w / 2], [-Lpf / 2, yF + cyT + inner.w / 2], [-Lpf / 2 - 46, 0], `${round(inner.w)}`, true);
+  }
 
   // ── 지시선(판·볼트) : 앵커는 로컬(오프셋 제외) 좌표 → pf(정립+오프셋)가 한 번만 적용 ──
   const tMl = mkXf(L.mOx, L.mOy, L.deg);
   const outerA = pt(tMl, -Lpf / 3, yW + H / 2 + oT), innerA = pt(tMl, -(inner?.L ?? Lpf) / 3, yW + H / 2 - tf - (inner?.t ?? 0) / 2);
   const webA = pt(tMl, -webWid / 2, yW), wbA = pt(tMl, -webWid / 4, yW - chum / 2 + 20), fbA = pt(tMl, -base, yF + g1 / 2);
-  const lx = L.frameL + 70, rx = L.frameR - 70;
+  const lx = L.frameL + 70, rx = L.frameRC - 70;
   if (!isCol) {                                   // 보: 좌측 여백 스택
     let ly = L.frameTop - 70;
     const put = (a: [number, number], txt: string) => { leader(pf, a[0], a[1], lx, ly, txt); ly -= 62; };
@@ -264,10 +324,15 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
     putH(fbA, rx, -40, `${flCount}-M${dia} H.T.B`);
   }
 
-  // ── 외곽 테두리 + 단면라벨 + 하단 MINI_BOX(정립) ──
+  // ── 외곽 테두리 + 단면라벨 + 하단 MINI_BOX(정립) + 우측 단면도 ──
   pf.rect(L.frameL, L.frameBot, L.frameR - L.frameL, L.frameTop - L.frameBot, 'MINI_BOX');
-  pf.text((L.frameL + L.frameR) / 2, L.frameTop - 34, TH * 1.2, secLbl, 'DIM', { align: 'c' });
-  const bl2 = L.frameL + 6, br2 = L.frameR - 6, midX = (bl2 + br2) / 2, Lw = 150;
+  pf.line(L.frameRC, L.frameBot, L.frameRC, L.frameTop, 'MINI_BOX');   // 본도면/단면도 구분선
+  pf.text((L.frameL + L.frameRC) / 2, L.frameTop - 34, TH * 1.2, secLbl, 'DIM', { align: 'c' });
+  // 우측 단면도 : H형강 단면(필렛 R 반영)
+  hSection(pf, L.csCx, L.csCy, H, B, tw, tf, fr, 'MAIN');
+  pf.text(L.csCx, L.csCy + H / 2 + 40, TH * 1.2, 'SECTION', 'DIM', { align: 'c' });
+  pf.text(L.csCx, L.csCy - H / 2 - 56, TH, secLbl, 'DIM', { align: 'c' });
+  const bl2 = L.frameL + 6, br2 = L.frameRC - 6, midX = (bl2 + br2) / 2, Lw = 150;
   const rw = [L.boxTop, L.boxTop - L.boxRow, L.boxTop - 2 * L.boxRow, L.boxTop - 3 * L.boxRow, L.boxTop - 4 * L.boxRow];
   pf.rect(bl2, rw[4], br2 - bl2, rw[0] - rw[4], 'MINI_BOX');
   for (let i = 1; i < 4; i++) pf.line(bl2, rw[i], br2, rw[i], 'MINI_BOX');
@@ -289,7 +354,9 @@ function wrap(doc: Doc): string {
   const styleT = ['0', 'TABLE', '2', 'STYLE', '70', '2',
     '0', 'STYLE', '2', 'STANDARD', '70', '0', '40', '0.0', '41', '1.0', '50', '0.0', '71', '0', '42', '2.5', '3', 'txt', '4', '',
     '0', 'STYLE', '2', FONT, '70', '0', '40', '0.0', '41', '1.0', '50', '0.0', '71', '0', '42', '20.0', '3', FONT + '.ttf', '4', ''];
-  const ltT = ['0', 'TABLE', '2', 'LTYPE', '70', '1', '0', 'LTYPE', '2', 'CONTINUOUS', '70', '0', '3', 'Solid line', '72', '65', '73', '0', '40', '0'];
+  const ltT = ['0', 'TABLE', '2', 'LTYPE', '70', '2',
+    '0', 'LTYPE', '2', 'CONTINUOUS', '70', '0', '3', 'Solid line', '72', '65', '73', '0', '40', '0',
+    '0', 'LTYPE', '2', 'HIDDEN', '70', '0', '3', '__ __ __', '72', '65', '73', '2', '40', '30.0', '49', '20.0', '49', '-10.0'];
   const layT: string[] = ['0', 'TABLE', '2', 'LAYER', '70', String(LAYERS.length)];
   LAYERS.forEach(([n, c]) => layT.push('0', 'LAYER', '2', n, '70', '0', '62', String(c), '6', 'CONTINUOUS'));
   // DIMSTYLE: exe(Standard) 실측값 이식 — dimasz5·dimexo3·dimdli3.75·dimexe1.25·dimtxt20·dimcen2.5·dimgap2·dimtad1·dimzin8

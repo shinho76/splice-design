@@ -2,8 +2,9 @@ import type { DesignCondition, Member, JointType, SteelGrade, BoltGrade } from '
 
 const PRESETS = [100, 95, 90, 85, 80, 75, 70, 65, 60, 50];
 
-export default function FilterBar({ cond, onChange }: {
+export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
   cond: DesignCondition; onChange: (c: DesignCondition) => void;
+  boltMode: 'Default' | 'Custom'; onBoltMode: (m: 'Default' | 'Custom') => void;
 }) {
   const set = <K extends keyof DesignCondition>(k: K, v: DesignCondition[K]) =>
     onChange({ ...cond, [k]: v });
@@ -12,8 +13,13 @@ export default function FilterBar({ cond, onChange }: {
 
   return (
     <div className="filterbar">
-      <Seg label="부재" value={cond.member} opts={['보', '기둥']} onPick={v => set('member', v as Member)} />
-      <Seg label="접합" value={cond.jointType} opts={['마찰', '지압']} onPick={v => set('jointType', v as JointType)} />
+      <div className="fld-stack">
+        <Seg label="부재" value={cond.member} opts={['보', '기둥']} onPick={v => set('member', v as Member)} />
+      </div>
+      <div className="fld-stack">
+        <Seg label="접합" value={cond.jointType} opts={['마찰', '지압']} onPick={v => set('jointType', v as JointType)} />
+        <Seg label="볼트안" value={boltMode} opts={['Default', 'Custom']} onPick={v => onBoltMode(v as 'Default' | 'Custom')} />
+      </div>
 
       <div className="fld">
         <label>강종</label>
