@@ -127,7 +127,11 @@ function designColumn(cond: DesignCondition, sec: HSection, forceDia?: number): 
 
 // ─────────────────────────────── 플랜지 이음 (공용) ───────────────────────────────
 function designFlange(cond: DesignCondition, sec: HSection, std: ReturnType<typeof flangeStdFor>, fy: number, fu: number, Puf: number, bearing: boolean, steps: CalcStep[]): JointDesign {
-  const innerW = std.innerW, outerW = std.outerW;
+  const outerW = std.outerW;
+  // 내첨판 폭 = 플랜지끝(B/2)~필렛선단(tw/2+r) 거리에서 권장 여유 3mm 확보 후 이하 10mm 단위 (필렛 간섭 회피)
+  const INNER_CLEAR = 3;   // 필렛선단 이격 권장 여유(mm)
+  const flatHalf = sec.B / 2 - (sec.tw / 2 + sec.r) - INNER_CLEAR;
+  const innerW = std.innerW != null ? Math.max(10, Math.floor(flatHalf / 10) * 10) : null;
   const Aupf = (Puf * 1e3) / (PHI_FLEX * fy);                    // 총단면 항복
   const tOuter0 = innerW ? 0.5 * Aupf / outerW : Aupf / outerW;
   const tInner0 = innerW ? 0.5 * Aupf / (2 * innerW) : 0;
@@ -143,7 +147,7 @@ function designFlange(cond: DesignCondition, sec: HSection, std: ReturnType<type
   const Ns = innerW ? 2 : 1;
   const m = std.m;
   // 기둥 지압(밀착접합)은 엇모 대신 정렬 배치 — 부록 기둥 지압 공칭300 세칙
-  const staggered = std.layout === '엇모' && !(cond.member === '기둥' && cond.jointType === '지압');
+  const staggered = std.layout === '엇모' && !cond.noStagger && !(cond.member === '기둥' && cond.jointType === '지압');
   // C안: 정렬 피치를 직경별 최소간격(2.667d, 5mm 올림) 이상으로 — 표준(≤M22)은 60 불변, M24만 상향
   const alignP = Math.max(PITCH_ALIGNED, Math.ceil(2.667 * boltDiaOf(std.bolt) / 5) * 5);
   const pitchEff = staggered ? 90 : alignP;   // 중간부 순간격 기준(엇모=동일선상 2×45=90)
@@ -158,15 +162,16 @@ function designFlange(cond: DesignCondition, sec: HSection, std: ReturnType<type
     { group:'다) 플랜지 볼트 설계강도·배열', label:'플랜지 볼트 배열', value:m, unit:`열 × ${n} 행 = ${m*n}개`, ref:'5.4' },
   );
 
+  const gap = cond.gap ?? 10;
   const pitch = staggered ? PITCH_STAGGERED : alignP;
-  const Lpf = staggered ? 2*((2*n-1)*pitch+2*40)+10 : 2*((n-1)*pitch+2*40)+10;
-  steps.push({ group:'라) 플랜지 첨판 길이', label:'첨판 길이', formula: staggered?'2[(2n−1)·45+80]+10':`2[(n−1)·${alignP}+80]+10`, value:Lpf, unit:'mm', ref:'5.5.2' });
+  const Lpf = staggered ? 2*((2*n-1)*pitch+2*40)+gap : 2*((n-1)*pitch+2*40)+gap;
+  steps.push({ group:'라) 플랜지 첨판 길이', label:'첨판 길이', formula: staggered?`2[(2n−1)·45+80]+${gap}`:`2[(n−1)·${alignP}+80]+${gap}`, value:Lpf, unit:'mm', ref:'5.5.2' });
 
   return {
     bolt:{ m, n, count:m*n }, gauge:{ g1:std.g1, g2:std.g2 ?? undefined },
     outerPlate:{ t:tOuter, w:outerW, L:Lpf },
     innerPlate: innerW ? { t:tInner, w:innerW, L:Lpf } : undefined,
-    staggered, gap: 10, pitch: pitchEff, edge: 40,   // 도면 배치용
+    staggered, gap, pitch: pitchEff, edge: 40,   // 도면 배치용
   };
 }
 
@@ -192,7 +197,7 @@ function designWeb(cond: DesignCondition, sec: HSection, bolt: BoltName, fy: num
   }
   const dpw = chum;
   const webP = Math.max(60, Math.ceil(2.667 * boltDiaOf(bolt) / 5) * 5);   // C안: 웨브 가로피치
-  const wpw = 2*((nW-1)*webP + 2*40) + 10 + (stagger?60:0);
+  const wpw = 2*((nW-1)*webP + 2*40) + (cond.gap ?? 10) + (stagger?60:0);
   // 보=전단(0.6Fy), 기둥=압축(Fy). 양면 첨판이 소요력의 절반씩 분담.
   const nomFactor = cond.member === '기둥' ? 1.0 : 0.6;
   const tpw = roundUpThickness(Math.max(0.5*(soryeok*1e3)/(0.9*nomFactor*fy*dpw), 6), WEB_PLATE_T);

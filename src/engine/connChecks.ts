@@ -83,6 +83,11 @@ export function connChecks(r: DesignResult): ConnChecks {
   if (webZ.length > 1) dims.push(Wd({ label: `가로피치 ${webZ[1] - webZ[0]}`, a: [xW, yWb, webZ[0]], b: [xW, yWb, webZ[1]] }));
   dims.push(Wd({ label: `웨브판t ${webT}`, a: [tw / 2, yWb, zWl], b: [tw / 2 + webT, yWb, zWl] }));
   dims.push(Wd({ label: `갭 ${gp}`, a: [xW, yr + 18, -gp / 2], b: [xW, yr + 18, gp / 2] }));
+  // 하부 내첨판 윗면 ~ 최하단 웨브볼트 중심(연직)
+  if (inner && webY.length) {
+    const inTop = -(H / 2 - tf) + inner.t, lowWb = Math.min(...webY);
+    dims.push(Wd({ label: `내첨판~웨브볼트 ${rnd(lowWb - inTop)}`, a: [xW, inTop, -webZ[0]], b: [xW, lowWb, -webZ[0]] }));
+  }
 
   const checks: CheckItem[] = [];
   const yn = (ok: boolean) => ok;

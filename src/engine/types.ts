@@ -3,8 +3,8 @@
 
 export type Member = '보' | '기둥';
 export type JointType = '마찰' | '지압';
-export type SteelGrade = 'SS400' | 'SM490' | 'SM520' | 'SM570' | 'SN490' | 'SHN490';
-export type BoltGrade = 'F10T' | 'F13T';
+export type SteelGrade = 'SS400' | 'SM490' | 'SM520' | 'SM570' | 'SN490' | 'SHN490' | 'A36' | 'A572' | 'A992';
+export type BoltGrade = 'F10T' | 'F13T' | 'S10T' | 'A325' | 'A490';
 export type BoltName = 'M16' | 'M18' | 'M20' | 'M22' | 'M24';
 export type BoltDia = 16 | 18 | 20 | 22 | 24;
 export type SectionType = '압연' | '용접';
@@ -35,6 +35,8 @@ export interface DesignCondition {
   bolt: BoltGrade;
   strengthRatio: StrengthRatio;
   sectionType: SectionType;
+  noStagger?: boolean;   // 엇모배치 제외(공칭300을 정렬 2/4열로 설계)
+  gap?: number;          // 이음부 이격 갭(mm, 0·5·10). 기본 10
 }
 
 /** 첨판 치수 (두께 × 폭[or 춤] × 길이[or 너비]) */

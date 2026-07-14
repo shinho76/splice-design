@@ -30,21 +30,30 @@ export const Ab: Record<BoltName, number> = { M16: 201, M18: 254, M20: 314, M22:
 export const To_kN: Record<BoltGrade, Record<BoltName, number>> = {
   F10T: { M16: 106, M18: 133, M20: 165, M22: 200, M24: 237 },
   F13T: { M16: 137, M18: 173, M20: 214, M22: 259, M24: 308 },
+  S10T: { M16: 106, M18: 133, M20: 165, M22: 200, M24: 237 }, // F10T 상당
+  A325: { M16: 88,  M18: 111, M20: 137, M22: 166, M24: 197 }, // Fu 830
+  A490: { M16: 110, M18: 139, M20: 172, M22: 208, M24: 247 }, // Fu 1040
 };
 // 표준볼트장력 (kN) = To × 1.1
 export const Tstd_kN: Record<BoltGrade, Record<BoltName, number>> = {
   F10T: { M16: 117, M18: 146, M20: 182, M22: 220, M24: 261 },
   F13T: { M16: 151, M18: 190, M20: 235, M22: 285, M24: 339 },
+  S10T: { M16: 117, M18: 146, M20: 182, M22: 220, M24: 261 },
+  A325: { M16: 97,  M18: 122, M20: 151, M22: 182, M24: 217 },
+  A490: { M16: 121, M18: 153, M20: 189, M22: 229, M24: 272 },
 };
 
 // [표 1.7] 1면전단 공칭미끄럼강도 Rn (kN) = μ·To(=0.5·To)  (설계 = ×0.85)  ※M18·M24 도출
 export const Rn_slip_kN: Record<BoltGrade, Record<BoltName, number>> = {
   F10T: { M16: 52.8, M18: 66.7, M20: 82.4, M22: 99.7, M24: 118.7 },
   F13T: { M16: 68.6, M18: 86.7, M20: 107.0, M22: 130.0, M24: 154.2 },
+  S10T: { M16: 52.8, M18: 66.7, M20: 82.4, M22: 99.7, M24: 118.7 },
+  A325: { M16: 43.8, M18: 55.3, M20: 68.4, M22: 82.8, M24: 98.5 },
+  A490: { M16: 54.9, M18: 69.3, M20: 85.7, M22: 103.7, M24: 123.4 },
 };
 
 // [표 1.8] 지압접합 축부 공칭전단강도 Fnv (MPa) = 0.5·Fu
-export const Fnv_MPa: Record<BoltGrade, number> = { F10T: 500, F13T: 650 };
+export const Fnv_MPa: Record<BoltGrade, number> = { F10T: 500, F13T: 650, S10T: 500, A325: 415, A490: 520 };
 
 /**
  * 1면전단 설계미끄럼강도 φRn (kN)  — 2.4절

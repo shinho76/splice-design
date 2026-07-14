@@ -55,14 +55,20 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
 
   // 레이아웃
   const W = 476, mid = W / 2;
+  const isCol = cond.member === '기둥';   // 기둥: 부재축(길이)을 수직으로 세워 표시
   const sc1 = Math.min(0.5, 270 / Math.max(H + 2 * oT, 200), 300 / Math.max(Lpf, 200));
   const sc2 = Math.min(0.5, 300 / Math.max(outerW, Lpf, 200));
-  const yHead = 8, hHead = 34;
-  const yWeb = yHead + hHead + 50, webPx = H * sc1;
-  const yFl = yWeb + webPx + 88, flPx = outerW * sc2;
-  const yTbl = yFl + flPx + 56, Htot = yTbl + 104;
   const fbT = Math.max(4, oT * sc1), ibT = Math.max(3, iT * sc1);
   const beamW = Math.max(Lpf, webWid) + 40;
+  const webPx = H * sc1, flPx = outerW * sc2;
+  // 뷰 밴드 높이: 보=부재춤/폭, 기둥=회전 후 길이 방향
+  const webBandH = isCol ? beamW * sc1 : webPx;
+  const flBandH = isCol ? Lpf * sc2 : flPx;
+  const yHead = 8, hHead = 34;
+  const yWeb = yHead + hHead + 50;
+  const yFl = yWeb + webBandH + 88;
+  const yTbl = yFl + flBandH + 56, Htot = yTbl + 104;
+  const rot = (cy: number) => isCol ? `translate(${mid},${cy}) rotate(-90)` : `translate(${mid},${cy})`;
 
   const Cross = ({ x, y, s = 4.2 }: { x: number; y: number; s?: number }) => (
     <g transform={`translate(${x},${y})`}>
@@ -97,8 +103,8 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
         <text x={30 + (W - 60) * 3 / 4} y={yHead + hHead / 2 + 5} className="svg-title" textAnchor="middle">{cond.steel} {Math.round(cond.strengthRatio * 100)}% {cond.bolt} {cond.jointType}</text>
 
         {/* ── 웨브 입면도 ── */}
-        <text x={30} y={yWeb - 8} className="svg-cap">웨브 입면도</text>
-        <g transform={`translate(${mid},${yWeb + webPx / 2})`}>
+        <text x={30} y={yWeb - 8} className="svg-cap">웨브 입면도{isCol ? ' (수직)' : ''}</text>
+        <g transform={rot(yWeb + webBandH / 2)}>
           {/* 상·하 플랜지 */}
           <rect x={-beamW * sc1 / 2} y={-webPx / 2} width={beamW * sc1} height={Math.max(3, tf * sc1)} className="svg-flange-band" />
           <rect x={-beamW * sc1 / 2} y={webPx / 2 - Math.max(3, tf * sc1)} width={beamW * sc1} height={Math.max(3, tf * sc1)} className="svg-flange-band" />
@@ -120,22 +126,22 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
           {([1, -1] as const).flatMap(s => webPosX.flatMap((wx, xi) => webRowY.map((wy, yi) =>
             <Cross key={`w${s}${xi}${yi}`} x={s * wx * sc1} y={wy * sc1} />)))}
           <line x1={0} y1={-webPx / 2 - fbT - 4} x2={0} y2={webPx / 2 + fbT + 4} className="svg-gap" />
+          <DimV x={beamW * sc1 / 2 + 22} cy={0} vals={webVCh} sc={sc1} />
+          <DimH y={webPx / 2 + fbT + 14} cx={0} vals={webHCh} sc={sc1} />
         </g>
-        <DimV x={mid + beamW * sc1 / 2 + 22} cy={yWeb + webPx / 2} vals={webVCh} sc={sc1} />
-        <DimH y={yWeb + webPx + fbT + 14} cx={mid} vals={webHCh} sc={sc1} />
 
         {/* ── 플랜지 평면도 ── */}
-        <text x={30} y={yFl - 8} className="svg-cap">플랜지 평면도 (외첨판)</text>
-        <g transform={`translate(${mid},${yFl + flPx / 2})`}>
+        <text x={30} y={yFl - 8} className="svg-cap">플랜지 평면도 (외첨판){isCol ? ' (수직)' : ''}</text>
+        <g transform={rot(yFl + flBandH / 2)}>
           <rect x={-Lpf * sc2 / 2} y={-flPx / 2} width={Lpf * sc2} height={flPx} className="svg-flg" />
           <line x1={-Lpf * sc2 / 2} y1={-tw * sc2 / 2} x2={Lpf * sc2 / 2} y2={-tw * sc2 / 2} className="svg-hidden" />
           <line x1={-Lpf * sc2 / 2} y1={tw * sc2 / 2} x2={Lpf * sc2 / 2} y2={tw * sc2 / 2} className="svg-hidden" />
           <line x1={0} y1={-flPx / 2 - 6} x2={0} y2={flPx / 2 + 6} className="svg-gap" />
           {fBolts.map((b, i) => <Cross key={i} x={b.x * sc2} y={b.y * sc2} />)}
+          <DimV x={Lpf * sc2 / 2 + 22} cy={0} vals={flVCh} sc={sc2} />
+          <text x={Lpf * sc2 / 2 + 9} y={3} className="svg-dim-t">t{tw}</text>
+          <DimH y={flPx / 2 + 16} cx={0} vals={flHCh} sc={sc2} />
         </g>
-        <DimV x={mid + Lpf * sc2 / 2 + 22} cy={yFl + flPx / 2} vals={flVCh} sc={sc2} />
-        <text x={mid + Lpf * sc2 / 2 + 9} y={yFl + flPx / 2 + 3} className="svg-dim-t">t{tw}</text>
-        <DimH y={yFl + flPx + 16} cx={mid} vals={flHCh} sc={sc2} />
 
         {/* ── 정보표 (MINI_BOX, JointDetailDWG 형식) ── */}
         <rect x={30} y={yTbl} width={W - 60} height={88} className="svg-cell" />

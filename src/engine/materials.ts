@@ -19,6 +19,10 @@ export const STEEL: Record<SteelGrade, SteelSpec> = {
   SHN490: { Fy_le40: 325, Fy_gt40: 295, Fu: 490 },
   SM520:  { Fy_le40: 355, Fy_gt40: 325, Fu: 520 },
   SM570:  { Fy_le40: 420, Fy_gt40: 420, Fu: 570 },
+  // ASTM (MPa 환산): A36=36ksi/58ksi, A572-50·A992=50ksi/65ksi
+  A36:    { Fy_le40: 250, Fy_gt40: 250, Fu: 400 },
+  A572:   { Fy_le40: 345, Fy_gt40: 345, Fu: 450 }, // Gr.50
+  A992:   { Fy_le40: 345, Fy_gt40: 345, Fu: 450 }, // W형강 표준
 };
 
 /** 판두께에 따른 설계기준항복강도 Fy (MPa) */
@@ -34,4 +38,7 @@ export function Fu(steel: SteelGrade): number {
 export const BOLT_MAT: Record<BoltGrade, { Fy: number; Fu: number }> = {
   F10T: { Fy: 900,  Fu: 1000 },
   F13T: { Fy: 1170, Fu: 1300 },
+  S10T: { Fy: 900,  Fu: 1000 }, // 국내 토크전단형(F10T 상당)
+  A325: { Fy: 660,  Fu: 830 },  // ASTM A325(≈120ksi)
+  A490: { Fy: 900,  Fu: 1040 }, // ASTM A490(≈150ksi)
 };

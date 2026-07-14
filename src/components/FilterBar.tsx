@@ -19,19 +19,31 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
       <div className="fld-stack">
         <Seg label="접합" value={cond.jointType} opts={['마찰', '지압']} onPick={v => set('jointType', v as JointType)} />
         <Seg label="볼트안" value={boltMode} opts={['Default', 'Custom']} onPick={v => onBoltMode(v as 'Default' | 'Custom')} />
+        <Seg label="엇모배치" value={cond.noStagger ? '제외' : '포함'} opts={['포함', '제외']} onPick={v => set('noStagger', v === '제외')} />
       </div>
 
       <div className="fld">
         <label>강종</label>
         <select value={cond.steel} onChange={e => set('steel', e.target.value as SteelGrade)}>
-          <option value="SHN490">SHN490</option><option value="SS400">SS400</option>
-          <option value="SM490">SM490</option><option value="SN490">SN490</option>
+          <optgroup label="KS">
+            <option value="SHN490">SHN490</option><option value="SS400">SS400</option>
+            <option value="SM490">SM490</option><option value="SN490">SN490</option>
+            <option value="SM520">SM520</option><option value="SM570">SM570</option>
+          </optgroup>
+          <optgroup label="ASTM">
+            <option value="A992">A992</option><option value="A572">A572-50</option><option value="A36">A36</option>
+          </optgroup>
         </select>
       </div>
       <div className="fld">
         <label>볼트</label>
         <select value={cond.bolt} onChange={e => set('bolt', e.target.value as BoltGrade)}>
-          <option value="F10T">F10T</option><option value="F13T">F13T</option>
+          <optgroup label="KS">
+            <option value="F10T">F10T</option><option value="F13T">F13T</option><option value="S10T">S10T</option>
+          </optgroup>
+          <optgroup label="ASTM">
+            <option value="A325">A325</option><option value="A490">A490</option>
+          </optgroup>
         </select>
       </div>
 
@@ -43,6 +55,12 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
             {!PRESETS.includes(pct) && <option value="custom">{pct}% (직접)</option>}
           </select>
         </div>
+      </div>
+      <div className="fld">
+        <label>갭 mm</label>
+        <select value={cond.gap ?? 10} onChange={e => set('gap', Number(e.target.value))}>
+          <option value={0}>0</option><option value={5}>5</option><option value={10}>10</option>
+        </select>
       </div>
     </div>
   );

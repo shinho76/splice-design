@@ -42,7 +42,10 @@ export function toIFC(r: DesignResult, cond: DesignCondition): string {
   const proj = add(`IFCPROJECT('${guid(1)}',${R(owner)},'${P.section} ${cond.member} ${cond.jointType}',$,$,$,$,(${R(ctx)}),${R(units)})`);
   const site = add(`IFCSITE('${guid(2)}',${R(owner)},'Site',$,$,${R(add(`IFCLOCALPLACEMENT($,${R(world)})`))},$,$,.ELEMENT.,$,$,$,$,$)`);
   const bldg = add(`IFCBUILDING('${guid(3)}',${R(owner)},'Building',$,$,${R(add(`IFCLOCALPLACEMENT($,${R(world)})`))},$,$,.ELEMENT.,$,$,$)`);
-  const storeyPl = add(`IFCLOCALPLACEMENT($,${R(world)})`);
+  // 부재축 정렬(IFC는 Z=상방). 기둥: 길이 Z를 수직 유지(항등). 보: X축 +90° 회전 → 춤 Y=수직, 길이 Z=수평.
+  const isCol = cond.member === '기둥';
+  const storeyAxis = isCol ? world : add(`IFCAXIS2PLACEMENT3D(${R(O)},${R(dir3(0, -1, 0))},${R(DX)})`);
+  const storeyPl = add(`IFCLOCALPLACEMENT($,${R(storeyAxis)})`);
   const storey = add(`IFCBUILDINGSTOREY('${guid(4)}',${R(owner)},'Connection',$,$,${R(storeyPl)},$,$,.ELEMENT.,0.)`);
   add(`IFCRELAGGREGATES('${guid(5)}',${R(owner)},$,$,${R(proj)},(${R(site)}))`);
   add(`IFCRELAGGREGATES('${guid(6)}',${R(owner)},$,$,${R(site)},(${R(bldg)}))`);
