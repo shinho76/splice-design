@@ -31,7 +31,8 @@ export interface HSection {
 export interface DesignCondition {
   member: Member;
   jointType: JointType;
-  steel: SteelGrade;
+  steel: SteelGrade;        // H형강(모재) 강종 — 부재강도(Mn·Puf·Vu) 산정
+  plateSteel?: SteelGrade;  // 첨판(PLATE) 강종 — 첨판 소요면적·두께·지압 산정. 미지정 시 모재와 동일
   bolt: BoltGrade;
   strengthRatio: StrengthRatio;
   sectionType: SectionType;

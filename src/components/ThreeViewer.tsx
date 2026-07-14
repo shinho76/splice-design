@@ -87,7 +87,7 @@ export default function ThreeViewer({ r, cond, onClose }: { r: DesignResult; con
     if (P.gap <= 2) {
       const seam = new THREE.LineSegments(
         new THREE.EdgesGeometry(new THREE.ShapeGeometry(hSh)),
-        new THREE.LineBasicMaterial({ color: 0xffb84d, depthTest: false, transparent: true }),
+        new THREE.LineBasicMaterial({ color: 0x8894a2, depthTest: false, transparent: true }),
       );
       seam.position.z = 0; seam.renderOrder = 2; model.add(seam);
     }

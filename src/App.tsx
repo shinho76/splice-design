@@ -15,7 +15,7 @@ import { toIFC } from './engine/ifcOut.ts';
 import { quantityOf } from './engine/quantity.ts';
 
 const DEFAULT: DesignCondition = {
-  member: '보', jointType: '마찰', steel: 'SHN490', bolt: 'F10T', strengthRatio: 1.0, sectionType: '압연',
+  member: '보', jointType: '마찰', steel: 'SN355', plateSteel: 'SN355', bolt: 'F10T', strengthRatio: 1.0, sectionType: '압연',
 };
 const nf = (v?: number) => v == null ? '—' : v.toLocaleString('en-US');
 const plate = (p?: { t: number; w: number; L: number }) => p ? `${p.t}×${p.w}×${p.L}` : '—';
@@ -89,7 +89,7 @@ export default function App() {
         <header className="ctop">
           <div className="cbrand">SPLICE<span className="accent">DESIGN</span></div>
           <FilterBar cond={cond} onChange={setCond} boltMode={boltMode} onBoltMode={setBoltMode} />
-          <div className="ccond">{cond.steel} · {cond.bolt} · α{pct}%</div>
+          <div className="ccond">H {cond.steel}{(cond.plateSteel && cond.plateSteel !== cond.steel) ? ` · PL ${cond.plateSteel}` : ''} · {cond.bolt} · α{pct}%</div>
           <div className="seg-theme" role="group" aria-label="테마 전환">
             <button type="button" className={dark ? 'on' : ''} onClick={() => setDark(true)} aria-pressed={dark} title="다크 모드">☾ 다크</button>
             <button type="button" className={!dark ? 'on' : ''} onClick={() => setDark(false)} aria-pressed={!dark} title="화이트 모드">☀ 화이트</button>

@@ -35,7 +35,7 @@ export default function CalcReport({ result, cond, onClose, onAdd }: {
           <table className="doc-meta">
             <tbody>
               <tr><th>부재 / 접합</th><td>{cond.member} · {cond.jointType}접합</td><th>단면</th><td>{result.section}</td></tr>
-              <tr><th>강종 / 볼트</th><td>{cond.steel} / 고력볼트 {cond.bolt} (이음판 SN490)</td><th>부분강도비 α</th><td>{pct}%</td></tr>
+              <tr><th>강종 / 볼트</th><td>H형강 {cond.steel} · 첨판 {cond.plateSteel ?? cond.steel} / 고력볼트 {cond.bolt}</td><th>부분강도비 α</th><td>{pct}%</td></tr>
               <tr><th>설계기준</th><td colSpan={3}>KBC-09 한계상태설계법 · 한국강구조학회 고력볼트 표준접합 설계편람</td></tr>
             </tbody>
           </table>
