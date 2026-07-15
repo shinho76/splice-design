@@ -4,6 +4,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { DesignResult, DesignCondition } from '../engine/types.ts';
 import { connParts, type PartBolt } from '../engine/connParts.ts';
 import { connChecks } from '../engine/connChecks.ts';
+import { useLang, tr, tMember, tJoint } from '../i18n.ts';
 
 function hShape(B: number, H: number, tw: number, tf: number, r: number) {
   const b = B / 2, h = H / 2, w = tw / 2, yi = h - tf, rr = Math.min(r, yi - 1, b - w - 1);
@@ -42,6 +43,8 @@ export default function ThreeViewer({ r, cond, onClose }: { r: DesignResult; con
   const [mode, setMode] = useState<'3D' | '2D'>('3D');
   const [regions, setRegions] = useState({ flange: false, web: false });
   const [showChk, setShowChk] = useState(false);
+  const lang = useLang();
+  const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
   const C = connChecks(r);
 
   useEffect(() => {
@@ -153,7 +156,7 @@ export default function ThreeViewer({ r, cond, onClose }: { r: DesignResult; con
     for (const d of C.dims) {
       const a = new THREE.Vector3(...d.a), b = new THREE.Vector3(...d.b), gr = regG[d.region];
       gr.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, b]), dimMat));
-      const lbl = makeLabel(d.label, lblH); lbl.position.copy(a.clone().add(b).multiplyScalar(0.5)); gr.add(lbl);
+      const lbl = makeLabel(tr(d.label, lang), lblH); lbl.position.copy(a.clone().add(b).multiplyScalar(0.5)); gr.add(lbl);
     }
 
     let raf = 0, spin = true, t = 0;
@@ -187,7 +190,7 @@ export default function ThreeViewer({ r, cond, onClose }: { r: DesignResult; con
       cancelAnimationFrame(raf); ro.disconnect(); controls.dispose(); renderer.dispose(); beamGeo.dispose();
       dimRef.current = null; renderer.domElement.remove();
     };
-  }, [r]);
+  }, [r, lang]);
 
   useEffect(() => { modeRef.current = mode; }, [mode]);
   useEffect(() => {
@@ -201,7 +204,7 @@ export default function ThreeViewer({ r, cond, onClose }: { r: DesignResult; con
     <div className="v3d-back" onClick={onClose}>
       <div className="v3d-card" onClick={e => e.stopPropagation()}>
         <div className="v3d-top">
-          <b>{r.section}</b><span>· {cond.member} {cond.jointType}접합 · {cond.bolt}</span>
+          <b>{r.section}</b><span>· {tMember(cond.member, lang)} {tJoint(cond.jointType, lang)}{L('접합', '')} · {cond.bolt}</span>
           <div className="v3d-mode">
             <button className={mode === '2D' ? 'on' : ''} onClick={() => setMode('2D')}>2D</button>
             <button className={mode === '3D' ? 'on' : ''} onClick={() => setMode('3D')}>3D</button>
@@ -209,39 +212,39 @@ export default function ThreeViewer({ r, cond, onClose }: { r: DesignResult; con
           {mode === '3D' && <div className="v3d-regions">
             {(['flange', 'web'] as const).map(k => (
               <button key={k} className={'v3d-chip' + (regions[k] ? ' on' : '')} onClick={() => setRegions(s => ({ ...s, [k]: !s[k] }))}>
-                {k === 'flange' ? '플랜지' : '웨브'}
+                {k === 'flange' ? L('플랜지', 'Flange') : L('웨브', 'Web')}
               </button>
             ))}
-            <button className={'v3d-chip' + (showChk ? ' on' : '')} onClick={() => setShowChk(v => !v)}>체결</button>
+            <button className={'v3d-chip' + (showChk ? ' on' : '')} onClick={() => setShowChk(v => !v)}>{L('체결', 'Install')}</button>
           </div>}
-          <button className="close" onClick={onClose} aria-label="닫기">✕</button>
+          <button className="close" onClick={onClose} aria-label={L('닫기', 'Close')}>✕</button>
         </div>
         <div className="v3d-canvas" ref={mount}>
           {mode === '3D' && showChk && <div className="v3d-checks" onClick={e => e.stopPropagation()}>
-            <div className="v3d-checks-h">체결 검토 · AISC clearance (M{C.db})</div>
+            <div className="v3d-checks-h">{L('체결 검토', 'Installation check')} · AISC clearance (M{C.db})</div>
             {C.checks.map((c, i) => (
               <div key={i} className={'v3d-chk' + (c.ok ? '' : ' ng')}>
                 <span className="ck-ic">{c.ok ? '✔' : '⚠'}</span>
-                <span className="ck-lb">{c.label}</span>
-                <span className="ck-vl">{c.value}<em>{c.limit}</em></span>
-                {c.note && <span className="ck-nt">{c.note}</span>}
+                <span className="ck-lb">{tr(c.label, lang)}</span>
+                <span className="ck-vl">{tr(c.value, lang)}<em>{tr(c.limit, lang)}</em></span>
+                {c.note && <span className="ck-nt">{tr(c.note, lang)}</span>}
               </div>
             ))}
           </div>}
           {mode === '2D' && <>
-            <span className="v3d-q v3d-q-tl">평면도</span>
-            <span className="v3d-q v3d-q-bl">정면도(입면)</span>
-            <span className="v3d-q v3d-q-br">측면도(단면)</span>
-            <span className="v3d-q v3d-q-tr">3D 등각</span>
+            <span className="v3d-q v3d-q-tl">{L('평면도', 'Plan')}</span>
+            <span className="v3d-q v3d-q-bl">{L('정면도(입면)', 'Front (elev.)')}</span>
+            <span className="v3d-q v3d-q-br">{L('측면도(단면)', 'Side (section)')}</span>
+            <span className="v3d-q v3d-q-tr">{L('3D 등각', '3D iso')}</span>
             <span className="v3d-cross v3d-cross-v" /><span className="v3d-cross v3d-cross-h" />
           </>}
         </div>
         <div className="v3d-legend">
-          <span><i style={{ background: '#9aa7b4' }} />H형강(필렛R)</span>
-          <span><i style={{ background: '#39c46e' }} />플랜지 첨판</span>
-          <span><i style={{ background: '#2bb6d6' }} />웨브 첨판</span>
-          <span><i style={{ background: '#2e3138' }} />고력볼트(머리·너트·와셔2·여장)</span>
-          <span className="v3d-hint">{mode === '2D' ? '평면(90°)·정면·측면 + 3D 등각 (화면맞춤)' : '드래그=회전 · 휠=줌 · 플랜지/웨브=치수'}</span>
+          <span><i style={{ background: '#9aa7b4' }} />{L('H형강(필렛R)', 'H-beam (fillet R)')}</span>
+          <span><i style={{ background: '#39c46e' }} />{L('플랜지 첨판', 'Flange plate')}</span>
+          <span><i style={{ background: '#2bb6d6' }} />{L('웨브 첨판', 'Web plate')}</span>
+          <span><i style={{ background: '#2e3138' }} />{L('고력볼트(머리·너트·와셔2·여장)', 'H.S. bolt (head·nut·2 washers·stickout)')}</span>
+          <span className="v3d-hint">{mode === '2D' ? L('평면(90°)·정면·측면 + 3D 등각 (화면맞춤)', 'Plan(90°)·Front·Side + 3D iso (fit)') : L('드래그=회전 · 휠=줌 · 플랜지/웨브=치수', 'Drag=rotate · Wheel=zoom · Flange/Web=dims')}</span>
         </div>
       </div>
     </div>

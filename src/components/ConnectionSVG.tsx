@@ -1,5 +1,6 @@
 import type { DesignResult, DesignCondition } from '../engine/types.ts';
 import { parseName } from '../engine/sections.ts';
+import { useLang, tJoint, tMember } from '../i18n.ts';
 
 /**
  * 접합 상세도 — 계산 결과 기반 파라메트릭 렌더.
@@ -7,6 +8,8 @@ import { parseName } from '../engine/sections.ts';
  * 웨브 입면(플랜지 외·내첨판, 웨브첨판, 볼트) + 플랜지 평면(웨브 은선·게이지) + 요약표. 해칭·테마 대응.
  */
 export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: DesignCondition }) {
+  const lang = useLang();
+  const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
   const { H, tw, tf } = parseName(r.section);
   const fB = r.flange.bolt, wB = r.web.bolt, dia = r.boltDia;
   const g1 = r.flange.gauge?.g1 ?? 90, g2 = r.flange.gauge?.g2 ?? 0;
@@ -101,10 +104,10 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
         <rect x={30} y={yHead} width={(W - 60) / 2} height={hHead} className="svg-cell" />
         <rect x={30 + (W - 60) / 2} y={yHead} width={(W - 60) / 2} height={hHead} className="svg-cell" />
         <text x={30 + (W - 60) / 4} y={yHead + hHead / 2 + 5} className="svg-title" textAnchor="middle">{r.section}</text>
-        <text x={30 + (W - 60) * 3 / 4} y={yHead + hHead / 2 + 5} className="svg-title" textAnchor="middle">{cond.steel} {Math.round(cond.strengthRatio * 100)}% {cond.bolt} {cond.jointType}</text>
+        <text x={30 + (W - 60) * 3 / 4} y={yHead + hHead / 2 + 5} className="svg-title" textAnchor="middle">{cond.steel} {Math.round(cond.strengthRatio * 100)}% {cond.bolt} {tJoint(cond.jointType, lang)}</text>
 
         {/* ── 웨브 입면도 ── */}
-        <text x={30} y={yWeb - 8} className="svg-cap">웨브 입면도{isCol ? ' (수직)' : ''}</text>
+        <text x={30} y={yWeb - 8} className="svg-cap">{L('웨브 입면도', 'Web elevation')}{isCol ? L(' (수직)', ' (vert.)') : ''}</text>
         <g transform={rot(yWeb + webBandH / 2)}>
           {/* 상·하 플랜지 */}
           <rect x={-beamW * sc1 / 2} y={-webPx / 2} width={beamW * sc1} height={Math.max(3, tf * sc1)} className="svg-flange-band" />
@@ -132,7 +135,7 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
         </g>
 
         {/* ── 플랜지 평면도 ── */}
-        <text x={30} y={yFl - 8} className="svg-cap">플랜지 평면도 (외첨판){isCol ? ' (수직)' : ''}</text>
+        <text x={30} y={yFl - 8} className="svg-cap">{L('플랜지 평면도 (외첨판)', 'Flange plan (outer plate)')}{isCol ? L(' (수직)', ' (vert.)') : ''}</text>
         <g transform={rot(yFl + flBandH / 2)}>
           <rect x={-Lpf * sc2 / 2} y={-flPx / 2} width={Lpf * sc2} height={flPx} className="svg-flg" />
           <line x1={-Lpf * sc2 / 2} y1={-tw * sc2 / 2} x2={Lpf * sc2 / 2} y2={-tw * sc2 / 2} className="svg-hidden" />
@@ -152,7 +155,7 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
           ['Title', r.section, 'Steel', cond.steel],
           ['Web PL.', gpl(wT, chum, webWid, 2), 'O-Flg PL.', gpl(oT, outerW, Lpf, 2)],
           ['Web Bolt', `${mW * nW * 2}-M${dia} H.T.B`, 'I-Flg PL.', inner ? gpl(iT, inner.w, inner.L, 4) : '-'],
-          ['Joint', `${cond.member} ${cond.jointType}`, 'Flg Bolt', `${fB.m * Math.round(fB.n) * 4}-M${dia} H.T.B`],
+          ['Joint', `${tMember(cond.member, lang)} ${tJoint(cond.jointType, lang)}`, 'Flg Bolt', `${fB.m * Math.round(fB.n) * 4}-M${dia} H.T.B`],
         ] as const).map(([l1, v1, l2, v2], i) => {
           const y = yTbl + 22 * i + 15;
           return <g key={i}>
