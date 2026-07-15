@@ -98,7 +98,7 @@ body {
 }
 .fld {
   display: flex; flex-direction: column; gap: 2px; justify-content: center;
-  padding: 5px 12px; border-right: 1px solid var(--line-soft);
+  padding: 5px 7px; border-right: 1px solid var(--line-soft);
 }
 .fld > label {
   font-size: 9px; font-weight: 700; color: var(--faint); letter-spacing: .8px; text-transform: uppercase;
@@ -112,7 +112,7 @@ body {
 .seg { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 7px; padding: 2px; }
 .seg button {
   border: none; background: transparent; color: var(--muted); font-weight: 700; font-size: 12px;
-  padding: 4px 13px; border-radius: 5px; cursor: pointer; transition: .15s;
+  padding: 4px 10px; border-radius: 5px; cursor: pointer; transition: .15s;
 }
 .seg button.on { background: var(--accent); color: var(--on-accent); }
 .alpha-ctl { display: flex; align-items: center; gap: 5px; }
@@ -330,7 +330,8 @@ body {
 .ctop { display: flex; align-items: center; gap: 10px; padding: 4px 14px; background: var(--bg2); border-bottom: 1px solid var(--line); flex-shrink: 0; }
 .cbrand { font-weight: 800; font-size: 14px; letter-spacing: -.02em; white-space: nowrap; }
 .cbrand .accent { color: var(--accent); }
-.ctop .filterbar { flex: 1; min-width: 0; border-bottom: 0; background: transparent; flex-wrap: nowrap; overflow-x: auto; }
+.ctop .filterbar { flex: 1; min-width: 0; border-bottom: 0; background: transparent; flex-wrap: wrap; row-gap: 4px; }
+.ctop .filterbar .fgrp:last-child { border-right: none; }
 .ccond { font-size: 11px; font-weight: 700; color: var(--muted); font-family: var(--mono); white-space: nowrap; }
 /* 다크/화이트 전환 세그먼트 버튼 */
 .seg-theme { display: inline-flex; flex-shrink: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel); }
@@ -373,6 +374,10 @@ body {
 /* FilterBar 세로 스택(접합/볼트안) + Custom 직경 선택기 */
 .fld-stack { display: flex; flex-direction: column; gap: 3px; justify-content: center; border-right: 1px solid var(--line-soft); }
 .fld-stack .fld { padding: 2px 12px; border-right: none; }
+/* 유사 컨트롤 그룹(한 줄, 설계흐름 순) — 그룹 사이 강조 구분선 */
+.fgrp { display: flex; align-items: stretch; }
+.fgrp:not(:last-child) { border-right: 2px solid var(--line); }
+.fgrp .fld:last-child { border-right: none; }
 .dia-sel { width: 50px; height: 22px; padding: 0 2px; border: 1px solid var(--accent); border-radius: 5px; background: var(--bg2); color: var(--accent); font-family: var(--mono); font-weight: 800; font-size: 11px; cursor: pointer; }
 
 /* 단면치수 3D 버튼 */

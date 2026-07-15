@@ -89,10 +89,9 @@ export default function App() {
         <header className="ctop">
           <div className="cbrand">SPLICE<span className="accent">DESIGN</span></div>
           <FilterBar cond={cond} onChange={setCond} boltMode={boltMode} onBoltMode={setBoltMode} />
-          <div className="ccond">H {cond.steel}{(cond.plateSteel && cond.plateSteel !== cond.steel) ? ` · PL ${cond.plateSteel}` : ''} · {cond.bolt} · α{pct}%</div>
           <div className="seg-theme" role="group" aria-label="테마 전환">
-            <button type="button" className={dark ? 'on' : ''} onClick={() => setDark(true)} aria-pressed={dark} title="다크 모드">☾ 다크</button>
-            <button type="button" className={!dark ? 'on' : ''} onClick={() => setDark(false)} aria-pressed={!dark} title="화이트 모드">☀ 화이트</button>
+            <button type="button" className={dark ? 'on' : ''} onClick={() => setDark(true)} aria-pressed={dark} title="다크 모드" aria-label="다크 모드">☾</button>
+            <button type="button" className={!dark ? 'on' : ''} onClick={() => setDark(false)} aria-pressed={!dark} title="화이트 모드" aria-label="화이트 모드">☀</button>
           </div>
         </header>
 
