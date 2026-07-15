@@ -60,14 +60,17 @@ export default function App() {
   // KPI 집계 (조건·Custom 변경 시)
   const stats = useMemo(() => {
     let bolts = 0, wt = 0, boltWt = 0, ok = 0;
+    const af = cond.designStd === 'AISC' && autoFix;
     SECTIONS.forEach((s, i) => {
-      const r = designConnection(cond, s, diaAt(i));
+      let r = designConnection(cond, s, diaAt(i)), okThis: boolean;
+      if (af) { const ac = aiscAutoCorrect(r, cond); r = ac.result; okThis = ac.ok; }
+      else okThis = !r.steps.some(st => st.check === 'NG');
       const q = quantityOf(r, cond);
       bolts += q.boltCount; wt += q.plateWeightKg; boltWt += q.boltWeightKg;
-      if (!r.steps.some(st => st.check === 'NG')) ok++;
+      if (okThis) ok++;
     });
     return { bolts, wt: Math.round(wt), boltWt: Math.round(boltWt), ok, total: SECTIONS.length };
-  }, [cond, diaAt]);
+  }, [cond, diaAt, autoFix]);
 
   // 자동보정 ON(AISC) 시 선택 부재를 보정 형상으로 표시
   const selEff = (cond.designStd === 'AISC' && autoFix && selected) ? aiscAutoCorrect(selected, cond).result : selected;
@@ -167,7 +170,7 @@ export default function App() {
       {showReport && selEff && (cond.designStd === 'AISC'
         ? <AiscCalcReport result={selEff} cond={cond} onClose={() => setShowReport(false)} />
         : <CalcReport result={selEff} cond={cond} onClose={() => setShowReport(false)} onAdd={addToProject} />)}
-      {showQty && <QuantityPanel cond={cond} diaAt={diaAt} onClose={() => setShowQty(false)} />}
+      {showQty && <QuantityPanel cond={cond} diaAt={diaAt} autoFix={autoFix} onClose={() => setShowQty(false)} />}
       {showProj && <ProjectPanel items={project} onChange={setProject} onClose={() => setShowProj(false)} />}
       {view3D && <ThreeViewer r={view3D} cond={cond} onClose={() => setView3D(null)} />}
     </div>

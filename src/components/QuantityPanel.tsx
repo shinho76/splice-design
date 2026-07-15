@@ -4,6 +4,7 @@ import { designConnection } from '../engine/engine.ts';
 import { quantityOf, aggregate, quantityCsv } from '../engine/quantity.ts';
 import { downloadFile } from '../engine/dxf.ts';
 import { downloadXlsx } from '../engine/xlsxOut.ts';
+import { aiscAutoCorrect } from '../engine/aiscCheck.ts';
 import { useLang, tMember, tJoint } from '../i18n.ts';
 
 const nf = (v: number) => v.toLocaleString('en-US');
@@ -12,10 +13,15 @@ const plateStr = (q: ReturnType<typeof quantityOf>, role: string) => {
   return p ? `${p.t}×${p.w}×${p.L} ×${p.count}` : '—';
 };
 
-export default function QuantityPanel({ cond, onClose, diaAt }: { cond: DesignCondition; onClose: () => void; diaAt?: (i: number) => number | undefined }) {
+export default function QuantityPanel({ cond, onClose, diaAt, autoFix }: { cond: DesignCondition; onClose: () => void; diaAt?: (i: number) => number | undefined; autoFix?: boolean }) {
   const lang = useLang();
   const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
-  const qs = SECTIONS.map((s, i) => quantityOf(designConnection(cond, s, diaAt?.(i)), cond));
+  const af = cond.designStd === 'AISC' && !!autoFix;
+  const qs = SECTIONS.map((s, i) => {
+    let r = designConnection(cond, s, diaAt?.(i));
+    if (af) r = aiscAutoCorrect(r, cond).result;   // 자동보정 형상 기준 물량
+    return quantityOf(r, cond);
+  });
   const agg = aggregate(qs);
   const stem = `${L('물량', 'qty')}_${cond.member}_${Math.round(cond.strengthRatio * 100)}_${cond.steel}_${cond.bolt}_${cond.jointType}`;
   const title = `${L('물량산정', 'Quantities')} · ${tMember(cond.member, lang)} ${Math.round(cond.strengthRatio * 100)}% ${cond.steel} ${cond.bolt} ${tJoint(cond.jointType, lang)}`;
