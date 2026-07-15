@@ -179,11 +179,11 @@ body {
 .design-table tbody tr:hover .col-name { background: var(--accent-soft); color: var(--accent); }
 /* 행 상태 표시등(적합/재검토) */
 .st-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; vertical-align: middle;
-  background: var(--ok); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ok) 22%, transparent); }
-.st-dot.ng { background: var(--ng); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ng) 22%, transparent); }
+  background: var(--ok); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ok) 28%, transparent); }
+.st-dot.ng { background: var(--ng); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ng) 30%, transparent); }
 /* 선택된 행 강조(좌측 액센트 바) */
 .design-table tbody tr.row-sel td { background: var(--accent-soft); }
-.design-table tbody tr.row-sel .col-name { color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.design-table tbody tr.row-sel .col-name { color: var(--accent); font-weight: 600; box-shadow: inset 3px 0 0 var(--accent); }
 .dash { color: var(--faint); }
 
 /* ===== 상태바 ===== */
@@ -353,7 +353,7 @@ body {
 .cdetail { overflow: auto; background: var(--panel2); padding: 14px 15px; }
 .dh { font-size: 15px; font-weight: 800; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; }
 .dbadge { font-size: 9.5px; font-weight: 700; letter-spacing: .4px; color: var(--accent); background: var(--accent-soft);
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); border-radius: 999px; padding: 2px 8px; }
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 999px; padding: 2px 8px; }
 .dsub { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
 .dspecs { margin: 12px 0; display: flex; flex-direction: column; }
 .dspecs > div { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 11.5px; }
