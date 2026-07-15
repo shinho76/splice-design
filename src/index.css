@@ -252,6 +252,25 @@ body {
 .result-table2 th { background: var(--panel2); color: var(--muted); font-weight: 700; width: 24%; }
 .result-table2 td { font-weight: 700; font-family: var(--mono); }
 .result-table2 .q { color: var(--muted); font-weight: 400; font-size: 12px; }
+/* ===== AISC 계산서 ===== */
+.ag-table { width: calc(100% - 0px); border-collapse: collapse; font-size: 11px; }
+.ag-table th, .ag-table td { border: 1px solid var(--line-soft); padding: 4px 7px; text-align: left; vertical-align: middle; }
+.ag-table thead th { background: var(--panel2); color: var(--muted); font-weight: 700; font-size: 10px; }
+.ag-table .ag-num { text-align: right; font-family: var(--mono); }
+.ag-table .ag-cl { font-family: var(--mono); color: var(--accent); font-size: 10px; }
+.ag-table .ag-dt { color: var(--muted); font-size: 10px; font-family: var(--mono); }
+.ag-table .ag-lb { font-weight: 700; } .ag-table .ag-lb em { color: var(--muted); font-weight: 400; font-size: 9.5px; }
+.ag-row-ng { background: color-mix(in srgb, var(--ng) 9%, transparent); }
+.ag-ok { color: var(--ok); font-weight: 800; } .ag-ng { color: var(--ng); font-weight: 800; }
+.ag-glyph { width: 58px; height: 38px; display: block; }
+.ag-steel { fill: var(--panel3); stroke: var(--line-strong); stroke-width: 1; }
+.ag-steel2 { fill: var(--panel2); stroke: var(--line-strong); stroke-width: 1; }
+.ag-hole { fill: var(--bg2); stroke: var(--muted); stroke-width: .8; }
+.ag-bf { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1; }
+.ag-b { stroke: var(--accent); stroke-width: 1.6; fill: none; }
+.ag-r { stroke: var(--ng); stroke-width: 1.6; fill: none; }
+.ag-dim { stroke: var(--muted); stroke-width: .7; }
+.report-card.aisc { width: min(1180px, 96vw); }
 .calc-step { padding: 7px 0 9px; border-bottom: 1px dashed var(--line); }
 .cs-head { display: flex; align-items: baseline; gap: 8px; }
 .cs-label { font-weight: 700; font-size: 13.5px; }

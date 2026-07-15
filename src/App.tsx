@@ -3,6 +3,7 @@ import type { DesignCondition, DesignResult } from './engine/types.ts';
 import FilterBar from './components/FilterBar.tsx';
 import ResultTable from './components/ResultTable.tsx';
 import CalcReport from './components/CalcReport.tsx';
+import AiscCalcReport from './components/AiscCalcReport.tsx';
 import QuantityPanel from './components/QuantityPanel.tsx';
 import ProjectPanel from './components/ProjectPanel.tsx';
 import ConnectionSVG from './components/ConnectionSVG.tsx';
@@ -158,7 +159,9 @@ export default function App() {
         </div>
       </div>
 
-      {showReport && selected && <CalcReport result={selected} cond={cond} onClose={() => setShowReport(false)} onAdd={addToProject} />}
+      {showReport && selected && (cond.designStd === 'AISC'
+        ? <AiscCalcReport result={selected} cond={cond} onClose={() => setShowReport(false)} />
+        : <CalcReport result={selected} cond={cond} onClose={() => setShowReport(false)} onAdd={addToProject} />)}
       {showQty && <QuantityPanel cond={cond} diaAt={diaAt} onClose={() => setShowQty(false)} />}
       {showProj && <ProjectPanel items={project} onChange={setProject} onClose={() => setShowProj(false)} />}
       {view3D && <ThreeViewer r={view3D} cond={cond} onClose={() => setView3D(null)} />}
