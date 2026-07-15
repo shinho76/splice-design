@@ -137,15 +137,17 @@ function designFlange(cond: DesignCondition, sec: HSection, std: ReturnType<type
   const flatHalf = sec.B / 2 - (sec.tw / 2 + sec.r) - INNER_CLEAR;
   const innerW = std.innerW != null ? Math.max(10, Math.floor(flatHalf / 10) * 10) : null;
   const Aupf = (Puf * 1e3) / (PHI_FLEX * pfy);                   // 총단면 항복(첨판 강종)
-  const tOuter0 = innerW ? 0.5 * Aupf / outerW : Aupf / outerW;
-  const tInner0 = innerW ? 0.5 * Aupf / (2 * innerW) : 0;
-  const tOuter = roundUpThickness(Math.max(tOuter0, 6), FLANGE_PLATE_T);
+  const equalT = innerW != null && !!cond.equalPlateT;          // 내·외첨판 동일 두께 옵션
+  // 동일두께: 외·내 합성 순단면(외폭 + 2·내폭)이 Aupf 부담 → 단일 두께. 개별: 외 50% / 내 50%(2장).
+  const tOuter0 = equalT ? Aupf / (outerW + 2 * (innerW ?? 0)) : (innerW ? 0.5 * Aupf / outerW : Aupf / outerW);
+  const tInner0 = equalT ? tOuter0 : (innerW ? 0.5 * Aupf / (2 * innerW) : 0);
+  const tOuter = roundUpThickness(Math.max(tOuter0, equalT ? 9 : 6), FLANGE_PLATE_T);
   const tInner = innerW ? roundUpThickness(Math.max(tInner0, 9), FLANGE_PLATE_T) : 0;
   steps.push(
     { group:'나) 플랜지 첨판 폭·두께', label:'첨판 소요단면적', formula:'Aupf = Puf/(φ·Fy·첨판)', substitution:`${Puf.toFixed(0)}×10³/(0.9×${pfy})`, value:+Aupf.toFixed(0), unit:'mm²', ref:'5.3.1' },
-    { group:'나) 플랜지 첨판 폭·두께', label:'외첨판 두께', formula: innerW?'0.5·Aupf/폭':'Aupf/폭', substitution:`${innerW?'0.5×':''}${Aupf.toFixed(0)}/${outerW}=${tOuter0.toFixed(1)}`, value:tOuter, unit:'mm', ref:'5.3.3',
-      note:innerW?'':'외첨판만 사용 → 외첨판이 전 축력을 부담한다.' },
-    ...(innerW?[{ group:'나) 플랜지 첨판 폭·두께', label:'내첨판 두께', formula:'0.5·Aupf/(2·폭)', substitution:`0.5×${Aupf.toFixed(0)}/(2×${innerW})=${tInner0.toFixed(1)}`, value:tInner, unit:'mm', ref:'5.3.3' } as CalcStep]:[]),
+    { group:'나) 플랜지 첨판 폭·두께', label: equalT?'첨판 두께(내·외 동일)':'외첨판 두께', formula: equalT?'Aupf/(외폭+2·내폭)':(innerW?'0.5·Aupf/폭':'Aupf/폭'), substitution: equalT?`${Aupf.toFixed(0)}/(${outerW}+2×${innerW})=${tOuter0.toFixed(1)}`:`${innerW?'0.5×':''}${Aupf.toFixed(0)}/${outerW}=${tOuter0.toFixed(1)}`, value:tOuter, unit:'mm', ref:'5.3.3',
+      note: equalT?'내·외첨판 동일 두께(합성 순단면 기준)':(innerW?'':'외첨판만 사용 → 외첨판이 전 축력을 부담한다.') },
+    ...(innerW&&!equalT?[{ group:'나) 플랜지 첨판 폭·두께', label:'내첨판 두께', formula:'0.5·Aupf/(2·폭)', substitution:`0.5×${Aupf.toFixed(0)}/(2×${innerW})=${tInner0.toFixed(1)}`, value:tInner, unit:'mm', ref:'5.3.3' } as CalcStep]:[]),
   );
 
   const Ns = innerW ? 2 : 1;

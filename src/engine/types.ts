@@ -37,6 +37,7 @@ export interface DesignCondition {
   strengthRatio: StrengthRatio;
   sectionType: SectionType;
   noStagger?: boolean;   // 엇모배치 제외(공칭300을 정렬 2/4열로 설계)
+  equalPlateT?: boolean; // 내·외첨판 동일 두께 설계(합성 순단면 기준 단일 두께)
   gap?: number;          // 이음부 이격 갭(mm, 0·5·10). 기본 10
 }
 

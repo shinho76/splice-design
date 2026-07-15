@@ -56,10 +56,11 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
         </div>
       </div>
 
-      {/* ③ 볼트 배치 방식 (볼트안→엇모배치) */}
+      {/* ③ 볼트 배치·첨판 (볼트안→엇모배치→첨판두께) */}
       <div className="fgrp">
         <Seg label="볼트안" value={boltMode} opts={['Default', 'Custom']} onPick={v => onBoltMode(v as 'Default' | 'Custom')} />
         <Seg label="엇모" value={cond.noStagger ? '제외' : '포함'} opts={['포함', '제외']} onPick={v => set('noStagger', v === '제외')} />
+        <Seg label="첨판두께" value={cond.equalPlateT ? '동일' : '개별'} opts={['개별', '동일']} onPick={v => set('equalPlateT', v === '동일')} />
       </div>
 
       {/* ④ 설계 파라미터 (강도비→갭) */}
