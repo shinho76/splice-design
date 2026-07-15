@@ -271,6 +271,9 @@ body {
 .ag-r { stroke: var(--ng); stroke-width: 1.6; fill: none; }
 .ag-dim { stroke: var(--muted); stroke-width: .7; }
 .report-card.aisc { width: min(1180px, 96vw); }
+.ag-dcr { float: right; margin-left: 6px; font-family: var(--mono); font-size: 10px; font-weight: 800; line-height: 18px;
+  padding: 0 6px; border-radius: 5px; color: var(--ok); background: color-mix(in srgb, var(--ok) 15%, transparent); }
+.ag-dcr.ng { color: var(--ng); background: color-mix(in srgb, var(--ng) 15%, transparent); }
 .calc-step { padding: 7px 0 9px; border-bottom: 1px dashed var(--line); }
 .cs-head { display: flex; align-items: baseline; gap: 8px; }
 .cs-label { font-weight: 700; font-size: 13.5px; }

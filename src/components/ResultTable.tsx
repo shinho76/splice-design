@@ -1,6 +1,7 @@
 import type { DesignCondition, DesignResult, Plate, BoltArray } from '../engine/types.ts';
 import { SECTIONS } from '../engine/sections.ts';
 import { designConnection } from '../engine/engine.ts';
+import { aiscCheck } from '../engine/aiscCheck.ts';
 import { nominalOf, unitWeightOf } from '../engine/hbeam_catalog.ts';
 import { useLang } from '../i18n.ts';
 
@@ -20,6 +21,7 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
   const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
   const rows = SECTIONS.map((s, i) => ({ s, r: designConnection(cond, s, diaAt?.(i)) }));
   const isCol = cond.member === '기둥';
+  const isAisc = cond.designStd === 'AISC';
 
   return (
     <div className="tablewrap">
@@ -60,13 +62,15 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
             const nominal = nominalOf(s.H, s.B);
             const newSeries = i === 0 || nominal !== nominalOf(rows[i - 1].s.H, rows[i - 1].s.B);
             const inner = fmtPlate(r.flange.innerPlate);
-            const ng = r.steps.some(st => st.check === 'NG');
+            const aisc = isAisc ? aiscCheck(r, cond) : null;
+            const ng = aisc ? !aisc.ok : r.steps.some(st => st.check === 'NG');
             const sel = r.section === selectedSection;
             return (
               <tr key={r.section} onClick={() => onSelect(r)} className={`${newSeries ? 'series-top' : ''}${sel ? ' row-sel' : ''}`}>
                 <td className="col-name">
                   <span className={`st-dot${ng ? ' ng' : ''}`} title={ng ? '재검토' : '적합'} />
                   <span className="cn-txt">{r.section}</span>
+                  {aisc && <span className={`ag-dcr${aisc.ok ? '' : ' ng'}`} title={L('AISC 지배 DCR(편람 배치)', 'AISC gov. DCR (KBC layout)')}>{aisc.govDcr.toFixed(2)}</span>}
                   <button className="t3d" title="3D 보기" onClick={e => { e.stopPropagation(); onView3D(r); }}>3D</button></td>
                 <td>{s.r}</td>
                 <td className="gcol">{fmtW(unitWeightOf(s))}</td>
