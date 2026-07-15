@@ -5,6 +5,7 @@ import type { DesignResult, DesignCondition, BoltName } from './types.ts';
 import { SECTIONS, parseName } from './sections.ts';
 import { Fy, Fu as FuSteel, BOLT_MAT } from './materials.ts';
 import { Ab } from './bolts.ts';
+import { FLANGE_PLATE_T } from './standards.ts';
 
 export interface AiscCheck {
   group: string; label: string; clause: string;
@@ -115,4 +116,63 @@ export function aiscCheck(r: DesignResult, cond: DesignCondition): AiscReport {
   const dcrs = checks.filter(c => c.dcr != null).map(c => c.dcr!);
   const govDcr = dcrs.length ? Math.max(...dcrs) : 0;
   return { checks, govDcr: +govDcr.toFixed(2), ok: govDcr <= 1.0, db: d };
+}
+
+// ── 자동보정: DCR>1.0 → 강재 중량 최소 방향으로 표준증분 조정(판두께·볼트행·직경) ──
+const DIAS = [16, 20, 22, 24];
+const nextUp = (v: number, series: number[]) => series.find(x => x > v) ?? v;
+const plateWt = (r: DesignResult) => {
+  const o = r.flange.outerPlate, i = r.flange.innerPlate;
+  return ((o ? o.t * o.w * o.L : 0) + (i ? 2 * i.t * i.w * i.L : 0)) * 7.85e-6; // kg/부재(플랜지판)
+};
+export interface AiscAutoResult { result: DesignResult; report: AiscReport; changes: string[]; ok: boolean; memberLimited: boolean; wt0: number; wt1: number; }
+
+export function aiscAutoCorrect(r0: DesignResult, cond: DesignCondition): AiscAutoResult {
+  // 얕은 복제(플랜지 지오메트리만 조정)
+  const clone = (r: DesignResult): DesignResult => ({
+    ...r, flange: { ...r.flange, bolt: { ...r.flange.bolt },
+      outerPlate: r.flange.outerPlate ? { ...r.flange.outerPlate } : undefined,
+      innerPlate: r.flange.innerPlate ? { ...r.flange.innerPlate } : undefined },
+  });
+  const r = clone(r0);
+  const wt0 = plateWt(r0);
+  const changes: string[] = [];
+  const pitch = r.flange.pitch ?? 60, edge = r.flange.edge ?? 40, gap = r.flange.gap ?? 10;
+  const relenL = (n: number) => 2 * ((Math.round(n) - 1) * pitch + 2 * edge) + gap;
+  let memberLimited = false;
+
+  for (let it = 0; it < 20; it++) {
+    const rep = aiscCheck(r, cond);
+    if (rep.ok) return { result: r, report: rep, changes, ok: true, memberLimited, wt0, wt1: plateWt(r) };
+    const fail = rep.checks.filter(c => c.ok === false).sort((a, b) => (b.dcr ?? 0) - (a.dcr ?? 0))[0];
+    if (!fail) break;
+    const memberSection = fail.clause === 'F13.1' || fail.clause.startsWith('D2');
+    const addRows = () => {                           // 볼트행 추가(→ 지압·블록전단·볼트전단 해소)
+      const n = Math.round(r.flange.bolt.n);
+      if (n < 6) {
+        r.flange.bolt = { m: r.flange.bolt.m, n: n + 1, count: r.flange.bolt.m * (n + 1) };
+        if (r.flange.outerPlate) r.flange.outerPlate.L = relenL(n + 1);
+        if (r.flange.innerPlate) r.flange.innerPlate.L = relenL(n + 1);
+        changes.push(`플랜지 볼트행 ${n}→${n + 1} (${fail.label})`); return true;
+      }
+      const nd = nextUp(r.boltDia, DIAS);
+      if (nd === r.boltDia) return false;
+      r.boltDia = nd as DesignResult['boltDia']; changes.push(`볼트직경 →M${nd} (${fail.label})`); return true;
+    };
+
+    if (memberSection) { memberLimited = true; break; }   // 부재 단면 한계(F13·D2) → 첨판으로 해소 불가
+    else if (fail.region === 'outer' && r.flange.outerPlate) {
+      const t = r.flange.outerPlate.t, nt = nextUp(t, FLANGE_PLATE_T);
+      if (nt === t) break;
+      r.flange.outerPlate.t = nt; changes.push(`외첨판 두께 ${t}→${nt} (${fail.label})`);
+    } else if (fail.region === 'inner' && r.flange.innerPlate) {
+      const t = r.flange.innerPlate.t, nt = nextUp(t, FLANGE_PLATE_T);
+      if (nt === t) break;
+      r.flange.innerPlate.t = nt; changes.push(`내첨판 두께 ${t}→${nt} (${fail.label})`);
+    } else {                                          // 볼트전단·부재 지압·부재 블록전단 → 볼트 추가
+      if (!addRows()) break;
+    }
+  }
+  const report = aiscCheck(r, cond);
+  return { result: r, report, changes, ok: report.ok, memberLimited, wt0, wt1: plateWt(r) };
 }
