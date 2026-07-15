@@ -19,8 +19,8 @@ export interface AiscReport { checks: AiscCheck[]; govDcr: number; ok: boolean; 
 const PHI_V = 0.75, PHI_Y = 0.90, PHI_R = 0.75, PHI_C = 0.90, E = 200000, UBS = 1.0, K = 1.2;
 const kN = (n: number) => +(n / 1000).toFixed(1);
 
-/** AISC 360-16 플랜지 이음 검토 (편람 결과 r을 입력으로) */
-export function aiscCheck(r: DesignResult, cond: DesignCondition): AiscReport {
+/** AISC 360-16 플랜지 이음 검토 (편람 결과 r을 입력으로). pfCapKN: 부재강도(F13/D2)로 소요 캡핑 시 */
+export function aiscCheck(r: DesignResult, cond: DesignCondition, pfCapKN?: number): AiscReport {
   const sec = SECTIONS.find(s => s.name === r.section);
   const { H, B, tw, tf } = parseName(r.section);
   const Sx = sec?.Sx ?? 0, Zx = sec?.Zx ?? 0;
@@ -33,7 +33,8 @@ export function aiscCheck(r: DesignResult, cond: DesignCondition): AiscReport {
   const pFy = Fy(cond.plateSteel ?? cond.steel, 20), pFu = FuSteel(cond.plateSteel ?? cond.steel);
   const mFy = Fy(cond.steel, tf), mFu = FuSteel(cond.steel);
 
-  const Pf = r.Puf_kN * 1e3, Mu = r.Mu_kNm * 1e6;                 // N, N·mm
+  const capScale = (pfCapKN != null && pfCapKN < r.Puf_kN && pfCapKN > 0) ? pfCapKN / r.Puf_kN : 1;
+  const Pf = r.Puf_kN * capScale * 1e3, Mu = r.Mu_kNm * capScale * 1e6;   // 소요(캡핑 반영), N·N·mm
   const half = Pf / 2;
 
   const m = r.flange.bolt.m, nrow = Math.max(1, Math.round(r.flange.bolt.n));
@@ -135,17 +136,17 @@ export function aiscCheck(r: DesignResult, cond: DesignCondition): AiscReport {
   return { checks, govDcr: +govDcr.toFixed(2), ok: govDcr <= 1.0, db: d };
 }
 
-// ── 자동보정: DCR>1.0 → 강재 중량 최소 방향으로 표준증분 조정(판두께·볼트행·직경) ──
+// ── 자동보정: DCR>1.0 → 강재 중량 최소 방향 표준증분(판두께·볼트행) + 부재한계 소요캡핑 ──
 const DIAS = [16, 20, 22, 24];
+const AC_T = [9, 12, 16, 19, 22, 25, 28, 32, 36, 40];   // 보정용 판두께(표준 스텝 + 확장)
 const nextUp = (v: number, series: number[]) => series.find(x => x > v) ?? v;
 const plateWt = (r: DesignResult) => {
   const o = r.flange.outerPlate, i = r.flange.innerPlate;
   return ((o ? o.t * o.w * o.L : 0) + (i ? 2 * i.t * i.w * i.L : 0)) * 7.85e-6; // kg/부재(플랜지판)
 };
-export interface AiscAutoResult { result: DesignResult; report: AiscReport; changes: string[]; ok: boolean; memberLimited: boolean; wt0: number; wt1: number; }
+export interface AiscAutoResult { result: DesignResult; report: AiscReport; changes: string[]; ok: boolean; memberLimited: boolean; wt0: number; wt1: number; pfCap?: number; }
 
 export function aiscAutoCorrect(r0: DesignResult, cond: DesignCondition): AiscAutoResult {
-  // 얕은 복제(플랜지 지오메트리만 조정)
   const clone = (r: DesignResult): DesignResult => ({
     ...r, flange: { ...r.flange, bolt: { ...r.flange.bolt },
       outerPlate: r.flange.outerPlate ? { ...r.flange.outerPlate } : undefined,
@@ -156,40 +157,44 @@ export function aiscAutoCorrect(r0: DesignResult, cond: DesignCondition): AiscAu
   const changes: string[] = [];
   const pitch = r.flange.pitch ?? 60, edge = r.flange.edge ?? 40, gap = r.flange.gap ?? 10;
   const relenL = (n: number) => 2 * ((Math.round(n) - 1) * pitch + 2 * edge) + gap;
-  let memberLimited = false;
+  let memberLimited = false, pfCap: number | undefined;
 
-  for (let it = 0; it < 20; it++) {
-    const rep = aiscCheck(r, cond);
-    if (rep.ok) return { result: r, report: rep, changes, ok: true, memberLimited, wt0, wt1: plateWt(r) };
+  for (let it = 0; it < 30; it++) {
+    const rep = aiscCheck(r, cond, pfCap);
+    if (rep.ok) return { result: r, report: rep, changes, ok: true, memberLimited, wt0, wt1: plateWt(r), pfCap };
     const fail = rep.checks.filter(c => c.ok === false).sort((a, b) => (b.dcr ?? 0) - (a.dcr ?? 0))[0];
     if (!fail) break;
     const memberSection = fail.clause === 'F13.1' || fail.clause.startsWith('D2');
-    const addRows = () => {                           // 볼트행 추가(→ 지압·블록전단·볼트전단 해소)
-      const n = Math.round(r.flange.bolt.n);
-      if (n < 6) {
-        r.flange.bolt = { m: r.flange.bolt.m, n: n + 1, count: r.flange.bolt.m * (n + 1) };
-        if (r.flange.outerPlate) r.flange.outerPlate.L = relenL(n + 1);
-        if (r.flange.innerPlate) r.flange.innerPlate.L = relenL(n + 1);
-        changes.push(`플랜지 볼트행 ${n}→${n + 1} (${fail.label})`); return true;
-      }
-      const nd = nextUp(r.boltDia, DIAS);
-      if (nd === r.boltDia) return false;
-      r.boltDia = nd as DesignResult['boltDia']; changes.push(`볼트직경 →M${nd} (${fail.label})`); return true;
-    };
 
-    if (memberSection) { memberLimited = true; break; }   // 부재 단면 한계(F13·D2) → 첨판으로 해소 불가
-    else if (fail.region === 'outer' && r.flange.outerPlate) {
-      const t = r.flange.outerPlate.t, nt = nextUp(t, FLANGE_PLATE_T);
+    if (memberSection) {                              // 부재 단면 한계 → 소요를 부재 실제강도로 캡핑
+      const mf = rep.checks.filter(c => c.ok === false && (c.clause === 'F13.1' || c.clause.startsWith('D2')) && c.phiRn && c.demand);
+      const sc = Math.min(...mf.map(c => c.phiRn! / c.demand!));
+      const base = pfCap ?? r.Puf_kN, next = base * sc;
+      if (!(next < base - 0.5)) { memberLimited = true; break; }
+      pfCap = next; memberLimited = true;
+      changes.push(`소요 캡핑 → 부재강도(F13/D2) ${Math.round(pfCap)}kN`);
+    } else if (fail.region === 'outer' && r.flange.outerPlate) {
+      const t = r.flange.outerPlate.t, nt = nextUp(t, AC_T);
       if (nt === t) break;
       r.flange.outerPlate.t = nt; changes.push(`외첨판 두께 ${t}→${nt} (${fail.label})`);
     } else if (fail.region === 'inner' && r.flange.innerPlate) {
-      const t = r.flange.innerPlate.t, nt = nextUp(t, FLANGE_PLATE_T);
+      const t = r.flange.innerPlate.t, nt = nextUp(t, AC_T);
       if (nt === t) break;
       r.flange.innerPlate.t = nt; changes.push(`내첨판 두께 ${t}→${nt} (${fail.label})`);
-    } else {                                          // 볼트전단·부재 지압·부재 블록전단 → 볼트 추가
-      if (!addRows()) break;
+    } else {                                          // 볼트전단·부재지압·부재블록 → 볼트행 우선(직경상향은 파단 악화 회피)
+      const n = Math.round(r.flange.bolt.n);
+      if (n < 8) {
+        r.flange.bolt = { m: r.flange.bolt.m, n: n + 1, count: r.flange.bolt.m * (n + 1) };
+        if (r.flange.outerPlate) r.flange.outerPlate.L = relenL(n + 1);
+        if (r.flange.innerPlate) r.flange.innerPlate.L = relenL(n + 1);
+        changes.push(`플랜지 볼트행 ${n}→${n + 1} (${fail.label})`);
+      } else {
+        const nd = nextUp(r.boltDia, DIAS);
+        if (nd === r.boltDia) break;
+        r.boltDia = nd as DesignResult['boltDia']; changes.push(`볼트직경 →M${nd} (${fail.label})`);
+      }
     }
   }
-  const report = aiscCheck(r, cond);
-  return { result: r, report, changes, ok: report.ok, memberLimited, wt0, wt1: plateWt(r) };
+  const report = aiscCheck(r, cond, pfCap);
+  return { result: r, report, changes, ok: report.ok, memberLimited, wt0, wt1: plateWt(r), pfCap };
 }

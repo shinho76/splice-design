@@ -134,7 +134,7 @@ export default function App() {
                   </>}
                 </div>
                 <div className="dact">
-                  <button className="db primary" onClick={() => setShowReport(true)}>{L('상세 계산서', 'Calc Sheet')}</button>
+                  <button className="db primary" onClick={() => setShowReport(true)}>{cond.designStd === 'AISC' ? L('⚙ 자동보정', '⚙ Auto-fix') : L('상세 계산서', 'Calc Sheet')}</button>
                   <button className="db" onClick={() => exportOneDXF(selected)}>DXF</button>
                   <button className="db" onClick={() => setView3D(selected)}>3D</button>
                   <button className="db" onClick={() => exportOneIFC(selected)}>IFC</button>
