@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import type { DesignCondition, DesignResult } from './engine/types.ts';
 import FilterBar from './components/FilterBar.tsx';
 import ResultTable from './components/ResultTable.tsx';
-import CalcReport from './components/CalcReport.tsx';
-import AiscCalcReport from './components/AiscCalcReport.tsx';
-import QuantityPanel from './components/QuantityPanel.tsx';
-import ProjectPanel from './components/ProjectPanel.tsx';
 import ConnectionSVG from './components/ConnectionSVG.tsx';
-import ThreeViewer from './components/ThreeViewer.tsx';
+// 모달·무거운 컴포넌트는 지연 로딩(초기 번들에서 three·xlsx 제외)
+const CalcReport = lazy(() => import('./components/CalcReport.tsx'));
+const AiscCalcReport = lazy(() => import('./components/AiscCalcReport.tsx'));
+const QuantityPanel = lazy(() => import('./components/QuantityPanel.tsx'));
+const ProjectPanel = lazy(() => import('./components/ProjectPanel.tsx'));
+const ThreeViewer = lazy(() => import('./components/ThreeViewer.tsx'));
 import { loadProject, persistProject, newItem, type ProjectItem } from './engine/project.ts';
 import { LangContext, type Lang, tMember, tJoint } from './i18n.ts';
 import { SECTIONS } from './engine/sections.ts';
@@ -167,12 +168,14 @@ export default function App() {
         </div>
       </div>
 
-      {showReport && selEff && (cond.designStd === 'AISC'
-        ? <AiscCalcReport result={selEff} cond={cond} onClose={() => setShowReport(false)} />
-        : <CalcReport result={selEff} cond={cond} onClose={() => setShowReport(false)} onAdd={addToProject} />)}
-      {showQty && <QuantityPanel cond={cond} diaAt={diaAt} autoFix={autoFix} onClose={() => setShowQty(false)} />}
-      {showProj && <ProjectPanel items={project} onChange={setProject} onClose={() => setShowProj(false)} />}
-      {view3D && <ThreeViewer r={view3D} cond={cond} onClose={() => setView3D(null)} />}
+      <Suspense fallback={<div className="lazy-load">{L('불러오는 중…', 'Loading…')}</div>}>
+        {showReport && selEff && (cond.designStd === 'AISC'
+          ? <AiscCalcReport result={selEff} cond={cond} onClose={() => setShowReport(false)} />
+          : <CalcReport result={selEff} cond={cond} onClose={() => setShowReport(false)} onAdd={addToProject} />)}
+        {showQty && <QuantityPanel cond={cond} diaAt={diaAt} autoFix={autoFix} onClose={() => setShowQty(false)} />}
+        {showProj && <ProjectPanel items={project} onChange={setProject} onClose={() => setShowProj(false)} />}
+        {view3D && <ThreeViewer r={view3D} cond={cond} onClose={() => setView3D(null)} />}
+      </Suspense>
     </div>
     </LangContext.Provider>
   );
