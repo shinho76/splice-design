@@ -1,7 +1,7 @@
 import type { DesignCondition, DesignResult, Plate, BoltArray } from '../engine/types.ts';
 import { SECTIONS } from '../engine/sections.ts';
 import { designConnection } from '../engine/engine.ts';
-import { aiscCheck } from '../engine/aiscCheck.ts';
+import { aiscCheck, aiscAutoCorrect } from '../engine/aiscCheck.ts';
 import { nominalOf, unitWeightOf } from '../engine/hbeam_catalog.ts';
 import { useLang } from '../i18n.ts';
 
@@ -12,10 +12,10 @@ const fmtW = (w: number) => w.toLocaleString('en-US');                   // 단�
 
 const DIAS = [16, 20, 22, 24];   // 사용 직경(표준구멍 d+2 자동 적용)
 
-export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, onSetDia, selectedSection }: {
+export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, onSetDia, selectedSection, autoFix }: {
   cond: DesignCondition; onSelect: (r: DesignResult) => void; onView3D: (r: DesignResult) => void;
   custom?: boolean; diaAt?: (i: number) => number | undefined; onSetDia?: (i: number, d: number) => void;
-  selectedSection?: string;
+  selectedSection?: string; autoFix?: boolean;
 }) {
   const lang = useLang();
   const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
@@ -61,35 +61,37 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
           {rows.map(({ s, r }, i) => {
             const nominal = nominalOf(s.H, s.B);
             const newSeries = i === 0 || nominal !== nominalOf(rows[i - 1].s.H, rows[i - 1].s.B);
-            const inner = fmtPlate(r.flange.innerPlate);
-            const aisc = isAisc ? aiscCheck(r, cond) : null;
-            const ng = aisc ? !aisc.ok : r.steps.some(st => st.check === 'NG');
+            const ac = (isAisc && autoFix) ? aiscAutoCorrect(r, cond) : null;
+            const dr = ac ? ac.result : r;                       // 표시 형상(자동보정 반영)
+            const govDcr = ac ? ac.report.govDcr : (isAisc ? aiscCheck(r, cond).govDcr : null);
+            const inner = fmtPlate(dr.flange.innerPlate);
+            const ng = govDcr != null ? govDcr > 1.0 : r.steps.some(st => st.check === 'NG');
             const sel = r.section === selectedSection;
             return (
-              <tr key={r.section} onClick={() => onSelect(r)} className={`${newSeries ? 'series-top' : ''}${sel ? ' row-sel' : ''}`}>
+              <tr key={r.section} onClick={() => onSelect(dr)} className={`${newSeries ? 'series-top' : ''}${sel ? ' row-sel' : ''}`}>
                 <td className="col-name">
                   <span className={`st-dot${ng ? ' ng' : ''}`} title={ng ? '재검토' : '적합'} />
                   <span className="cn-txt">{r.section}</span>
-                  {aisc && <span className={`ag-dcr${aisc.ok ? '' : ' ng'}`} title={L('AISC 지배 DCR(편람 배치)', 'AISC gov. DCR (KBC layout)')}>{aisc.govDcr.toFixed(2)}</span>}
-                  <button className="t3d" title="3D 보기" onClick={e => { e.stopPropagation(); onView3D(r); }}>3D</button></td>
+                  {govDcr != null && <span className={`ag-dcr${govDcr > 1.0 ? ' ng' : ''}`} title={ac ? L('AISC 지배 DCR(자동보정)', 'AISC gov. DCR (auto-fixed)') : L('AISC 지배 DCR(편람 배치)', 'AISC gov. DCR (KBC layout)')}>{govDcr.toFixed(2)}</span>}
+                  <button className="t3d" title="3D 보기" onClick={e => { e.stopPropagation(); onView3D(dr); }}>3D</button></td>
                 <td>{s.r}</td>
                 <td className="gcol">{fmtW(unitWeightOf(s))}</td>
-                <td>{nf(isCol ? r.Puf_kN : r.Mu_kNm)}</td>
-                <td className="gcol">{nf(r.Vu_kN)}</td>
+                <td>{nf(isCol ? dr.Puf_kN : dr.Mu_kNm)}</td>
+                <td className="gcol">{nf(dr.Vu_kN)}</td>
                 <td className="gcol">{custom
-                  ? <select className="dia-sel" value={r.boltDia} onClick={e => e.stopPropagation()}
+                  ? <select className="dia-sel" value={dr.boltDia} onClick={e => e.stopPropagation()}
                       onChange={e => { e.stopPropagation(); onSetDia?.(i, Number(e.target.value)); }}>
                       {DIAS.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
-                  : r.boltDia}</td>
-                <td>{fmtBolt(r.flange.bolt)}</td>
-                <td>{r.flange.gauge?.g1}</td>
-                <td className="gcol">{r.flange.gauge?.g2 ?? <span className="dash">—</span>}</td>
-                <td>{fmtPlate(r.flange.outerPlate)}</td>
+                  : dr.boltDia}</td>
+                <td>{fmtBolt(dr.flange.bolt)}</td>
+                <td>{dr.flange.gauge?.g1}</td>
+                <td className="gcol">{dr.flange.gauge?.g2 ?? <span className="dash">—</span>}</td>
+                <td>{fmtPlate(dr.flange.outerPlate)}</td>
                 <td className="gcol">{inner ?? <span className="dash">—</span>}</td>
-                <td>{fmtBolt(r.web.bolt)}</td>
-                <td>{r.web.Pc ?? <span className="dash">—</span>}</td>
-                <td>{fmtPlate(r.web.webPlate)}</td>
+                <td>{fmtBolt(dr.web.bolt)}</td>
+                <td>{dr.web.Pc ?? <span className="dash">—</span>}</td>
+                <td>{fmtPlate(dr.web.webPlate)}</td>
               </tr>
             );
           })}

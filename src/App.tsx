@@ -12,6 +12,7 @@ import { loadProject, persistProject, newItem, type ProjectItem } from './engine
 import { LangContext, type Lang, tMember, tJoint } from './i18n.ts';
 import { SECTIONS } from './engine/sections.ts';
 import { designConnection } from './engine/engine.ts';
+import { aiscAutoCorrect } from './engine/aiscCheck.ts';
 import { toDXF, toDXFAll, downloadFile } from './engine/dxf.ts';
 import { toIFC } from './engine/ifcOut.ts';
 import { quantityOf } from './engine/quantity.ts';
@@ -37,6 +38,7 @@ export default function App() {
     return s ? s === 'dark' : true;          // 기본 다크, 이후 선택 기억
   });
   const [lang, setLang] = useState<Lang>(() => (localStorage.getItem('splice_lang') as Lang) || 'ko');
+  const [autoFix, setAutoFix] = useState(false);   // AISC 전체 부재 자동보정 토글
   const L = <K,>(ko: K, en: K): K => (lang === 'en' ? en : ko);   // 짧은 인라인 번역 헬퍼
 
   useEffect(() => {
@@ -67,7 +69,9 @@ export default function App() {
     return { bolts, wt: Math.round(wt), boltWt: Math.round(boltWt), ok, total: SECTIONS.length };
   }, [cond, diaAt]);
 
-  const detailQ = useMemo(() => (selected ? quantityOf(selected, cond) : null), [selected, cond]);
+  // 자동보정 ON(AISC) 시 선택 부재를 보정 형상으로 표시
+  const selEff = (cond.designStd === 'AISC' && autoFix && selected) ? aiscAutoCorrect(selected, cond).result : selected;
+  const detailQ = useMemo(() => (selEff ? quantityOf(selEff, cond) : null), [selEff, cond]);
 
   const addToProject = (r: DesignResult) => setProject(p => [...p, newItem(r.section, cond)]);
   const exportAllDXF = () => {
@@ -99,6 +103,7 @@ export default function App() {
             <button type="button" className={lang === 'ko' ? 'on' : ''} onClick={() => setLang('ko')} aria-pressed={lang === 'ko'} title="한국어">한</button>
             <button type="button" className={lang === 'en' ? 'on' : ''} onClick={() => setLang('en')} aria-pressed={lang === 'en'} title="English">EN</button>
           </div>
+          {cond.designStd === 'AISC' && <button type="button" className={`autofix-btn${autoFix ? ' on' : ''}`} onClick={() => setAutoFix(v => !v)} aria-pressed={autoFix} title={L('전체 부재 AISC 자동보정(DCR≤1.0)', 'Auto-correct all members (DCR≤1.0)')}>⚙ {L('자동보정', 'Auto-fix')}</button>}
           <div className="seg-theme" role="group" aria-label={L('테마 전환', 'Theme')}>
             <button type="button" className={dark ? 'on' : ''} onClick={() => setDark(true)} aria-pressed={dark} title={L('다크 모드', 'Dark')} aria-label={L('다크 모드', 'Dark')}>☾</button>
             <button type="button" className={!dark ? 'on' : ''} onClick={() => setDark(false)} aria-pressed={!dark} title={L('화이트 모드', 'Light')} aria-label={L('화이트 모드', 'Light')}>☀</button>
@@ -114,33 +119,33 @@ export default function App() {
         </div>
 
         <div className="cbody">
-          <div className="cgrid"><ResultTable cond={cond} onSelect={setSelected} onView3D={setView3D} custom={boltMode === 'Custom'} diaAt={diaAt} onSetDia={setDiaAt} selectedSection={selected?.section} /></div>
+          <div className="cgrid"><ResultTable cond={cond} onSelect={setSelected} onView3D={setView3D} custom={boltMode === 'Custom'} diaAt={diaAt} onSetDia={setDiaAt} selectedSection={selected?.section} autoFix={autoFix} /></div>
           <aside className="cdetail">
-            {selected ? (
+            {selEff ? (
               <>
-                <div className="dh">{selected.section}<span className="dbadge">{L('선택됨', 'Selected')}</span></div>
+                <div className="dh">{selEff.section}<span className="dbadge">{autoFix && cond.designStd === 'AISC' ? L('자동보정', 'Auto-fixed') : L('선택됨', 'Selected')}</span></div>
                 <div className="dsub">{tMember(cond.member, lang)} · {tJoint(cond.jointType, lang)} · {cond.steel} · {cond.bolt}</div>
                 <div className="dspecs">
-                  <div><span>{isCol ? L('압축강도', 'Compression') : L('휨모멘트', 'Moment')}</span><b>{nf(isCol ? selected.Puf_kN : selected.Mu_kNm)} kN{isCol ? '' : '·m'}</b></div>
-                  <div><span>{L('플랜지 볼트', 'Flange bolts')}</span><b>{selected.flange.bolt.m}×{selected.flange.bolt.n} · {selected.flange.bolt.m * Math.round(selected.flange.bolt.n) * 4}-M{selected.boltDia}</b></div>
-                  <div><span>{L('외첨판', 'Outer plate')}</span><b>{plate(selected.flange.outerPlate)} ×2</b></div>
-                  <div><span>{L('내첨판', 'Inner plate')}</span><b>{selected.flange.innerPlate ? `${plate(selected.flange.innerPlate)} ×4` : '—'}</b></div>
-                  <div><span>{L('웨브 볼트', 'Web bolts')}</span><b>{selected.web.bolt.m}×{selected.web.bolt.n} · {selected.web.bolt.m * selected.web.bolt.n * 2}-M{selected.boltDia}</b></div>
-                  <div><span>{L('웨브첨판', 'Web plate')}</span><b>{plate(selected.web.webPlate)} ×2</b></div>
+                  <div><span>{isCol ? L('압축강도', 'Compression') : L('휨모멘트', 'Moment')}</span><b>{nf(isCol ? selEff.Puf_kN : selEff.Mu_kNm)} kN{isCol ? '' : '·m'}</b></div>
+                  <div><span>{L('플랜지 볼트', 'Flange bolts')}</span><b>{selEff.flange.bolt.m}×{selEff.flange.bolt.n} · {selEff.flange.bolt.m * Math.round(selEff.flange.bolt.n) * 4}-M{selEff.boltDia}</b></div>
+                  <div><span>{L('외첨판', 'Outer plate')}</span><b>{plate(selEff.flange.outerPlate)} ×2</b></div>
+                  <div><span>{L('내첨판', 'Inner plate')}</span><b>{selEff.flange.innerPlate ? `${plate(selEff.flange.innerPlate)} ×4` : '—'}</b></div>
+                  <div><span>{L('웨브 볼트', 'Web bolts')}</span><b>{selEff.web.bolt.m}×{selEff.web.bolt.n} · {selEff.web.bolt.m * selEff.web.bolt.n * 2}-M{selEff.boltDia}</b></div>
+                  <div><span>{L('웨브첨판', 'Web plate')}</span><b>{plate(selEff.web.webPlate)} ×2</b></div>
                   {detailQ && <>
                     <div className="dspec-hd"><span>{L('고력볼트', 'H.S. bolts')} (KS B 1010)</span><b>{detailQ.boltSpec.totalCount}{L('본', 'ea')} · {detailQ.boltWeightKg} kg</b></div>
-                    <div><span>{L('플랜지볼트', 'Flange bolts')}</span><b>M{selected.boltDia} L{detailQ.boltSpec.flange.length} · {detailQ.boltSpec.flange.count}{L('본', 'ea')} · {detailQ.boltSpec.flange.totalKg} kg</b></div>
-                    <div><span>{L('웨브볼트', 'Web bolts')}</span><b>M{selected.boltDia} L{detailQ.boltSpec.web.length} · {detailQ.boltSpec.web.count}{L('본', 'ea')} · {detailQ.boltSpec.web.totalKg} kg</b></div>
+                    <div><span>{L('플랜지볼트', 'Flange bolts')}</span><b>M{selEff.boltDia} L{detailQ.boltSpec.flange.length} · {detailQ.boltSpec.flange.count}{L('본', 'ea')} · {detailQ.boltSpec.flange.totalKg} kg</b></div>
+                    <div><span>{L('웨브볼트', 'Web bolts')}</span><b>M{selEff.boltDia} L{detailQ.boltSpec.web.length} · {detailQ.boltSpec.web.count}{L('본', 'ea')} · {detailQ.boltSpec.web.totalKg} kg</b></div>
                   </>}
                 </div>
                 <div className="dact">
-                  <button className="db primary" onClick={() => setShowReport(true)}>{cond.designStd === 'AISC' ? L('⚙ 자동보정', '⚙ Auto-fix') : L('상세 계산서', 'Calc Sheet')}</button>
-                  <button className="db" onClick={() => exportOneDXF(selected)}>DXF</button>
-                  <button className="db" onClick={() => setView3D(selected)}>3D</button>
-                  <button className="db" onClick={() => exportOneIFC(selected)}>IFC</button>
-                  <button className="db" onClick={() => addToProject(selected)}>＋ {L('프로젝트', 'Project')}</button>
+                  <button className="db primary" onClick={() => setShowReport(true)}>{L('상세 계산서', 'Calc Sheet')}</button>
+                  <button className="db" onClick={() => exportOneDXF(selEff)}>DXF</button>
+                  <button className="db" onClick={() => setView3D(selEff)}>3D</button>
+                  <button className="db" onClick={() => exportOneIFC(selEff)}>IFC</button>
+                  <button className="db" onClick={() => addToProject(selEff)}>＋ {L('프로젝트', 'Project')}</button>
                 </div>
-                <div className="dprev"><ConnectionSVG r={selected} cond={cond} /></div>
+                <div className="dprev"><ConnectionSVG r={selEff} cond={cond} /></div>
               </>
             ) : (
               <div className="dempty">
@@ -159,9 +164,9 @@ export default function App() {
         </div>
       </div>
 
-      {showReport && selected && (cond.designStd === 'AISC'
-        ? <AiscCalcReport result={selected} cond={cond} onClose={() => setShowReport(false)} />
-        : <CalcReport result={selected} cond={cond} onClose={() => setShowReport(false)} onAdd={addToProject} />)}
+      {showReport && selEff && (cond.designStd === 'AISC'
+        ? <AiscCalcReport result={selEff} cond={cond} onClose={() => setShowReport(false)} />
+        : <CalcReport result={selEff} cond={cond} onClose={() => setShowReport(false)} onAdd={addToProject} />)}
       {showQty && <QuantityPanel cond={cond} diaAt={diaAt} onClose={() => setShowQty(false)} />}
       {showProj && <ProjectPanel items={project} onChange={setProject} onClose={() => setShowProj(false)} />}
       {view3D && <ThreeViewer r={view3D} cond={cond} onClose={() => setView3D(null)} />}
