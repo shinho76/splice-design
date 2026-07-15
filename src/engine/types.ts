@@ -39,6 +39,8 @@ export interface DesignCondition {
   noStagger?: boolean;   // 엇모배치 제외(공칭300을 정렬 2/4열로 설계)
   equalPlateT?: boolean; // 내·외첨판 동일 두께 설계(합성 순단면 기준 단일 두께)
   gap?: number;          // 이음부 이격 갭(mm, 0·5·10). 기본 10
+  designStd?: 'KBC' | 'AISC';  // 설계기준. 기본 KBC-09(편람). AISC=360-16 전 한계상태 검토
+  threadCond?: 'N' | 'X';      // AISC 볼트 나사조건(전단면 통과 N / 제외 X). 기본 N
 }
 
 /** 첨판 치수 (두께 × 폭[or 춤] × 길이[or 너비]) */
