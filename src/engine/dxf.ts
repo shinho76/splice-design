@@ -24,6 +24,9 @@ const ff = (n: number) => n.toFixed(2);
 export interface Doc { e: string[]; blk: string[]; n: number; }
 export const newDoc = (): Doc => ({ e: [], blk: [], n: 0 });
 
+/** 통일 도곽(전 단면 중 최대 크기) — 전체 DXF 출력 시 모든 상세에 동일 테두리 적용 */
+export interface UniFrame { frameL: number; frameRC: number; frameR: number; frameTop: number; frameBot: number; }
+
 // 채운 원형 치수머리(DOT_FILLED): CIRCLE 외곽 + 정사각·마름모 SOLID 채움 (변환 적용)
 function roundDot(t: Xf, x: number, y: number, lay = 'DIM'): string[] {
   const r = 2.6, s = 1.85, d = 2.6;
@@ -220,12 +223,20 @@ export function layout(r: DesignResult, isCol: boolean) {
   };
 }
 
-export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox: number, oy: number) {
+export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox: number, oy: number, uni?: UniFrame) {
   const isCol = cond.member === '기둥';
   const L = layout(r, isCol);
-  const tM = mkXf(ox + L.mOx, oy + L.mOy, L.deg);   // 부재·치수(회전)
-  const tF = mkXf(ox, oy, 0);                        // 테두리·정보표·지시선·단면라벨(정립)
-  const p = pen(doc, tM), pf = pen(doc, tF);
+  // 통일 도곽(uni) 사용 시: 테두리·표제·단면도는 도곽(F) 좌표, 콘텐츠는 도곽 중앙에 오도록 cd만큼 이동.
+  const F: UniFrame = uni ?? { frameL: L.frameL, frameRC: L.frameRC, frameR: L.frameR, frameTop: L.frameTop, frameBot: L.frameBot };
+  const cdx = uni ? ((F.frameL + F.frameRC) / 2 - (L.frameL + L.frameRC) / 2) : 0;
+  const cdy = uni ? ((F.frameTop + F.frameBot) / 2 - (L.frameTop + L.frameBot) / 2) : 0;
+  const csCx = uni ? F.frameRC + (F.frameR - F.frameRC) / 2 : L.csCx;
+  const csCy = uni ? (F.frameTop + F.frameBot) / 2 : L.csCy;
+  const boxTopE = uni ? F.frameBot + 4 * L.boxRow + 16 : L.boxTop;   // 표제란을 도곽 하단에 고정
+  const tM = mkXf(ox + cdx + L.mOx, oy + cdy + L.mOy, L.deg);        // 부재·치수(회전·콘텐츠 중앙이동)
+  const tFc = mkXf(ox + cdx, oy + cdy, 0);                           // 지시선(콘텐츠 앵커)
+  const tFf = mkXf(ox, oy, 0);                                       // 테두리·표제·단면도(도곽 좌표)
+  const p = pen(doc, tM), pfc = pen(doc, tFc), pff = pen(doc, tFf);
   const { H, tw, tf, oT, Lpf, outerW, webWid, contentHalf, yF, yW, gap, base, memHalf } = L;
   const fB = r.flange.bolt, wB = r.web.bolt, dia = r.boltDia;
   const g1 = r.flange.gauge?.g1 ?? 90, g2 = r.flange.gauge?.g2 ?? 0;
@@ -309,17 +320,18 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   const tMl = mkXf(L.mOx, L.mOy, L.deg);
   const outerA = pt(tMl, -Lpf / 3, yW + H / 2 + oT), innerA = pt(tMl, -(inner?.L ?? Lpf) / 3, yW + H / 2 - tf - (inner?.t ?? 0) / 2);
   const webA = pt(tMl, -webWid / 2, yW), wbA = pt(tMl, -webWid / 4, yW - chum / 2 + 20), fbA = pt(tMl, -base, yF + g1 / 2);
-  const lx = L.frameL + 70, rx = L.frameRC - 70;
+  // 지시선 텍스트는 도곽 여백에 두되, 콘텐츠 앵커펜(pfc) 기준 로컬로 환산(−cd)해 앵커와 좌표계 일치
+  const lx = F.frameL + 70 - cdx, rx = F.frameRC - 70 - cdx;
   if (!isCol) {                                   // 보: 좌측 여백 스택
-    let ly = L.frameTop - 70;
-    const put = (a: [number, number], txt: string) => { leader(pf, a[0], a[1], lx, ly, txt); ly -= 62; };
+    let ly = F.frameTop - 70 - cdy;
+    const put = (a: [number, number], txt: string) => { leader(pfc, a[0], a[1], lx, ly, txt); ly -= 62; };
     put(outerA, gpl(r.flange.outerPlate, 2));
     if (inner) put(innerA, gpl(inner, 4));
     put(webA, gpl(r.web.webPlate, 2));
     put(wbA, btb(wCount));
     put(fbA, btb(flCount));
   } else {                                        // 기둥: 웨브뷰=좌 / 플랜지뷰=우, 앵커 높이로 수평 라우팅
-    const putH = (a: [number, number], txX: number, dy: number, txt: string) => leader(pf, a[0], a[1], txX, a[1] + dy, txt);
+    const putH = (a: [number, number], txX: number, dy: number, txt: string) => leader(pfc, a[0], a[1], txX, a[1] + dy, txt);
     putH(webA, lx, 40, gpl(r.web.webPlate, 2));
     putH(wbA, lx, -40, btb(wCount));
     putH(outerA, rx, 40, gpl(r.flange.outerPlate, 2));
@@ -327,20 +339,20 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
     putH(fbA, rx, -40, btb(flCount));
   }
 
-  // ── 외곽 테두리 + 단면라벨 + 하단 MINI_BOX(정립) + 우측 단면도 ──
-  pf.rect(L.frameL, L.frameBot, L.frameR - L.frameL, L.frameTop - L.frameBot, 'MINI_BOX');
-  pf.line(L.frameRC, L.frameBot, L.frameRC, L.frameTop, 'MINI_BOX');   // 본도면/단면도 구분선
-  pf.text((L.frameL + L.frameRC) / 2, L.frameTop - 34, TH * 1.2, secLbl, 'DIM', { align: 'c' });
+  // ── 외곽 테두리 + 단면라벨 + 하단 MINI_BOX(도곽 좌표) + 우측 단면도 ──
+  pff.rect(F.frameL, F.frameBot, F.frameR - F.frameL, F.frameTop - F.frameBot, 'MINI_BOX');
+  pff.line(F.frameRC, F.frameBot, F.frameRC, F.frameTop, 'MINI_BOX');   // 본도면/단면도 구분선
+  pff.text((F.frameL + F.frameRC) / 2, F.frameTop - 34, TH * 1.2, secLbl, 'DIM', { align: 'c' });
   // 우측 단면도 : H형강 단면(필렛 R 반영)
-  hSection(pf, L.csCx, L.csCy, H, B, tw, tf, fr, 'MAIN');
-  pf.text(L.csCx, L.csCy + H / 2 + 40, TH * 1.2, 'SECTION', 'DIM', { align: 'c' });
-  pf.text(L.csCx, L.csCy - H / 2 - 56, TH, secLbl, 'DIM', { align: 'c' });
-  const bl2 = L.frameL + 6, br2 = L.frameRC - 6, midX = (bl2 + br2) / 2, Lw = 150;
-  const rw = [L.boxTop, L.boxTop - L.boxRow, L.boxTop - 2 * L.boxRow, L.boxTop - 3 * L.boxRow, L.boxTop - 4 * L.boxRow];
-  pf.rect(bl2, rw[4], br2 - bl2, rw[0] - rw[4], 'MINI_BOX');
-  for (let i = 1; i < 4; i++) pf.line(bl2, rw[i], br2, rw[i], 'MINI_BOX');
-  [bl2 + Lw, midX, midX + Lw].forEach(x => pf.line(x, rw[4], x, rw[0], 'MINI_BOX'));
-  const tx = (x: number, ri: number, s: string) => pf.text(x + 10, (rw[ri] + rw[ri + 1]) / 2 - TB / 2, TB, s, 'DIM');
+  hSection(pff, csCx, csCy, H, B, tw, tf, fr, 'MAIN');
+  pff.text(csCx, csCy + H / 2 + 40, TH * 1.2, 'SECTION', 'DIM', { align: 'c' });
+  pff.text(csCx, csCy - H / 2 - 56, TH, secLbl, 'DIM', { align: 'c' });
+  const bl2 = F.frameL + 6, br2 = F.frameRC - 6, midX = (bl2 + br2) / 2, Lw = 150;
+  const rw = [boxTopE, boxTopE - L.boxRow, boxTopE - 2 * L.boxRow, boxTopE - 3 * L.boxRow, boxTopE - 4 * L.boxRow];
+  pff.rect(bl2, rw[4], br2 - bl2, rw[0] - rw[4], 'MINI_BOX');
+  for (let i = 1; i < 4; i++) pff.line(bl2, rw[i], br2, rw[i], 'MINI_BOX');
+  [bl2 + Lw, midX, midX + Lw].forEach(x => pff.line(x, rw[4], x, rw[0], 'MINI_BOX'));
+  const tx = (x: number, ri: number, s: string) => pff.text(x + 10, (rw[ri] + rw[ri + 1]) / 2 - TB / 2, TB, s, 'DIM');
   tx(bl2, 0, 'Title'); tx(bl2 + Lw, 0, secLbl); tx(midX, 0, 'Steel'); tx(midX + Lw, 0, cond.steel);
   tx(bl2, 1, 'Web PL.'); tx(bl2 + Lw, 1, gpl(r.web.webPlate, 2)); tx(midX, 1, 'O-Flg PL.'); tx(midX + Lw, 1, gpl(r.flange.outerPlate, 2));
   tx(bl2, 2, 'Web Bolt'); tx(bl2 + Lw, 2, btb(wCount)); tx(midX, 2, 'I-Flg PL.'); tx(midX + Lw, 2, inner ? gpl(inner, 4) : '-');
@@ -356,7 +368,7 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
     `3. EDGE ${fEdge}  PITCH ${fPitchN}  GAP ${gap}  (mm)`,
     `4. DESIGN: ${std}`,
   ];
-  notes.forEach((s, i) => pf.text(L.frameRC + 16, L.frameBot + 44 + (notes.length - 1 - i) * 30, i === 0 ? TH : TH * 0.85, s, 'DIM', { align: 'l' }));
+  notes.forEach((s, i) => pff.text(F.frameRC + 16, F.frameBot + 44 + (notes.length - 1 - i) * 30, i === 0 ? TH : TH * 0.85, s, 'DIM', { align: 'l' }));
 }
 
 const LAYERS: [string, number][] = [['MAIN', 7], ['FLG_PL', 3], ['WEB_PL', 4], ['BOLT', 6], ['VER_BOLT', 1], ['DIM', 7], ['MINI_BOX', 7]];
@@ -412,9 +424,29 @@ export function placeGrid(rows: DesignResult[], isCol: boolean, emit: (r: Design
     emit(r, ox, oy);
   });
 }
+/** 전 단면의 최대 도곽 산정(모든 상세 공통 테두리) */
+export function uniformFrame(rows: DesignResult[], isCol: boolean): UniFrame {
+  const Ls = rows.map(r => layout(r, isCol));
+  const frameL = Math.min(...Ls.map(L => L.frameL));
+  const frameRC = Math.max(...Ls.map(L => L.frameRC));            // 본도면 영역 최대 우측
+  const csStrip = Math.max(...Ls.map(L => L.frameR - L.frameRC)); // 단면도 스트립 최대 폭
+  const frameTop = Math.max(...Ls.map(L => L.frameTop));
+  const frameBot = Math.min(...Ls.map(L => L.frameBot));
+  return { frameL, frameRC, frameR: frameRC + csStrip, frameTop, frameBot };
+}
+
 export function toDXFAll(rows: DesignResult[], cond: DesignCondition): string {
   const doc = newDoc();
-  placeGrid(rows, cond.member === '기둥', (r, ox, oy) => emitMember(doc, r, cond, ox, oy));
+  const isCol = cond.member === '기둥';
+  const uni = uniformFrame(rows, isCol);                          // 가장 큰 형강 기준 통일 도곽
+  const fw = uni.frameR - uni.frameL, fh = uni.frameTop - uni.frameBot;
+  const COLS = 3, GAP = 400, cellW = fw + GAP, cellH = fh + GAP;
+  rows.forEach((r, i) => {
+    const col = i % COLS, row = Math.floor(i / COLS);
+    const ox = col * cellW + GAP / 2 - uni.frameL;                // 통일 도곽을 셀에 정렬 배치
+    const oy = -row * cellH - GAP / 2 - uni.frameTop;
+    emitMember(doc, r, cond, ox, oy, uni);                        // 각 상세를 통일 도곽 중앙에
+  });
   return wrap(doc);
 }
 export function downloadFile(filename: string, content: string | ArrayBuffer, mime: string) {
