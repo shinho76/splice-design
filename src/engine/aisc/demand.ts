@@ -13,8 +13,10 @@ import type { DemandSet } from './types.ts';
 export interface DemandInput {
   /** 축력 P (N) — 앱은 순수 휨접합이라 기본 0. 향후 조합력 확장용. */
   axialP_N?: number;
-  /** 부재강도 캡핑 배율(1=무캡핑) */
-  capScale?: number;
+  /** 플랜지(Pf·Mu) 부재강도 캡핑 배율(1=무캡핑) */
+  flangeScale?: number;
+  /** 웨브(Vu·Mux) 부재강도 캡핑 배율(1=무캡핑) */
+  webScale?: number;
 }
 
 /** 웨브 볼트군 편심 e (mm) = 이음갭/2 + 축방향 연단 + (축방향 열수−1)·축피치/2 */
@@ -27,27 +29,20 @@ export function webEccentricity(r: DesignResult): number {
   return gap / 2 + edge + ((nAxis - 1) * pitch) / 2;
 }
 
+const clampScale = (s?: number) => (s != null && s > 0 && s < 1 ? s : 1);
+
 /** 소요력 세트 산정 */
 export function computeDemand(r: DesignResult, inp: DemandInput = {}): DemandSet {
-  const { H, tf } = parseName(r.section);
-  const capScale = inp.capScale != null && inp.capScale > 0 && inp.capScale < 1 ? inp.capScale : 1;
-  const arm = Math.max(1, H - tf); // 커플 arm (mm)
+  parseName(r.section); // 유효성(치수 파싱)
+  const fScale = clampScale(inp.flangeScale);
+  const wScale = clampScale(inp.webScale);
 
   // 플랜지 소요축력: 편람 Puf(=M/(H−tf))를 채택(참고식과 동치). 축력 P 있으면 P/2 가산.
-  const Pf = (r.Puf_kN * 1e3 * capScale) + (inp.axialP_N ?? 0) / 2;
-  const Mu = r.Mu_kNm * 1e6 * capScale;
-  const Vu = r.Vu_kN * 1e3 * capScale;
+  const Pf = (r.Puf_kN * 1e3 * fScale) + (inp.axialP_N ?? 0) / 2;
+  const Mu = r.Mu_kNm * 1e6 * fScale;
+  const Vu = r.Vu_kN * 1e3 * wScale;
   const e = webEccentricity(r);
   const MuxWeb = Vu * e;
 
-  return {
-    Pf,
-    half: Pf / 2,
-    Mu,
-    Vu,
-    MuxWeb,
-    e,
-    capScale,
-    // arm은 내부 계산용 — 노출 불필요하나 참고 위해 note로 남기지 않음
-  } as DemandSet & { arm?: number };
+  return { Pf, half: Pf / 2, Mu, Vu, MuxWeb, e, capScale: Math.min(fScale, wScale) };
 }

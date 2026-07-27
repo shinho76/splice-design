@@ -91,8 +91,9 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
     // 순단면: 수직선상 nVert개 구멍 공제(파단)
     const yPos = Array.from({ length: nVert }, (_, i) => (i - (nVert - 1) / 2) * Pc);
     const Ihole = yPos.reduce((s, y) => s + nHoriz * (dh * tp) * y * y, 0) * 2; // 2매
-    const Snet = Math.max(1, Ipl - Ihole) / (dp / 2);
-    const Anv = 2 * Math.max(0, dp - nVert * dh) * tp;
+    const Inet = Math.max(0.4 * Ipl, Ipl - Ihole);          // 순단면 관성 하한 0.4Ig(붕괴 방지)
+    const Snet = Inet / (dp / 2);
+    const Anv = 2 * Math.max(0.25 * dp, dp - nVert * dh) * tp; // 순전단폭 하한 0.25dp
 
     // 항복 상호작용 (φ=0.9 휨, φv=1.0 전단항복)
     const phiMnY = PHI.F * pFy * Zpl, phiVnY = PHI.SH * 0.6 * pFy * Awpl;
