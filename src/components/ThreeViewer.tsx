@@ -86,14 +86,6 @@ export default function ThreeViewer({ r, cond, onClose }: { r: DesignResult; con
       const m = new THREE.Mesh(beamGeo, sgn > 0 ? steel : steel2);   // 좌우 부재 톤 구분
       m.position.z = sgn > 0 ? P.gap / 2 : -P.gap / 2 - P.segLen; model.add(m);
     }
-    // 맞댐면(z=0) 이음선 — 갭이 작아 두 부재 단면이 맞닿을 때 접합면을 뚜렷이 표시
-    if (P.gap <= 2) {
-      const seam = new THREE.LineSegments(
-        new THREE.EdgesGeometry(new THREE.ShapeGeometry(hSh)),
-        new THREE.LineBasicMaterial({ color: 0x8894a2, depthTest: false, transparent: true }),
-      );
-      seam.position.z = 0; seam.renderOrder = 2; model.add(seam);
-    }
     for (const bx of P.boxes) {
       const m = new THREE.Mesh(new THREE.BoxGeometry(bx.sx, bx.sy, bx.sz), bx.kind === 'web' ? webMat : flgMat);
       m.position.set(bx.cx, bx.cy, bx.cz); model.add(m);
