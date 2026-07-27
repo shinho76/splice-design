@@ -49,9 +49,11 @@ export interface BlockCase {
   Agv: number;        // 총전단면적 mm²
   Anv: number;        // 순전단면적 mm²
   Ant: number;        // 순인장면적 mm²
-  Rn: number;         // 공칭 kN
-  phiRn: number;      // 설계 kN
-  gov?: boolean;      // 이 요소에서 지배(최소)
+  Rn: number;         // 공칭강도 (N)
+  phiRn: number;      // 설계강도 (N)
+  frac: number;       // 이 블록이 분리시키는 하중분담 = 블록내 볼트수/전체 볼트수
+  dcr?: number;       // (frac·소요)/φRn — 케이스 판정
+  gov?: boolean;      // 이 요소에서 지배(최대 DCR)
 }
 
 /** 소요력 세트 (demand.ts에서 산정, 단일 소스) */

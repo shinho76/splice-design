@@ -79,14 +79,15 @@ export interface BlockShearParams {
 }
 
 /**
- * 요소별 블록전단 후보 케이스 열거 후 최소 지배.
- *   Case C  : U블록 — 최외곽 2전단면 + 전열간 인장 (Ubs=1.0)
- *   Case A  : 외연 L블록 — 1전단면 + 최외곽열→판단 인장 (Ubs=0.5)
- *   Case B  : 중앙 L블록 — 1전단면 + 최내곽열→CL 인장 (Ubs=0.5)
- *   Case D  : 내측 페어 U블록 — 내측 2전단면 + 내측쌍 인장 (Ubs=1.0, m≥4)
- * 단일열(cols.length=1) 요소는 A(양연 L) 만 산정.
+ * 요소별 블록전단 후보 케이스 열거.
+ *   Case C  : 전열 U블록 — 최외곽 2전단면 + 전열간 인장 (Ubs=1.0, 전체볼트 분리 frac=1)
+ *   Case A  : 외연 L블록 — 1전단면 + 최외곽열→판단 인장 (Ubs=0.5, 1열 분리 frac=1/m)
+ *   Case B  : 중앙 L블록 — 1전단면 + 최내곽열→CL 인장 (Ubs=0.5, 1열 frac=1/m)
+ *   Case D  : 내측 페어 U블록 — 내측 2전단면 + 내측쌍 인장 (Ubs=1.0, 2열 frac=2/m, m≥4)
+ * 각 케이스는 분리 볼트수에 비례하는 하중분담 frac 을 가진다(부분블록은 tributary 하중과 비교).
+ * 단일열(cols.length=1) 요소는 C(양연 U블록)만 산정.
  */
-export function blockShear(p: BlockShearParams): { cases: BlockCase[]; gov: BlockCase } {
+export function blockShear(p: BlockShearParams): { cases: BlockCase[]; gov?: BlockCase } {
   const { t, Fy, Fu, d, nrow, Lv, halfWidth, cols } = p;
   const dh = holeDia(d);
   const nShear = nrow - 0.5;               // 전단선 구멍수(코너 반개 공유)
@@ -99,41 +100,38 @@ export function blockShear(p: BlockShearParams): { cases: BlockCase[]; gov: Bloc
   const xOut = Math.max(...cols.map(Math.abs));
   const xIn = Math.min(...cols.map(Math.abs));
   const cs: BlockCase[] = [];
-
-  // Case A: 외연 L블록 (항상)
-  cs.push({
-    label: 'A(외연 L블록)', Ubs: UBS.NONUNIFORM,
-    Agv: AgvOne, Anv: AnvOne, Ant: antLine(halfWidth - xOut),
-    ...bsCapacity(AgvOne, AnvOne, antLine(halfWidth - xOut), Fu, Fy, UBS.NONUNIFORM),
-  });
+  const mk = (label: string, Ubs: number, Agv: number, Anv: number, Ant: number, frac: number): BlockCase =>
+    ({ label, Ubs, Agv, Anv, Ant, frac, ...bsCapacity(Agv, Anv, Ant, Fu, Fy, Ubs) });
 
   if (m >= 2) {
-    // Case C: 전열 U블록
-    const spanC = xOut - Math.min(...cols); // 최외곽 좌우 간격
-    cs.push({
-      label: 'C(전열 U블록)', Ubs: UBS.UNIFORM,
-      Agv: 2 * AgvOne, Anv: 2 * AnvOne, Ant: antSpan(spanC, m - 1),
-      ...bsCapacity(2 * AgvOne, 2 * AnvOne, antSpan(spanC, m - 1), Fu, Fy, UBS.UNIFORM),
-    });
-    // Case B: 중앙 L블록 (내측열→CL)
-    if (xIn > 0.1) {
-      cs.push({
-        label: 'B(중앙 L블록)', Ubs: UBS.NONUNIFORM,
-        Agv: AgvOne, Anv: AnvOne, Ant: antLine(xIn),
-        ...bsCapacity(AgvOne, AnvOne, antLine(xIn), Fu, Fy, UBS.NONUNIFORM),
-      });
-    }
+    // Case C: 전열 U블록 (전체 하중)
+    const spanC = xOut - Math.min(...cols);
+    cs.push(mk('C(전열 U블록)', UBS.UNIFORM, 2 * AgvOne, 2 * AnvOne, antSpan(spanC, m - 1), 1.0));
+    // Case A: 외연 L블록 (1열 분리)
+    cs.push(mk('A(외연 L블록)', UBS.NONUNIFORM, AgvOne, AnvOne, antLine(halfWidth - xOut), 1 / m));
+    // Case B: 중앙 L블록 (1열 분리)
+    if (xIn > 0.1) cs.push(mk('B(중앙 L블록)', UBS.NONUNIFORM, AgvOne, AnvOne, antLine(xIn), 1 / m));
+    // Case D: 내측 페어 U블록 (2열 분리, m≥4)
+    if (m >= 4 && xIn > 0.1) cs.push(mk('D(내측 페어)', UBS.UNIFORM, 2 * AgvOne, 2 * AnvOne, antSpan(2 * xIn, 1), 2 / m));
+  } else {
+    // 단일열: 양연 U블록만(전체 하중)
+    cs.push(mk('C(양연 U블록)', UBS.UNIFORM, 2 * AgvOne, 2 * AnvOne, antSpan(2 * xOut, 0), 1.0));
   }
-  // Case D: 내측 페어 U블록 (m≥4)
-  if (m >= 4 && xIn > 0.1) {
-    cs.push({
-      label: 'D(내측 페어)', Ubs: UBS.UNIFORM,
-      Agv: 2 * AgvOne, Anv: 2 * AnvOne, Ant: antSpan(2 * xIn, 1),
-      ...bsCapacity(2 * AgvOne, 2 * AnvOne, antSpan(2 * xIn, 1), Fu, Fy, UBS.UNIFORM),
-    });
-  }
+  return { cases: cs };
+}
 
-  const gov = cs.reduce((a, b) => (b.phiRn < a.phiRn ? b : a));
+/**
+ * 블록전단 지배 케이스 판정 — 각 케이스를 tributary 하중(frac·demandN)과 비교,
+ * 최대 DCR 케이스가 지배. 반환 phiRn/demand는 지배 케이스 기준.
+ */
+export function blockShearGovern(p: BlockShearParams, demandN: number, plates = 1):
+  { cases: BlockCase[]; gov: BlockCase; phiRn: number; demand: number; dcr: number } {
+  const { cases } = blockShear(p);
+  for (const c of cases) {
+    c.phiRn *= plates; c.Rn *= plates;                    // 다판(내첨판·웨브 첨판 ×2) 합산
+    c.dcr = +((c.frac * demandN) / c.phiRn).toFixed(3);
+  }
+  const gov = cases.reduce((a, b) => (b.dcr! > a.dcr! ? b : a));
   gov.gov = true;
-  return { cases: cs, gov };
+  return { cases, gov, phiRn: gov.phiRn, demand: gov.frac * demandN, dcr: gov.dcr! };
 }

@@ -17,13 +17,13 @@ export interface DemandInput {
   capScale?: number;
 }
 
-/** 웨브 볼트군 편심 e (mm) = 이음갭/2 + 응력방향 연단 + (축방향 열수−1)·피치/2 */
+/** 웨브 볼트군 편심 e (mm) = 이음갭/2 + 축방향 연단 + (축방향 열수−1)·축피치/2 */
 export function webEccentricity(r: DesignResult): number {
   const gap = r.web.gap ?? r.flange.gap ?? 10;
   const edge = r.web.edge ?? 40;
-  const pitch = r.web.pitch ?? 60;
-  // 웨브 첨판은 부재축 방향으로 볼트열(=web.bolt.m 열)을 가진다고 본다.
-  const nAxis = Math.max(1, r.web.bolt?.m ?? 1);
+  const pitch = r.web.pitch ?? 60;        // 축방향(부재축) 피치 webP
+  // 축방향 볼트열수 = web.bolt.n (m=춤방향, n=축방향)
+  const nAxis = Math.max(1, r.web.bolt?.n ?? 1);
   return gap / 2 + edge + ((nAxis - 1) * pitch) / 2;
 }
 
