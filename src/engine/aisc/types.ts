@@ -10,17 +10,18 @@ export type Region = 'bolt' | 'outer' | 'inner' | 'web' | 'member';
  * 식 → 대입 → φ·공칭 → 판정을 모두 보존해 계산서/검증에 사용.
  */
 export interface AiscStep {
-  label: string;      // 항목명
+  label: string;      // 항목명 (영문 서술 계산서용)
   formula?: string;   // 일반식  "φ·Fnv·Ab·Ns·n"
   subst?: string;     // 수치 대입  "0.75·450·380·2·6"
+  value?: number;     // 중간 스칼라(면적·Fcr·계수 등)
   Rn?: number;        // 공칭강도 (kN 또는 kN·m)
   phi?: number;       // 적용 φ
   phiRn?: number;     // 설계강도 (kN 또는 kN·m)
   demand?: number;    // 소요 (kN 또는 kN·m)
   dcr?: number;       // 소요/설계
   ok?: boolean;
-  unit?: string;      // 'kN' | 'kN·m'
-  ref: string;        // 조항 "J3.6"
+  unit?: string;      // 'mm²' | 'kN' | 'kN·m' | 'MPa' …
+  ref?: string;       // 조항 "J3.6"
   note?: string;
 }
 

@@ -12,7 +12,10 @@ import { Ab, To_kN } from '../bolts.ts';
 import { PHI, FNV_FACTOR, SLIP, holeDia, kN, kNm } from './constants.ts';
 import { bearing, blockShearGovern } from './geometry.ts';
 import { bsDetail } from './flange.ts';
-import type { AiscCheck, DemandSet } from './types.ts';
+import type { AiscCheck, AiscStep, DemandSet } from './types.ts';
+
+const S = (label: string, formula?: string, subst?: string, value?: number, unit?: string, ref?: string): AiscStep =>
+  ({ label, formula, subst, value, unit, ref });
 
 function finalize(c: AiscCheck): AiscCheck {
   if (c.phiRn != null && c.demand != null && c.phiRn > 0) {
@@ -55,7 +58,12 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
   {
     const phiRn = PHI.V * Fnv * ab * Ns * nb;
     checks.push(finalize({ id: 'WB1', region: 'web', group: 'A. 볼트(웨브)', label: '볼트 전단(이중전단)', clause: 'J3.6',
-      detail: `φFnvAb·ns·n = 0.75·${Fnv.toFixed(0)}·${ab}·2·${nb} (${thread}, 동심 C=n)`, phiRn: kN(phiRn), demand: kN(Vu), unit: 'kN' }));
+      detail: `φFnvAb·ns·n = 0.75·${Fnv.toFixed(0)}·${ab}·2·${nb} (${thread}, 동심 C=n)`, phiRn: kN(phiRn), demand: kN(Vu), unit: 'kN',
+      steps: [
+        S('Nominal shear stress Fnv', thread === 'X' ? '0.563·Fu(bolt)' : '0.450·Fu(bolt)', `${FNV_FACTOR[thread]}·${Fub}`, +Fnv.toFixed(0), 'MPa', 'J3.6'),
+        S('Bolt group', 'concentric (plate carries eccentric moment)', `ns=2, n=${nVert}×${nHoriz}=${nb}`),
+        S('Design shear φRn', 'φ·Fnv·Ab·ns·n', `0.75·${Fnv.toFixed(0)}·${ab}·2·${nb}`, kN(phiRn), 'kN'),
+      ] }));
     if (cond.jointType === '마찰') {
       const Tb = To_kN[cond.bolt][('M' + d) as BoltName] ?? 0;
       const slip = PHI.SL * SLIP.MU * SLIP.DU * SLIP.HF * Tb * Ns * nb;
@@ -73,7 +81,12 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
     const govWeb = brWeb.total <= brPl.total;
     checks.push(finalize({ id: 'WR1', region: 'web', group: g, label: '지압·찢김(웨브/첨판)', clause: 'J3.10',
       detail: `min(웨브 ${kN(brWeb.total)}, 첨판×2 ${kN(brPl.total)}) → ${govWeb ? '웨브' : '첨판'}`,
-      phiRn: kN(Math.min(brWeb.total, brPl.total)), demand: kN(Vu), unit: 'kN' }));
+      phiRn: kN(Math.min(brWeb.total, brPl.total)), demand: kN(Vu), unit: 'kN',
+      steps: [
+        S('Member web (t = tw)', 'Σ φ·min(2.4dtFu, 1.2Lc·t·Fu)', `tw=${tw}, n=${nb}`, kN(brWeb.total), 'kN', 'J3.10'),
+        S('Splice plates (t = 2·tp)', 'Σ φ·min(2.4dtFu, 1.2Lc·t·Fu)', `2tp=${2 * tp}, n=${nb}`, kN(brPl.total), 'kN'),
+        S('Governing (min)', 'min(web, plates)', govWeb ? 'member web' : 'plates', kN(Math.min(brWeb.total, brPl.total)), 'kN'),
+      ] }));
   }
 
   // ── WP. 첨판 블록전단(×2, 수직 전단·수평 인장) Case A/B/C ──
@@ -100,13 +113,30 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
     const yLHS = (Mux / phiMnY) ** 2 + (Vu / phiVnY) ** 2;
     checks.push(finalize({ id: 'WI1', region: 'web', group: g, label: '항복 상호작용', clause: 'J4.4/G2',
       detail: `√[(Mux/φMn)²+(Vu/φVn)²] = √[(${kNm(Mux)}/${kNm(phiMnY)})²+(${kN(Vu)}/${kN(phiVnY)})²]`,
-      phiRn: 1.0, demand: +Math.sqrt(yLHS).toFixed(2), unit: 'ratio', note: `e=${e.toFixed(0)}mm` }));
+      phiRn: 1.0, demand: +Math.sqrt(yLHS).toFixed(2), unit: 'ratio', note: `e=${e.toFixed(0)}mm`,
+      steps: [
+        S('Eccentricity e', 'gap/2 + edge + (n−1)·pitch/2', `bolt group centroid → splice CL`, +e.toFixed(0), 'mm'),
+        S('Eccentric moment Mux', 'Vu·e', `${kN(Vu)}·${e.toFixed(0)}`, kNm(Mux), 'kN·m'),
+        S('Plastic modulus Zpl (2 plates)', '2·(t·dp²/4)', `2·${tp}·${dp}²/4`, +Zpl.toFixed(0), 'mm³'),
+        S('Gross shear area Aw (2 plates)', '2·dp·t', `2·${dp}·${tp}`, +Awpl.toFixed(0), 'mm²'),
+        S('Design flexural φMn', 'φ·Fy·Zpl', `0.90·${pFy}·${Zpl.toFixed(0)}`, kNm(phiMnY), 'kN·m'),
+        S('Design shear φVn', 'φv·0.6·Fy·Aw', `1.0·0.6·${pFy}·${Awpl.toFixed(0)}`, kN(phiVnY), 'kN', 'G2.1'),
+        S('Interaction', '√[(Mux/φMn)² + (Vu/φVn)²] ≤ 1', `√[(${kNm(Mux)}/${kNm(phiMnY)})²+(${kN(Vu)}/${kN(phiVnY)})²]`, +Math.sqrt(yLHS).toFixed(2), 'ratio', 'J4.4'),
+      ] }));
     // 파단 상호작용 (φ=0.75)
     const phiMnR = PHI.V * pFu * Snet, phiVnR = PHI.V * 0.6 * pFu * Anv;
     const rLHS = (Mux / phiMnR) ** 2 + (Vu / phiVnR) ** 2;
     checks.push(finalize({ id: 'WI2', region: 'web', group: g, label: '파단 상호작용', clause: 'J4.2/J4.3',
       detail: `√[(Mux/φMnₙₑₜ)²+(Vu/φVnₙₑₜ)²] = √[(${kNm(Mux)}/${kNm(phiMnR)})²+(${kN(Vu)}/${kN(phiVnR)})²]`,
-      phiRn: 1.0, demand: +Math.sqrt(rLHS).toFixed(2), unit: 'ratio' }));
+      phiRn: 1.0, demand: +Math.sqrt(rLHS).toFixed(2), unit: 'ratio',
+      steps: [
+        S('Net shear width', 'dp − nVert·dₕ (floor 0.25dp)', `${dp} − ${nVert}·${dh}`, +Math.max(0.25 * dp, dp - nVert * dh).toFixed(0), 'mm'),
+        S('Net shear area Anv (2 plates)', '2·(net width)·t', `2·${Math.max(0.25 * dp, dp - nVert * dh).toFixed(0)}·${tp}`, +Anv.toFixed(0), 'mm²', 'B4.3b'),
+        S('Net elastic modulus Snet', 'Inet/(dp/2), Inet=Ig−Iholes', `holes at ±y deducted`, +Snet.toFixed(0), 'mm³'),
+        S('Design flexural rupture φMn', 'φ·Fu·Snet', `0.75·${pFu}·${Snet.toFixed(0)}`, kNm(phiMnR), 'kN·m', 'J4.2'),
+        S('Design shear rupture φVn', 'φ·0.6·Fu·Anv', `0.75·0.6·${pFu}·${Anv.toFixed(0)}`, kN(phiVnR), 'kN', 'J4.2'),
+        S('Interaction', '√[(Mux/φMn)² + (Vu/φVn)²] ≤ 1', `√[(${kNm(Mux)}/${kNm(phiMnR)})²+(${kN(Vu)}/${kN(phiVnR)})²]`, +Math.sqrt(rLHS).toFixed(2), 'ratio'),
+      ] }));
   }
 
   // ── WM. 부재 웨브 ──
@@ -114,7 +144,11 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
     const gm = 'F. 부재 웨브';
     const Aw = H * tw;
     checks.push(finalize({ id: 'WM1', region: 'member', group: gm, label: '웨브 전단항복', clause: 'G2.1',
-      detail: `φv·0.6·Fy·Aw = 1.0·0.6·${mFy}·${Aw.toFixed(0)}`, phiRn: kN(PHI.SH * 0.6 * mFy * Aw), demand: kN(Vu), unit: 'kN' }));
+      detail: `φv·0.6·Fy·Aw = 1.0·0.6·${mFy}·${Aw.toFixed(0)}`, phiRn: kN(PHI.SH * 0.6 * mFy * Aw), demand: kN(Vu), unit: 'kN',
+      steps: [
+        S('Gross web area Aw', 'H·tw', `${H}·${tw}`, +Aw.toFixed(0), 'mm²'),
+        S('Design shear yield φVn', 'φv·0.6·Fy·Aw', `1.0·0.6·${mFy}·${Aw.toFixed(0)}`, kN(PHI.SH * 0.6 * mFy * Aw), 'kN', 'G2.1'),
+      ] }));
     const bs = blockShearGovern({ t: tw, Fy: mFy, Fu: mFu, d, nrow: nVert, Lv: LvVert, halfWidth: dp / 2, cols: colsAxis }, Vu, 1);
     checks.push(finalize({ id: 'WM2', region: 'member', group: gm, label: '웨브 블록 전단', clause: 'J4.3',
       detail: bsDetail(bs), phiRn: kN(bs.phiRn), demand: kN(bs.demand), unit: 'kN', cases: bs.cases }));

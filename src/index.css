@@ -459,3 +459,36 @@ body {
   .kpi-strip { grid-template-columns: repeat(3, 1fr); }
   .ctop { flex-wrap: wrap; }
 }
+
+/* ── AISC 상세계산서(영문 서술형) ── */
+.doc.narr { max-width: 900px; line-height: 1.55; }
+.narr-lead, .narr-p { color: var(--fg); font-size: 12.5px; margin: 6px 0; }
+.narr-lead { color: var(--muted); }
+.narr-eq { white-space: nowrap; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 12px; }
+.narr-cap { background: var(--accent-soft); border-left: 3px solid var(--accent); padding: 8px 10px; border-radius: 0 6px 6px 0; }
+.narr-check { margin: 10px 0 14px; padding: 10px 12px; border: 1px solid var(--line-soft); border-radius: 8px; background: var(--panel2); }
+.narr-check.is-ng { border-color: #d9534f; }
+.narr-ct { font-weight: 800; font-size: 13px; color: var(--fg); }
+.narr-id { display: inline-block; min-width: 34px; padding: 1px 6px; margin-right: 4px; border-radius: 5px; background: var(--accent); color: var(--on-accent); font-size: 11px; }
+.narr-cl { color: var(--muted); font-weight: 600; font-size: 11px; }
+.narr-intro { margin: 5px 0 7px; color: var(--muted); font-size: 12px; font-style: italic; }
+.narr-steps { margin: 4px 0 6px; padding-left: 20px; list-style: decimal; }
+.narr-steps li { margin: 2px 0; font-size: 12px; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
+.ns-label { color: var(--fg); font-weight: 700; }
+.ns-eq { color: var(--accent2); }
+.ns-sub { color: var(--muted); }
+.ns-val b { color: var(--fg); }
+.ns-ref { color: var(--faint); margin-left: 6px; font-size: 10.5px; }
+.narr-bs-note { font-size: 11.5px; color: var(--muted); margin: 6px 0 4px; }
+.narr-bs { width: 100%; border-collapse: collapse; margin: 4px 0 6px; font-size: 11.5px; }
+.narr-bs th, .narr-bs td { border: 1px solid var(--line-soft); padding: 3px 6px; text-align: center; }
+.narr-bs th { background: var(--head-bg); color: var(--muted); font-weight: 700; }
+.narr-bs .bs-lb { text-align: left; }
+.narr-bs .bs-gov { background: var(--accent-soft); }
+.narr-bs .bs-gov b { color: var(--accent); }
+.narr-concl { margin: 6px 0 0; padding: 6px 10px; border-radius: 6px; font-size: 12.5px; }
+.narr-concl.ok { background: rgba(60,170,90,.12); }
+.narr-concl.ng { background: rgba(217,83,79,.14); }
+.narr-dcr { font-weight: 700; }
+.narr-na { color: var(--muted); font-size: 12px; font-style: italic; margin: 4px 0 0; }
+@media print { .doc.narr .narr-check { break-inside: avoid; } }
