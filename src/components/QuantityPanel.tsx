@@ -4,7 +4,7 @@ import { designConnection } from '../engine/engine.ts';
 import { quantityOf, aggregate, quantityCsv } from '../engine/quantity.ts';
 import { downloadFile } from '../engine/dxf.ts';
 import { downloadXlsx } from '../engine/xlsxOut.ts';
-import { aiscAutoCorrect } from '../engine/aiscCheck.ts';
+import { aiscAutoCorrect } from '../engine/aisc/compat.ts';
 import { useLang, tMember, tJoint } from '../i18n.ts';
 
 const nf = (v: number) => v.toLocaleString('en-US');

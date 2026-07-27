@@ -13,7 +13,7 @@ import { loadProject, persistProject, newItem, type ProjectItem } from './engine
 import { LangContext, type Lang, tMember, tJoint } from './i18n.ts';
 import { SECTIONS } from './engine/sections.ts';
 import { designConnection } from './engine/engine.ts';
-import { aiscAutoCorrect } from './engine/aiscCheck.ts';
+import { aiscAutoCorrect } from './engine/aisc/compat.ts';
 import { toDXF, toDXFAll, downloadFile } from './engine/dxf.ts';
 import { toIFC } from './engine/ifcOut.ts';
 import { quantityOf } from './engine/quantity.ts';

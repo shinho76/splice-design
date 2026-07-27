@@ -1,7 +1,7 @@
 import type { DesignCondition, DesignResult, Plate, BoltArray } from '../engine/types.ts';
 import { SECTIONS } from '../engine/sections.ts';
 import { designConnection } from '../engine/engine.ts';
-import { aiscCheck, aiscAutoCorrect } from '../engine/aiscCheck.ts';
+import { aiscCheck, aiscAutoCorrect } from '../engine/aisc/compat.ts';
 import { nominalOf, unitWeightOf } from '../engine/hbeam_catalog.ts';
 import { useLang } from '../i18n.ts';
 

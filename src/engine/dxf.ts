@@ -231,7 +231,9 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   const g1 = r.flange.gauge?.g1 ?? 90, g2 = r.flange.gauge?.g2 ?? 0;
   const stag = r.flange.staggered ?? false;
   const inner = r.flange.innerPlate;
-  const rad = BOLT_HOLE[boltNameByDia[dia]].hole / 2;
+  const hole = BOLT_HOLE[boltNameByDia[dia]].hole, rad = hole / 2;
+  const grade = cond.bolt;                                   // 볼트 등급(F10T·A490 등) 병기
+  const btb = (n: number) => `${n}-M${dia} ${grade} H.T.B`;  // 표준 볼트 콜아웃
   const flCount = fB.m * round(fB.n) * 4, wCount = wB.m * wB.n * 2;
   const B = parseName(r.section).B;
   const secLbl = `H-${H}x${B}x${tw}x${tf}`;
@@ -314,15 +316,15 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
     put(outerA, gpl(r.flange.outerPlate, 2));
     if (inner) put(innerA, gpl(inner, 4));
     put(webA, gpl(r.web.webPlate, 2));
-    put(wbA, `${wCount}-M${dia} H.T.B`);
-    put(fbA, `${flCount}-M${dia} H.T.B`);
+    put(wbA, btb(wCount));
+    put(fbA, btb(flCount));
   } else {                                        // 기둥: 웨브뷰=좌 / 플랜지뷰=우, 앵커 높이로 수평 라우팅
     const putH = (a: [number, number], txX: number, dy: number, txt: string) => leader(pf, a[0], a[1], txX, a[1] + dy, txt);
     putH(webA, lx, 40, gpl(r.web.webPlate, 2));
-    putH(wbA, lx, -40, `${wCount}-M${dia} H.T.B`);
+    putH(wbA, lx, -40, btb(wCount));
     putH(outerA, rx, 40, gpl(r.flange.outerPlate, 2));
     if (inner) putH(innerA, rx, 0, gpl(inner, 4));
-    putH(fbA, rx, -40, `${flCount}-M${dia} H.T.B`);
+    putH(fbA, rx, -40, btb(flCount));
   }
 
   // ── 외곽 테두리 + 단면라벨 + 하단 MINI_BOX(정립) + 우측 단면도 ──
@@ -341,8 +343,20 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   const tx = (x: number, ri: number, s: string) => pf.text(x + 10, (rw[ri] + rw[ri + 1]) / 2 - TB / 2, TB, s, 'DIM');
   tx(bl2, 0, 'Title'); tx(bl2 + Lw, 0, secLbl); tx(midX, 0, 'Steel'); tx(midX + Lw, 0, cond.steel);
   tx(bl2, 1, 'Web PL.'); tx(bl2 + Lw, 1, gpl(r.web.webPlate, 2)); tx(midX, 1, 'O-Flg PL.'); tx(midX + Lw, 1, gpl(r.flange.outerPlate, 2));
-  tx(bl2, 2, 'Web Bolt'); tx(bl2 + Lw, 2, `${wCount}-M${dia} H.T.B`); tx(midX, 2, 'I-Flg PL.'); tx(midX + Lw, 2, inner ? gpl(inner, 4) : '-');
-  tx(bl2, 3, 'Joint'); tx(bl2 + Lw, 3, jointLbl); tx(midX, 3, 'Flg Bolt'); tx(midX + Lw, 3, `${flCount}-M${dia} H.T.B`);
+  tx(bl2, 2, 'Web Bolt'); tx(bl2 + Lw, 2, btb(wCount)); tx(midX, 2, 'I-Flg PL.'); tx(midX + Lw, 2, inner ? gpl(inner, 4) : '-');
+  tx(bl2, 3, 'Joint'); tx(bl2 + Lw, 3, jointLbl); tx(midX, 3, 'Flg Bolt'); tx(midX + Lw, 3, btb(flCount));
+
+  // ── 디테일러 노트(우측 단면도 스트립 하단, 정립) — 볼트·구멍·연단·피치·갭·기준 ──
+  const fEdge = r.flange.edge ?? 40, fPitchN = r.flange.pitch ?? 60;
+  const std = cond.designStd === 'AISC' ? 'AISC 360-16 LRFD' : 'KBC-09 LSD';
+  const notes = [
+    'NOTES',
+    `1. BOLT: M${dia} ${grade} H.T.B,  HOLE DIA ${hole} STD`,
+    `2. ${cond.jointType === '지압' ? 'BEARING-TYPE JOINT' : 'SLIP-CRITICAL, FAYING CLASS B (u=0.50)'}`,
+    `3. EDGE ${fEdge}  PITCH ${fPitchN}  GAP ${gap}  (mm)`,
+    `4. DESIGN: ${std}`,
+  ];
+  notes.forEach((s, i) => pf.text(L.frameRC + 16, L.frameBot + 44 + (notes.length - 1 - i) * 30, i === 0 ? TH : TH * 0.85, s, 'DIM', { align: 'l' }));
 }
 
 const LAYERS: [string, number][] = [['MAIN', 7], ['FLG_PL', 3], ['WEB_PL', 4], ['BOLT', 6], ['VER_BOLT', 1], ['DIM', 7], ['MINI_BOX', 7]];

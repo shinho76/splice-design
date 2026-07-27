@@ -1,5 +1,5 @@
 import type { DesignResult, DesignCondition } from '../engine/types.ts';
-import { aiscAutoCorrect, type AiscCheck } from '../engine/aiscCheck.ts';
+import { aiscAutoCorrect, type AiscCheck } from '../engine/aisc/compat.ts';
 import { parseName } from '../engine/sections.ts';
 import { useLang, tMember, tJoint } from '../i18n.ts';
 
@@ -60,8 +60,8 @@ export default function AiscCalcReport({ result, cond, onClose }: { result: Desi
         </div>
 
         <div className="doc-head">
-          <div className="doc-kicker">AISC 360-16 (15TH ED.) · LRFD · {L('플랜지 이음 검토', 'FLANGE SPLICE CHECK')}</div>
-          <h2>{L('AISC 360-16 플랜지 첨판 이음 계산서', 'AISC 360-16 Flange Splice Calculation')}</h2>
+          <div className="doc-kicker">AISC 360-16 (15TH ED.) · LRFD · {L('플랜지·웨브 이음 전 한계상태 검토', 'FLANGE & WEB SPLICE — ALL LIMIT STATES')}</div>
+          <h2>{L('AISC 360-16 첨판 이음 계산서', 'AISC 360-16 Splice Calculation')}</h2>
           <table className="doc-meta"><tbody>
             <tr><th>{L('부재 / 접합', 'Member / Joint')}</th><td>{r.section} · {tMember(cond.member, lang)} {tJoint(cond.jointType, lang)}</td><th>{L('나사조건', 'Thread')}</th><td>{cond.threadCond ?? 'N'}</td></tr>
             <tr><th>{L('강종(H/판)', 'Steel H/PL')}</th><td>{cond.steel} / {cond.plateSteel ?? cond.steel} · {L('볼트', 'Bolt')} {cond.bolt}</td><th>{L('플랜지력 Pf', 'Flange force Pf')}</th><td>{r.Puf_kN.toLocaleString()} kN</td></tr>
@@ -107,8 +107,8 @@ export default function AiscCalcReport({ result, cond, onClose }: { result: Desi
             </table>
           </section>
         ))}
-        <p className="note">{L('※ 편람 표준배치를 입력으로 AISC 360-16 전 한계상태 검토 후, DCR>1.0 항목을 강재 중량 최소 방향(판두께·볼트 표준증분)으로 자동보정한 결과. 블록전단은 대표 U블록(요소별 Case A~D 세분은 추후). 부재 F13·D2 초과는 부재 단면 상향으로만 해소.',
-          '※ KBC standard layout is checked against all AISC 360-16 limit states, then DCR>1.0 items are auto-corrected toward minimum steel weight (standard plate-thickness / bolt increments). Block shear uses a representative U-block. Member F13/D2 overstress requires a larger section.')}</p>
+        <p className="note">{L('※ 편람 표준배치를 입력으로 AISC 360-16 전 한계상태(플랜지 FB/FP/FI/FM · 웨브 WB/WR/WP/WI/WM)를 검토 후, DCR>1.0 항목을 강재 중량 최소 방향(첨판두께·볼트·웨브첨판 표준증분)으로 자동 최소화한 결과. 블록전단은 요소별 Case A/B/C/D를 하중분담(tributary)으로 판정한 최소지배. 부재 F13·D2·전단항복 초과는 소요를 부재강도로 캡핑(부분강도접합).',
+          '※ KBC standard layout is checked against all AISC 360-16 limit states (flange FB/FP/FI/FM, web WB/WR/WP/WI/WM), then DCR>1.0 items are auto-minimized toward least steel weight (plate-thickness / bolt increments). Block shear evaluates element cases A/B/C/D by tributary load. Member F13/D2/shear-yield overstress caps demand to member strength (partial-strength splice).')}</p>
       </div>
     </div>
   );
