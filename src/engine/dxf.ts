@@ -8,7 +8,7 @@ import { BOLT_HOLE, boltNameByDia } from './bolts.ts';
 const round = Math.round;
 const TH = 20;   // 도면 문자높이
 const TB = 34;   // 정보표 문자높이
-const FONT = 'OpenSansCondensed-Light';  // exe 실측 폰트(TTF). 전 TEXT 스타일 참조명
+const FONT = 'STANDARD';  // 표준 텍스트 스타일(txt.shx 기반) — 특정 폰트 미설치 PC에서도 열리도록 이식성 확보
 const ARROW = 5.0;                        // exe DIMSTYLE dimasz(41) = _ARCHTICK INSERT scale
 const PW = 4;                             // 입면 첨판 두꺼운 선 폭(POLYLINE width)
 
@@ -365,10 +365,18 @@ const ARCHTICK_BLOCK = ['0', 'BLOCK', '8', '0', '2', '_ARCHTICK', '70', '0', '10
   '0', 'LINE', '8', '0', '10', '-0.5', '20', '-0.5', '30', '0', '11', '0.5', '21', '0.5', '31', '0',
   '0', 'ENDBLK', '8', '0'];
 function wrap(doc: Doc): string {
-  // STYLE: STANDARD(txt) + exe 폰트 OpenSansCondensed-Light(ttf)
-  const styleT = ['0', 'TABLE', '2', 'STYLE', '70', '2',
-    '0', 'STYLE', '2', 'STANDARD', '70', '0', '40', '0.0', '41', '1.0', '50', '0.0', '71', '0', '42', '2.5', '3', 'txt', '4', '',
-    '0', 'STYLE', '2', FONT, '70', '0', '40', '0.0', '41', '1.0', '50', '0.0', '71', '0', '42', '20.0', '3', FONT + '.ttf', '4', ''];
+  // STYLE: 단일 STANDARD 스타일(SHX 'txt' — 모든 CAD 내장). 외부 TTF 의존 제거 → 이식성.
+  const styleT = ['0', 'TABLE', '2', 'STYLE', '70', '1',
+    '0', 'STYLE', '2', 'STANDARD', '70', '0', '40', '0.0', '41', '1.0', '50', '0.0', '71', '0', '42', '2.5', '3', 'txt', '4', ''];
+  // VPORT: *ACTIVE 뷰포트(R12 필수 테이블) — 누락 시 엄격한 리더가 파일 거부
+  const vportT = ['0', 'TABLE', '2', 'VPORT', '70', '1',
+    '0', 'VPORT', '2', '*ACTIVE', '70', '0',
+    '10', '0.0', '20', '0.0', '11', '1.0', '21', '1.0',
+    '12', '0.0', '22', '0.0', '13', '0.0', '23', '0.0',
+    '14', '10.0', '24', '10.0', '15', '10.0', '25', '10.0',
+    '16', '0.0', '26', '0.0', '36', '1.0', '17', '0.0', '27', '0.0', '37', '0.0',
+    '40', '1000.0', '41', '1.5', '42', '50.0', '43', '0.0', '44', '0.0',
+    '50', '0.0', '51', '0.0', '71', '0', '72', '100', '73', '1', '74', '3', '75', '0', '76', '0', '77', '0', '78', '0'];
   const ltT = ['0', 'TABLE', '2', 'LTYPE', '70', '2',
     '0', 'LTYPE', '2', 'CONTINUOUS', '70', '0', '3', 'Solid line', '72', '65', '73', '0', '40', '0',
     '0', 'LTYPE', '2', 'HIDDEN', '70', '0', '3', '__ __ __', '72', '65', '73', '2', '40', '30.0', '49', '20.0', '49', '-10.0'];
@@ -379,10 +387,10 @@ function wrap(doc: Doc): string {
     '0', 'DIMSTYLE', '2', 'STANDARD', '70', '0', '3', '', '4', '', '5', '', '6', '', '7', '',
     '40', '1.0', '41', ff(ARROW), '42', '3.0', '43', '3.75', '44', '1.25', '140', String(TH), '141', '2.5', '144', '1.0', '147', '2.0',
     '73', '0', '74', '0', '77', '1', '78', '8'];
-  return ['0', 'SECTION', '2', 'HEADER', '9', '$ACADVER', '1', 'AC1009', '9', '$INSUNITS', '70', '4', '9', '$DIMSTYLE', '2', 'STANDARD', '9', '$TEXTSTYLE', '7', FONT, '0', 'ENDSEC',
-    '0', 'SECTION', '2', 'TABLES', ...ltT, '0', 'ENDTAB', ...layT, '0', 'ENDTAB', ...styleT, '0', 'ENDTAB', ...dimT, '0', 'ENDTAB', '0', 'ENDSEC',
+  return ['0', 'SECTION', '2', 'HEADER', '9', '$ACADVER', '1', 'AC1009', '9', '$INSUNITS', '70', '4', '9', '$DIMSTYLE', '2', 'STANDARD', '9', '$TEXTSTYLE', '7', 'STANDARD', '0', 'ENDSEC',
+    '0', 'SECTION', '2', 'TABLES', ...vportT, '0', 'ENDTAB', ...ltT, '0', 'ENDTAB', ...layT, '0', 'ENDTAB', ...styleT, '0', 'ENDTAB', ...dimT, '0', 'ENDTAB', '0', 'ENDSEC',
     '0', 'SECTION', '2', 'BLOCKS', ...ARCHTICK_BLOCK, ...doc.blk, '0', 'ENDSEC',
-    '0', 'SECTION', '2', 'ENTITIES', ...doc.e, '0', 'ENDSEC', '0', 'EOF'].join('\n');
+    '0', 'SECTION', '2', 'ENTITIES', ...doc.e, '0', 'ENDSEC', '0', 'EOF'].join('\r\n');   // CRLF: DXF 관례(엄격 파서 호환)
 }
 
 export function toDXF(r: DesignResult, cond: DesignCondition): string {
