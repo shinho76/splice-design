@@ -111,7 +111,6 @@ export default function App() {
             <button type="button" className={lang === 'ko' ? 'on' : ''} onClick={() => setLang('ko')} aria-pressed={lang === 'ko'} title="한국어">한</button>
             <button type="button" className={lang === 'en' ? 'on' : ''} onClick={() => setLang('en')} aria-pressed={lang === 'en'} title="English">EN</button>
           </div>
-          {cond.designStd === 'AISC' && <button type="button" className={`autofix-btn${autoFix ? ' on' : ''}`} onClick={() => setAutoFix(v => !v)} aria-pressed={autoFix} title={L('전체 부재 AISC 자동보정(DCR≤1.0)', 'Auto-correct all members (DCR≤1.0)')}>⚙ {L('자동보정', 'Auto-fix')}</button>}
           <div className="seg-theme" role="group" aria-label={L('테마 전환', 'Theme')}>
             <button type="button" className={dark ? 'on' : ''} onClick={() => setDark(true)} aria-pressed={dark} title={L('다크 모드', 'Dark')} aria-label={L('다크 모드', 'Dark')}>☾</button>
             <button type="button" className={!dark ? 'on' : ''} onClick={() => setDark(false)} aria-pressed={!dark} title={L('화이트 모드', 'Light')} aria-label={L('화이트 모드', 'Light')}>☀</button>
@@ -122,6 +121,11 @@ export default function App() {
           <aside className="cfilters">
             <div className="cfilters-h">☰ {L('설계 조건', 'Design Conditions')}</div>
             <FilterBar cond={cond} onChange={setCond} boltMode={boltMode} onBoltMode={setBoltMode} />
+            {cond.designStd === 'AISC' && (
+              <div className="cf-autofix">
+                <button type="button" className={autoFix ? 'on' : ''} onClick={() => setAutoFix(v => !v)} aria-pressed={autoFix} title={L('전체 부재 AISC 자동보정(DCR≤1.0)', 'Auto-correct all members (DCR≤1.0)')}>⚙ {L('전체 자동보정', 'Auto-fix all')}</button>
+              </div>
+            )}
             <div className="cfilters-hint">▸ {L('조건을 바꾸면 결과표가 즉시 갱신됩니다.', 'Changing conditions updates the table instantly.')}</div>
           </aside>
 

@@ -142,7 +142,7 @@ body {
 .toolbar-actions { display: flex; align-items: center; gap: 7px; padding: 0 14px; margin-left: auto; border-left: 1px solid var(--line-soft); }
 
 /* ===== 결과 테이블: 스프레드시트 ===== */
-.tablewrap { flex: 1; overflow: auto; min-height: 0; background: var(--bg); }
+.tablewrap { flex: 1; overflow: auto; scrollbar-gutter: stable; min-height: 0; background: var(--bg); }
 .design-table {
   border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1170px; table-layout: fixed;
   font-size: 11.5px; white-space: nowrap; font-variant-numeric: tabular-nums;
@@ -379,9 +379,12 @@ body {
 .seg-theme { display: inline-flex; flex-shrink: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel); }
 .seg-theme button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 11px; font-weight: 700; padding: 5px 11px; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: .15s; white-space: nowrap; }
 .seg-theme button.on { background: var(--accent); color: var(--on-accent); }
-.autofix-btn { flex-shrink: 0; height: 28px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); font-weight: 700; font-size: 11.5px; cursor: pointer; white-space: nowrap; transition: .15s; }
-.autofix-btn:hover { border-color: var(--accent); color: var(--accent); }
-.autofix-btn.on { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+/* 자동보정 버튼 — 필터 패널(갭) 하단 */
+.cf-autofix { padding: 3px 12px 8px; }
+.cf-autofix button { width: 100%; height: 30px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel);
+  color: var(--fg); font-weight: 700; font-size: 11px; cursor: pointer; transition: .15s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.cf-autofix button:hover { border-color: var(--accent); color: var(--accent); }
+.cf-autofix button.on { background: var(--accent); color: var(--on-accent); border-color: transparent; }
 .lazy-load { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
   background: rgba(0,0,0,.45); color: var(--fg); font-weight: 700; font-size: 14px; z-index: 50; }
 .seg-theme button:not(.on):hover { color: var(--accent); }
@@ -398,25 +401,27 @@ body {
 
 .cbody { flex: 1; display: grid; grid-template-columns: 288px 1fr 344px; min-height: 0; }
 .cgrid { display: flex; flex-direction: column; overflow: hidden; min-width: 0; flex: 1; }
-.cdetail { overflow: auto; background: var(--panel2); padding: 14px 15px; border-left: 1px solid var(--line); }
+.cdetail { overflow: auto; scrollbar-gutter: stable; background: var(--panel2); padding: 14px 15px; border-left: 1px solid var(--line); }
 
 /* ===== 3-pane: 좌측 설계조건 · 중앙 결과 · 우측 상세 ===== */
-.cfilters { display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; background: var(--panel); border-right: 1px solid var(--line); }
+.cfilters { display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; background: var(--panel); border-right: 1px solid var(--line); }
 .cfilters-h { padding: 13px 14px 9px; font-size: 12.5px; font-weight: 800; color: var(--fg); letter-spacing: .02em; }
 .cfilters-hint { margin-top: auto; padding: 12px 14px; font-size: 10.5px; color: var(--muted); border-top: 1px solid var(--line-soft); }
 .ccenter { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
-.ctop-title { font-size: 11.5px; color: var(--muted); font-weight: 600; margin-left: 2px; }
+.ctop-title { font-size: 11.5px; color: var(--muted); font-weight: 600; margin-left: 2px; min-width: 0; flex-shrink: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ctop-sp { flex: 1; }
 /* FilterBar 세로화 */
-.cfilters .filterbar { flex-direction: column; flex-wrap: nowrap; background: transparent; border-bottom: 0; gap: 0; padding: 0 12px 6px; overflow: visible; }
-.cfilters .fgrp { flex-direction: column; align-items: stretch; gap: 9px; margin: 0 0 11px; padding-bottom: 11px; border-bottom: 1px solid var(--line-soft); }
+/* 콤팩트: 라벨-컨트롤 한 줄, 버튼·드롭다운 축소 */
+.cfilters .filterbar { flex-direction: column; flex-wrap: nowrap; background: transparent; border-bottom: 0; gap: 0; padding: 4px 12px 4px; overflow: visible; }
+.cfilters .fgrp { flex-direction: column; align-items: stretch; gap: 5px; margin: 0 0 7px; padding-bottom: 7px; border-bottom: 1px solid var(--line-soft); }
 .cfilters .fgrp:last-child { border-bottom: 0; margin-bottom: 0; }
-.cfilters .fld { padding: 0; width: 100%; }
-.cfilters .fld > label { font-size: 10px; margin-bottom: 2px; }
-.cfilters .fld select { width: 100%; }
-.cfilters .alpha-ctl, .cfilters .alpha input { width: 100%; }
-.cfilters .seg { display: flex; }
-.cfilters .seg button { flex: 1; text-align: center; }
+.cfilters .fld { flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; padding: 0; width: 100%; min-height: 24px; }
+.cfilters .fld > label { font-size: 9.5px; margin: 0; width: 56px; flex-shrink: 0; line-height: 1.15; }
+.cfilters .fld select { width: auto; flex: 1; min-width: 0; padding: 3px 6px; font-size: 11px; }
+.cfilters .fld.alpha .alpha-ctl { width: auto; flex: 1; }
+.cfilters .fld.alpha .alpha-ctl select { width: 100%; }
+.cfilters .seg { display: flex; flex: 1; padding: 2px; }
+.cfilters .seg button { flex: 1; text-align: center; padding: 3px 4px; font-size: 10.5px; }
 .dh { font-size: 15px; font-weight: 800; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; }
 .dbadge { font-size: 9.5px; font-weight: 700; letter-spacing: .4px; color: var(--accent); background: var(--accent-soft);
   border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 999px; padding: 2px 8px; }
