@@ -1,6 +1,7 @@
 import type { DesignCondition, DesignResult, CalcStep } from '../engine/types.ts';
 import ConnectionSVG from './ConnectionSVG.tsx';
 import { toDXF, downloadFile } from '../engine/dxf.ts';
+import { kbcCheck } from '../engine/kbcCheck.ts';
 import { useLang, tr, tMember, tJoint } from '../i18n.ts';
 
 const nf = (v: number | undefined) => v == null ? '' : v.toLocaleString('en-US');
@@ -17,6 +18,8 @@ export default function CalcReport({ result, cond, onClose, onAdd }: {
   const groups: Record<string, CalcStep[]> = {};
   for (const s of result.steps) { if (!groups[s.group]) order.push(s.group); (groups[s.group] ??= []).push(s); }
   const secs = order.map((g, i) => ({ no: i + 1, title: stripPrefix(g), steps: groups[g] }));
+  const dcr = kbcCheck(result, cond);
+  const dcrRows = dcr.items.slice().sort((a, b) => b.dcr - a.dcr);
 
   const exportDXF = () => downloadFile(`${result.section}_${cond.jointType}.dxf`, toDXF(result, cond), 'application/dxf');
   const pct = Math.round(cond.strengthRatio * 100);
@@ -50,7 +53,8 @@ export default function CalcReport({ result, cond, onClose, onAdd }: {
           <ol>
             {secs.map(s => <li key={s.no}><span className="toc-no">{s.no}.</span>{tr(s.title, lang)}<span className="toc-dot" /></li>)}
             <li><span className="toc-no">{secs.length + 1}.</span>{L('설계 결과 요약', 'Design Summary')}<span className="toc-dot" /></li>
-            <li><span className="toc-no">{secs.length + 2}.</span>{L('접합 상세도', 'Connection Detail')}<span className="toc-dot" /></li>
+            <li><span className="toc-no">{secs.length + 2}.</span>{L('한계상태별 DCR 검토', 'DCR by Limit State')}<span className="toc-dot" /></li>
+            <li><span className="toc-no">{secs.length + 3}.</span>{L('접합 상세도', 'Connection Detail')}<span className="toc-dot" /></li>
           </ol>
         </nav>
 
@@ -93,8 +97,34 @@ export default function CalcReport({ result, cond, onClose, onAdd }: {
           </table>
         </section>
 
+        {dcr.govDcr != null && (
+          <section className="doc-sec">
+            <h3><span className="sec-no">{secs.length + 2}.</span>{L('한계상태별 DCR 검토', 'DCR by Limit State')}</h3>
+            <p className="cs-basis">▸ {L('DCR = 소요강도 / 설계강도. 지배(최대) DCR = ', 'DCR = demand / design capacity. Governing (max) DCR = ')}
+              <b className={dcr.govDcr > 1 ? 'cs-ng' : 'cs-ok'}>{dcr.govDcr.toFixed(2)}</b>
+              {dcr.govDcr > 1 ? L(' → 재검토 필요', ' → review required') : L(' ≤ 1.0 ∴ OK', ' ≤ 1.0 ∴ OK')}</p>
+            <table className="result-table2 dcr-report">
+              <thead><tr><th>{L('검토항목', 'Limit state')}</th><th>{L('소요', 'Demand')}</th><th>{L('설계강도', 'Capacity')}</th><th>{L('조항', 'Ref')}</th><th>DCR</th></tr></thead>
+              <tbody>
+                {dcrRows.map(it => {
+                  const gov = it.id === dcr.govId, ng = it.dcr > 1;
+                  return (
+                    <tr key={it.id} className={`${gov ? 'dcr-govrow' : ''}${ng ? ' dcr-ngrow' : ''}`}>
+                      <td>{gov && <span className="dcr-star">▲</span>}{tr(it.label, lang)} <span className="q">［{it.ref}］</span></td>
+                      <td>{nf(Math.round(it.demand))} {it.unit}</td>
+                      <td>{nf(Math.round(it.capacity))} {it.unit}</td>
+                      <td className="q">{it.ref}</td>
+                      <td className={`dcr-val${ng ? ' ng' : ''}${gov ? ' gov' : ''}`}>{it.dcr.toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </section>
+        )}
+
         <section className="doc-sec">
-          <h3><span className="sec-no">{secs.length + 2}.</span>{L('접합 상세도', 'Connection Detail')}</h3>
+          <h3><span className="sec-no">{secs.length + 3}.</span>{L('접합 상세도', 'Connection Detail')}</h3>
           <ConnectionSVG r={result} cond={cond} />
         </section>
       </div>

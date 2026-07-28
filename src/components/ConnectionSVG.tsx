@@ -1,5 +1,5 @@
 import type { DesignResult, DesignCondition } from '../engine/types.ts';
-import { parseName } from '../engine/sections.ts';
+import { parseName, sectionByName } from '../engine/sections.ts';
 import { useLang, tJoint, tMember } from '../i18n.ts';
 
 /**
@@ -25,9 +25,10 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
   // 플랜지 볼트 좌표(양단 40 연단): 정렬=60, 엇모=지그재그(짝수열 j·90, 홀수열 45+j·90)
   const nHi = Math.ceil(fB.n), nLo = Math.floor(fB.n);
   const fBolts: { x: number; y: number }[] = [];
-  ([1, -1] as const).forEach(s => colY.forEach((cy, ci) => {
+  const maxAbsCy = Math.max(...colY.map(v => Math.abs(v)));   // 엇모: 외측 게이지선이 이음부 첫 볼트(웨브 대칭)
+  ([1, -1] as const).forEach(s => colY.forEach((cy) => {
     if (!stag) for (let i = 0; i < nHi; i++) fBolts.push({ x: s * (base + i * fp), y: cy });
-    else { const off = ci % 2 ? 45 : 0, rows = ci % 2 ? nLo : nHi; for (let j = 0; j < rows; j++) fBolts.push({ x: s * (base + off + j * 90), y: cy }); }
+    else { const isOut = Math.abs(cy) >= maxAbsCy - 0.5, off = isOut ? 0 : 45, rows = isOut ? nHi : nLo; for (let j = 0; j < rows; j++) fBolts.push({ x: s * (base + off + j * 90), y: cy }); }
   }));
   const fPosX = [...new Set(fBolts.filter(b => b.x > 0).map(b => b.x))].sort((a, b) => a - b);
 
@@ -103,7 +104,7 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
         {/* 제목 셀 */}
         <rect x={30} y={yHead} width={(W - 60) / 2} height={hHead} className="svg-cell" />
         <rect x={30 + (W - 60) / 2} y={yHead} width={(W - 60) / 2} height={hHead} className="svg-cell" />
-        <text x={30 + (W - 60) / 4} y={yHead + hHead / 2 + 5} className="svg-title" textAnchor="middle">{r.section}</text>
+        <text x={30 + (W - 60) / 4} y={yHead + hHead / 2 + 5} className="svg-title" textAnchor="middle">{sectionByName(r.section)?.label ?? r.section}</text>
         <text x={30 + (W - 60) * 3 / 4} y={yHead + hHead / 2 + 5} className="svg-title" textAnchor="middle">{cond.steel} {Math.round(cond.strengthRatio * 100)}% {cond.bolt} {tJoint(cond.jointType, lang)}</text>
 
         {/* ── 웨브 입면도 ── */}

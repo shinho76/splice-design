@@ -11,9 +11,11 @@ const KbcDetailReport = lazy(() => import('./components/KbcDetailReport.tsx'));
 const QuantityPanel = lazy(() => import('./components/QuantityPanel.tsx'));
 const ProjectPanel = lazy(() => import('./components/ProjectPanel.tsx'));
 const ThreeViewer = lazy(() => import('./components/ThreeViewer.tsx'));
+const DcrPopup = lazy(() => import('./components/DcrPopup.tsx'));
 import { loadProject, persistProject, newItem, type ProjectItem } from './engine/project.ts';
 import { LangContext, type Lang, tMember, tJoint } from './i18n.ts';
-import { SECTIONS } from './engine/sections.ts';
+import { catalogFor, sectionByName } from './engine/sections.ts';
+import { usesLimitState } from './engine/std.ts';
 import { designConnection } from './engine/engine.ts';
 import { aiscAutoCorrect } from './engine/aisc/compat.ts';
 import { toDXF, toDXFAll, downloadFile } from './engine/dxf.ts';
@@ -34,8 +36,13 @@ export default function App() {
   const [showQty, setShowQty] = useState(false);
   const [showProj, setShowProj] = useState(false);
   const [view3D, setView3D] = useState<DesignResult | null>(null);
+  const [zoomPrev, setZoomPrev] = useState(false);   // 접합 상세도 확대 보기
+  const [dcrView, setDcrView] = useState<DesignResult | null>(null);   // DCR 팝업 대상
   const [boltMode, setBoltMode] = useState<'Default' | 'Custom'>('Default');
   const [boltOv, setBoltOv] = useState<Record<number, number>>({});   // 행index → 지정직경(위 행 따름)
+  const [hidden, setHidden] = useState<Set<string>>(() => new Set());  // 테이블에서 제거한 단면(−버튼)
+  const hideSection = (name: string) => setHidden(h => { const n = new Set(h); n.add(name); return n; });
+  const resetHidden = () => setHidden(h => (h.size ? new Set() : h));
   const [project, setProject] = useState<ProjectItem[]>(loadProject);
   const [dark, setDark] = useState<boolean>(() => {
     const s = localStorage.getItem('splice_theme');
@@ -64,8 +71,11 @@ export default function App() {
   // KPI 집계 (조건·Custom 변경 시)
   const stats = useMemo(() => {
     let bolts = 0, wt = 0, boltWt = 0, ok = 0;
-    const af = cond.designStd === 'AISC' && autoFix;
-    SECTIONS.forEach((s, i) => {
+    const af = usesLimitState(cond.designStd) && autoFix;
+    let total = 0;
+    catalogFor(cond.profile).forEach((s, i) => {
+      if (hidden.has(s.name)) return;                 // 제거된 단면은 집계 제외
+      total++;
       let r = designConnection(cond, s, diaAt(i)), okThis: boolean;
       if (af) { const ac = aiscAutoCorrect(r, cond); r = ac.result; okThis = ac.ok; }
       else okThis = !r.steps.some(st => st.check === 'NG');
@@ -73,16 +83,17 @@ export default function App() {
       bolts += q.boltCount; wt += q.plateWeightKg; boltWt += q.boltWeightKg;
       if (okThis) ok++;
     });
-    return { bolts, wt: Math.round(wt), boltWt: Math.round(boltWt), ok, total: SECTIONS.length };
-  }, [cond, diaAt, autoFix]);
+    return { bolts, wt: Math.round(wt), boltWt: Math.round(boltWt), ok, total };
+  }, [cond, diaAt, autoFix, hidden]);
 
   // 자동보정 ON(AISC) 시 선택 부재를 보정 형상으로 표시
-  const selEff = (cond.designStd === 'AISC' && autoFix && selected) ? aiscAutoCorrect(selected, cond).result : selected;
+  const selEff = (usesLimitState(cond.designStd) && autoFix && selected) ? aiscAutoCorrect(selected, cond).result : selected;
   const detailQ = useMemo(() => (selEff ? quantityOf(selEff, cond) : null), [selEff, cond]);
 
   const addToProject = (r: DesignResult) => setProject(p => [...p, newItem(r.section, cond)]);
   const exportAllDXF = () => {
-    const rows = SECTIONS.map((s, i) => designConnection(cond, s, diaAt(i)));
+    const rows = catalogFor(cond.profile).map((s, i) => ({ s, i })).filter(({ s }) => !hidden.has(s.name))
+      .map(({ s, i }) => designConnection(cond, s, diaAt(i)));
     downloadFile(`splice_전체_${cond.member}_${cond.jointType}.dxf`, toDXFAll(rows, cond), 'application/dxf');
   };
   const exportOneDXF = (r: DesignResult) => downloadFile(`${r.section}_${cond.jointType}.dxf`, toDXF(r, cond), 'application/dxf');
@@ -105,32 +116,47 @@ export default function App() {
       <div className="cmain">
         <header className="ctop">
           <div className="cbrand">SPLICE<span className="accent">DESIGN</span></div>
-          <FilterBar cond={cond} onChange={setCond} boltMode={boltMode} onBoltMode={setBoltMode} />
+          <div className="ctop-title">{L('고력볼트 표준접합 설계', 'H.S. Bolt Standard Connection Design')}</div>
+          <span className="ctop-sp" />
           <div className="seg-theme" role="group" aria-label={L('언어 전환', 'Language')}>
             <button type="button" className={lang === 'ko' ? 'on' : ''} onClick={() => setLang('ko')} aria-pressed={lang === 'ko'} title="한국어">한</button>
             <button type="button" className={lang === 'en' ? 'on' : ''} onClick={() => setLang('en')} aria-pressed={lang === 'en'} title="English">EN</button>
           </div>
-          {cond.designStd === 'AISC' && <button type="button" className={`autofix-btn${autoFix ? ' on' : ''}`} onClick={() => setAutoFix(v => !v)} aria-pressed={autoFix} title={L('전체 부재 AISC 자동보정(DCR≤1.0)', 'Auto-correct all members (DCR≤1.0)')}>⚙ {L('자동보정', 'Auto-fix')}</button>}
           <div className="seg-theme" role="group" aria-label={L('테마 전환', 'Theme')}>
             <button type="button" className={dark ? 'on' : ''} onClick={() => setDark(true)} aria-pressed={dark} title={L('다크 모드', 'Dark')} aria-label={L('다크 모드', 'Dark')}>☾</button>
             <button type="button" className={!dark ? 'on' : ''} onClick={() => setDark(false)} aria-pressed={!dark} title={L('화이트 모드', 'Light')} aria-label={L('화이트 모드', 'Light')}>☀</button>
           </div>
         </header>
 
-        <div className="kpi-strip">
-          <div className="kpi"><div className="k">{L('검토 부재', 'Members')}</div><div className="v num">{stats.total}</div><div className="d">{tMember(cond.member, lang)} · {tJoint(cond.jointType, lang)}</div></div>
-          <div className="kpi"><div className="k">{L('적합', 'Pass')}</div><div className="v num ok">{stats.ok}</div><div className="d ok">{Math.round(stats.ok / stats.total * 100)}%</div></div>
-          <div className="kpi"><div className="k">{L('부적합', 'Fail')}</div><div className="v num ng">{stats.total - stats.ok}</div><div className="d ng">{stats.total - stats.ok ? L('재검토', 'recheck') : '—'}</div></div>
-          <div className="kpi"><div className="k">{L('고력볼트', 'H.S. Bolts')}</div><div className="v num">{nf(stats.bolts)}<small> {L('본', 'ea')}</small> / {(stats.boltWt / 1000).toFixed(2)}<small> t</small></div><div className="d">{cond.bolt}</div></div>
-          <div className="kpi"><div className="k">{L('강재 물량', 'Steel Qty')}</div><div className="v num">{(stats.wt / 1000).toFixed(2)}<small> t</small></div><div className="d">{L('첨판', 'plates')}</div></div>
-        </div>
-
         <div className="cbody">
-          <div className="cgrid"><ResultTable cond={cond} onSelect={setSelected} onView3D={setView3D} custom={boltMode === 'Custom'} diaAt={diaAt} onSetDia={setDiaAt} selectedSection={selected?.section} autoFix={autoFix} /></div>
+          <aside className="cfilters">
+            <div className="cfilters-h">☰ {L('설계 조건', 'Design Conditions')}</div>
+            <FilterBar cond={cond} onChange={setCond} boltMode={boltMode} onBoltMode={setBoltMode} />
+            {usesLimitState(cond.designStd) && (
+              <div className="cf-autofix">
+                <button type="button" className={autoFix ? 'on' : ''} onClick={() => setAutoFix(v => !v)} aria-pressed={autoFix} title={L('전체 부재 AISC 자동보정(DCR≤1.0)', 'Auto-correct all members (DCR≤1.0)')}>⚙ {L('전체 자동보정', 'Auto-fix all')}</button>
+              </div>
+            )}
+            <div className="cfilters-hint">▸ {L('조건을 바꾸면 결과표가 즉시 갱신됩니다.', 'Changing conditions updates the table instantly.')}</div>
+          </aside>
+
+          <div className="ccenter">
+            <div className="kpi-strip">
+              <div className="kpi"><div className="k">{L('검토 부재', 'Members')}</div><div className="v num">{stats.total}</div><div className="d">{tMember(cond.member, lang)} · {tJoint(cond.jointType, lang)}</div></div>
+              <div className="kpi"><div className="k">{L('적합', 'Pass')}</div><div className="v num ok">{stats.ok}</div><div className="d ok">{stats.total ? Math.round(stats.ok / stats.total * 100) : 0}%</div></div>
+              <div className="kpi"><div className="k">{L('부적합', 'Fail')}</div><div className="v num ng">{stats.total - stats.ok}</div><div className="d ng">{stats.total - stats.ok ? L('재검토', 'recheck') : '—'}</div></div>
+              <div className="kpi"><div className="k">{L('고력볼트', 'H.S. Bolts')}</div><div className="v num">{nf(stats.bolts)}<small> {L('본', 'ea')}</small> / {(stats.boltWt / 1000).toFixed(2)}<small> t</small></div><div className="d">{cond.bolt}</div></div>
+              <div className="kpi"><div className="k">{L('강재 물량', 'Steel Qty')}</div><div className="v num">{(stats.wt / 1000).toFixed(2)}<small> t</small></div><div className="d">{L('첨판', 'plates')}</div></div>
+            </div>
+            <div className="cgrid"><ResultTable cond={cond} onSelect={setSelected} onView3D={setView3D} custom={boltMode === 'Custom'} diaAt={diaAt} onSetDia={setDiaAt} selectedSection={selected?.section} autoFix={autoFix} hidden={hidden} onHide={hideSection} onResetHidden={resetHidden} onDcrClick={setDcrView} /></div>
+          </div>
+
           <aside className="cdetail">
             {selEff ? (
               <>
-                <div className="dh">{selEff.section}<span className="dbadge">{autoFix && cond.designStd === 'AISC' ? L('자동보정', 'Auto-fixed') : L('선택됨', 'Selected')}</span></div>
+                <div className="dh">{sectionByName(selEff.section)?.label ?? selEff.section}
+                  {sectionByName(selEff.section)?.label && <span className="dh-mm">{selEff.section}</span>}
+                  <span className="dbadge">{autoFix && usesLimitState(cond.designStd) ? L('자동보정', 'Auto-fixed') : L('선택됨', 'Selected')}</span></div>
                 <div className="dsub">{tMember(cond.member, lang)} · {tJoint(cond.jointType, lang)} · {cond.steel} · {cond.bolt}</div>
                 <div className="dspecs">
                   <div><span>{isCol ? L('압축강도', 'Compression') : L('휨모멘트', 'Moment')}</span><b>{nf(isCol ? selEff.Puf_kN : selEff.Mu_kNm)} kN{isCol ? '' : '·m'}</b></div>
@@ -153,7 +179,10 @@ export default function App() {
                   <button className="db" onClick={() => exportOneIFC(selEff)}>IFC</button>
                   <button className="db" onClick={() => addToProject(selEff)}>＋ {L('프로젝트', 'Project')}</button>
                 </div>
-                <div className="dprev"><ConnectionSVG r={selEff} cond={cond} /></div>
+                <div className="dprev">
+                  <button className="prev-zoom" title={L('크게 보기', 'Enlarge')} onClick={() => setZoomPrev(true)}>🔍</button>
+                  <ConnectionSVG r={selEff} cond={cond} />
+                </div>
               </>
             ) : (
               <div className="dempty">
@@ -173,16 +202,31 @@ export default function App() {
       </div>
 
       <Suspense fallback={<div className="lazy-load">{L('불러오는 중…', 'Loading…')}</div>}>
-        {showReport && selEff && (cond.designStd === 'AISC'
+        {showReport && selEff && (usesLimitState(cond.designStd)
           ? <AiscCalcReport result={selEff} cond={cond} onClose={() => setShowReport(false)} />
           : <CalcReport result={selEff} cond={cond} onClose={() => setShowReport(false)} onAdd={addToProject} />)}
-        {showDetail && selEff && (cond.designStd === 'AISC'
+        {showDetail && selEff && (usesLimitState(cond.designStd)
           ? <AiscDetailReport result={selEff} cond={cond} onClose={() => setShowDetail(false)} />
           : <KbcDetailReport result={selEff} cond={cond} onClose={() => setShowDetail(false)} />)}
         {showQty && <QuantityPanel cond={cond} diaAt={diaAt} autoFix={autoFix} onClose={() => setShowQty(false)} />}
         {showProj && <ProjectPanel items={project} onChange={setProject} onClose={() => setShowProj(false)} />}
         {view3D && <ThreeViewer r={view3D} cond={cond} onClose={() => setView3D(null)} />}
+        {dcrView && <DcrPopup r={dcrView} cond={cond} onClose={() => setDcrView(null)} />}
       </Suspense>
+      {zoomPrev && selEff && (
+        <div className="prev-back" onClick={() => setZoomPrev(false)}>
+          <div className="prev-modal" onClick={e => e.stopPropagation()}>
+            <div className="prev-modal-hd">
+              <span>{selEff.section} · {tMember(cond.member, lang)} {tJoint(cond.jointType, lang)}</span>
+              <div className="prev-modal-act">
+                <button className="db" onClick={() => exportOneDXF(selEff)}>DXF</button>
+                <button className="prev-close" title={L('닫기', 'Close')} onClick={() => setZoomPrev(false)}>✕</button>
+              </div>
+            </div>
+            <div className="prev-modal-bd"><ConnectionSVG r={selEff} cond={cond} /></div>
+          </div>
+        </div>
+      )}
     </div>
     </LangContext.Provider>
   );

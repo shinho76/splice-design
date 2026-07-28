@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ' *)",
+      "Bash(python -c \"import fitz; print\\('fitz ok', fitz.__doc__\\)\")",
+      "Bash(python -c \"import pdf2image; print\\('pdf2image ok'\\)\")",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:splice-design.vercel.app)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(python -)",
+      "Bash(cd \"C:/Users/K/Desktop/coding/05_SPLICE_DESIGN/12_splice_design\" && ls -la && echo \"---agents---\" && ls -la .claude/agents 2>/dev/null; ls -la \"C:/Users/K/.claude/agents\" 2>/dev/null | head -20)",
+      "Bash(python -c \"import pypdf; print\\('pypdf ok'\\)\")",
+      "Bash(python -c \"import fitz; print\\('pymupdf ok'\\)\")",
+      "Bash(python3 -)",
+      "WebSearch",
+      "WebFetch(domain:www.aisc.org)",
+      "WebFetch(domain:ej.aisc.org)",
+      "WebFetch(domain:magedkamel.com)",
+      "WebFetch(domain:ideastatica.com)",
+      "WebFetch(domain:infoscience.epfl.ch)",
+      "WebFetch(domain:studylib.net)",
+      "WebFetch(domain:www.eng-tips.com)",
+      "WebFetch(domain:help.sdcverifier.com)",
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
+    ]
+  }
+}

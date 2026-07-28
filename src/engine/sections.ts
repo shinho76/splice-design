@@ -6,6 +6,7 @@ import { Fy } from './materials.ts';
 import { flexuralMn } from './nominal.ts';
 import { GOLDEN_BEAM100_SHN490_F10T } from './golden_beam100_shn490_f10t.ts';
 import { KS_D3502 } from './ks_d3502.ts';
+import { WSECTIONS } from './wshapes.ts';
 
 /** 단면성능 계산 (압연 H형강, 필렛 포함) */
 export function computeProps(H: number, B: number, tw: number, tf: number, r: number) {
@@ -21,9 +22,9 @@ export function computeProps(H: number, B: number, tw: number, tf: number, r: nu
   return { Ag, Aw: H * tw, Sx, Zx };
 }
 
-/** "H-386x299x9x14" → {H,B,tw,tf} */
+/** "H-386x299x9x14" / "W-406x178x7.7x12.8" → {H,B,tw,tf} */
 export function parseName(name: string) {
-  const [H, B, tw, tf] = name.replace(/^H-/, '').split('x').map(Number);
+  const [H, B, tw, tf] = name.replace(/^[HW]-/, '').split('x').map(Number);
   return { H, B, tw, tf };
 }
 
@@ -99,4 +100,9 @@ export function buildSection(name: string): HSection {
 }
 
 export const SECTIONS: HSection[] = RAW_NAMES.map(buildSection);
-export const sectionByName = (name: string) => SECTIONS.find(s => s.name === name);
+
+// Profile 선택: H-Shape(편람 73종) / W-Shape(AISC v16.0 289종)
+export type Profile = 'H' | 'W';
+export const catalogFor = (profile?: Profile): HSection[] => (profile === 'W' ? WSECTIONS : SECTIONS);
+export const sectionByName = (name: string) =>
+  SECTIONS.find(s => s.name === name) ?? WSECTIONS.find(s => s.name === name);
