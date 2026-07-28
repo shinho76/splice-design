@@ -2,6 +2,7 @@ import type { DesignResult, DesignCondition } from '../engine/types.ts';
 import { aiscAutoCorrect, type AiscCheck } from '../engine/aisc/compat.ts';
 import { parseName } from '../engine/sections.ts';
 import { useLang, tMember, tJoint } from '../i18n.ts';
+import { groupT, labelT, trA } from './aiscI18n.ts';
 
 // 검토 대상 부위 글리프(육안 확인용). clause로 종류 판별.
 function glyphKey(c: AiscCheck): string {
@@ -65,7 +66,7 @@ export default function AiscCalcReport({ result, cond, onClose }: { result: Desi
           <table className="doc-meta"><tbody>
             <tr><th>{L('부재 / 접합', 'Member / Joint')}</th><td>{r.section} · {tMember(cond.member, lang)} {tJoint(cond.jointType, lang)}</td><th>{L('나사조건', 'Thread')}</th><td>{cond.threadCond ?? 'N'}</td></tr>
             <tr><th>{L('강종(H/판)', 'Steel H/PL')}</th><td>{cond.steel} / {cond.plateSteel ?? cond.steel} · {L('볼트', 'Bolt')} {cond.bolt}</td><th>{L('플랜지력 Pf', 'Flange force Pf')}</th><td>{r.Puf_kN.toLocaleString()} kN</td></tr>
-            <tr><th>{L('설계기준', 'Basis')}</th><td colSpan={3}>AISC 360-16 · φ(항복0.9·파단/전단/지압0.75) · {L('분담 50:50·Ubs 1.0·K 1.2', 'split 50:50, Ubs 1.0, K 1.2')}</td></tr>
+            <tr><th>{L('설계기준', 'Basis')}</th><td colSpan={3}>AISC 360-16 · {L('φ(항복0.9·파단/전단/지압0.75)', 'φ (yield 0.9, rupture/shear/bearing 0.75)')} · {L('분담 50:50·Ubs 1.0·K 1.2', 'split 50:50, Ubs 1.0, K 1.2')}</td></tr>
           </tbody></table>
         </div>
 
@@ -74,7 +75,7 @@ export default function AiscCalcReport({ result, cond, onClose }: { result: Desi
           <h3><span className="sec-no">1.</span>{L('배치 · 자동보정', 'Layout & Auto-correction')}</h3>
           <table className="result-table2"><tbody>
             <tr><th>{L('편람 표준배치', 'KBC layout')}</th><td>{L('외첨판', 'Outer')} PL-{result.flange.outerPlate?.t}×{result.flange.outerPlate?.w} · {L('내첨판', 'Inner')} PL-{result.flange.innerPlate?.t}×{result.flange.innerPlate?.w}×2 · {L('볼트', 'Bolt')} {result.flange.bolt.m}×{Math.round(result.flange.bolt.n)}-M{result.boltDia}</td></tr>
-            <tr><th>{L('보정 내역', 'Changes')}</th><td>{ac.changes.length ? ac.changes.join(' · ') : L('보정 없음(전 항목 만족)', 'none (all pass)')}</td></tr>
+            <tr><th>{L('보정 내역', 'Changes')}</th><td>{ac.changes.length ? ac.changes.map(x => trA(x, lang)).join(' · ') : L('보정 없음(전 항목 만족)', 'none (all pass)')}</td></tr>
             <tr><th>{L('보정 후', 'Corrected')}</th><td><b>{L('외첨판', 'Outer')} PL-{r.flange.outerPlate?.t}×{r.flange.outerPlate?.w} · {L('내첨판', 'Inner')} PL-{r.flange.innerPlate?.t}×{r.flange.innerPlate?.w}×2 · {L('볼트', 'Bolt')} {r.flange.bolt.m}×{Math.round(r.flange.bolt.n)}-M{r.boltDia}</b> {!ac.ok && <span className="ag-ng">· {L('부재 단면 한계 — 단면 상향 필요', 'member section limited — upsize needed')}</span>}</td></tr>
             {ac.pfCap != null && <tr><th>{L('소요 캡핑', 'Demand cap')}</th><td>{L('부재 F13/D2 강도로 제한', 'limited by member F13/D2')}: Pf {r.Puf_kN.toLocaleString()} → <b>{Math.round(ac.pfCap).toLocaleString()} kN</b> <span className="ag-ng">({L('구멍 있는 부재의 실제 발현강도', 'holed-member achievable strength')})</span></td></tr>}
             <tr><th>{L('플랜지판 중량', 'Plate weight')}</th><td>{ac.wt0.toFixed(1)} → {ac.wt1.toFixed(1)} kg · {L('지배 DCR', 'gov. DCR')} <b className={ac.ok ? 'ag-ok' : 'ag-ng'}>{ac.report.govDcr}</b> {ac.ok ? 'OK' : 'NG'}</td></tr>
@@ -84,7 +85,7 @@ export default function AiscCalcReport({ result, cond, onClose }: { result: Desi
         {/* 검토 항목 (그룹별, 그림 포함) */}
         {order.map((g, gi) => (
           <section key={g} className="doc-sec">
-            <h3><span className="sec-no">{gi + 2}.</span>{g}</h3>
+            <h3><span className="sec-no">{gi + 2}.</span>{groupT(g, lang)}</h3>
             <table className="ag-table">
               <thead><tr>
                 <th>{L('그림', 'Fig')}</th><th>{L('검토', 'Check')}</th><th>{L('조항', 'Clause')}</th><th>{L('식·치수', 'Detail')}</th>
@@ -94,9 +95,9 @@ export default function AiscCalcReport({ result, cond, onClose }: { result: Desi
                 {groups[g].map((c, i) => (
                   <tr key={i} className={c.ok === false ? 'ag-row-ng' : ''}>
                     <td><Glyph k={glyphKey(c)} /></td>
-                    <td className="ag-lb">{c.label}{c.note ? <em> · {c.note}</em> : ''}</td>
+                    <td className="ag-lb">{labelT(c.id, c.label, lang)}{c.note ? <em> · {trA(c.note, lang)}</em> : ''}</td>
                     <td className="ag-cl">{c.clause}</td>
-                    <td className="ag-dt">{c.detail}</td>
+                    <td className="ag-dt">{trA(c.detail, lang)}</td>
                     <td className="ag-num">{c.phiRn != null ? c.phiRn.toLocaleString() : '—'}</td>
                     <td className="ag-num">{c.demand != null ? c.demand.toLocaleString() : '—'}</td>
                     <td className="ag-num"><b>{c.dcr != null ? c.dcr.toFixed(2) : '—'}</b></td>

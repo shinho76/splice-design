@@ -92,27 +92,27 @@ function pen(doc: Doc, t: Xf) {
 }
 type Pen = ReturnType<typeof pen>;
 
-// ── 정식 DIMENSION(지오메트리 블록 + 엔티티) ──
+// ── 분해치수(선+문자+틱 지오메트리를 직접 엔티티로) ──
+// 연관 DIMENSION/DIMSTYLE을 쓰지 않아 DIMSTYLE 필수변수 누락 오류·엄격파서 폐기를 원천 차단.
 function bl(t: Xf, a: number, b: number, c: number, d: number): string[] {
   return ['0', 'LINE', '8', 'DIM', '10', ff(Tx(t, a, b)), '20', ff(Ty(t, a, b)), '30', '0', '11', ff(Tx(t, c, d)), '21', ff(Ty(t, c, d)), '31', '0'];
 }
 function btext(t: Xf, x: number, y: number, s: string, rot: number): string[] {
   const r = rot + t.deg;
-  const base = ['0', 'TEXT', '8', 'DIM', '7', FONT, '10', ff(Tx(t, x, y)), '20', ff(Ty(t, x, y)), '30', '0', '40', String(TH), '1', s];
+  const base = ['0', 'TEXT', '8', 'DIM', '7', 'STANDARD', '10', ff(Tx(t, x, y)), '20', ff(Ty(t, x, y)), '30', '0', '40', String(TH), '1', s];
   if (r) base.push('50', ff(r));
   base.push('72', '1', '11', ff(Tx(t, x, y)), '21', ff(Ty(t, x, y)), '31', '0');
   return base;
 }
 function emitDim(doc: Doc, t: Xf, p1: [number, number], p2: [number, number], dl: [number, number], txt: string, vertical: boolean) {
-  const bn = '*D' + (doc.n++);
   const [x1, y1] = p1, [x2, y2] = p2, [dlx, dly] = dl;
   const geo: string[] = [];
   if (vertical) {
     const dir = Math.sign(dlx - x1) || 1;
-    geo.push(...bl(t, dlx, y1, dlx, y2));
-    geo.push(...bl(t, x1 + dir * 2, y1, dlx + dir * 5, y1), ...bl(t, x2 + dir * 2, y2, dlx + dir * 5, y2));
-    geo.push(...archtick(t, dlx, y1, 90), ...archtick(t, dlx, y2, 90));
-    geo.push(...btext(t, dlx + dir * (TH * 0.62), (y1 + y2) / 2, txt, 90));
+    geo.push(...bl(t, dlx, y1, dlx, y2));                                   // 치수선
+    geo.push(...bl(t, x1 + dir * 2, y1, dlx + dir * 5, y1), ...bl(t, x2 + dir * 2, y2, dlx + dir * 5, y2)); // 치수보조선
+    geo.push(...archtick(t, dlx, y1, 90), ...archtick(t, dlx, y2, 90));     // 틱
+    geo.push(...btext(t, dlx + dir * (TH * 0.62), (y1 + y2) / 2, txt, 90)); // 치수문자
   } else {
     const dir = Math.sign(dly - y1) || -1;
     geo.push(...bl(t, x1, dly, x2, dly));
@@ -120,10 +120,7 @@ function emitDim(doc: Doc, t: Xf, p1: [number, number], p2: [number, number], dl
     geo.push(...archtick(t, x1, dly, 0), ...archtick(t, x2, dly, 0));
     geo.push(...btext(t, (x1 + x2) / 2, dly - dir * (TH * 0.62), txt, 0));
   }
-  doc.blk.push('0', 'BLOCK', '8', 'DIM', '2', bn, '70', '0', '10', '0', '20', '0', '30', '0', '3', bn, ...geo, '0', 'ENDBLK', '8', 'DIM');
-  const [dpx, dpy] = pt(t, dlx, dly), [a1, b1] = pt(t, x1, y1), [a2, b2] = pt(t, x2, y2);
-  doc.e.push('0', 'DIMENSION', '8', 'DIM', '2', bn, '10', ff(dpx), '20', ff(dpy), '30', '0', '11', ff(dpx), '21', ff(dpy), '31', '0',
-    '70', '33', '1', txt, '3', 'STANDARD', '13', ff(a1), '23', ff(b1), '33', '0', '14', ff(a2), '24', ff(b2), '34', '0');
+  doc.e.push(...geo);   // 엔티티로 직접 출력(블록·DIMENSION 미사용)
 }
 function dimChainH(doc: Doc, t: Xf, xs: number[], fy: number, y1: number, y2: number) {
   for (let i = 0; i < xs.length - 1; i++)
@@ -406,13 +403,9 @@ function wrap(doc: Doc): string {
     '0', 'LTYPE', '2', 'HIDDEN', '70', '0', '3', '__ __ __', '72', '65', '73', '2', '40', '30.0', '49', '20.0', '49', '-10.0'];
   const layT: string[] = ['0', 'TABLE', '2', 'LAYER', '70', String(LAYERS.length)];
   LAYERS.forEach(([n, c]) => layT.push('0', 'LAYER', '2', n, '70', '0', '62', String(c), '6', 'CONTINUOUS'));
-  // DIMSTYLE: exe(Standard) 실측값 이식 — dimasz5·dimexo3·dimdli3.75·dimexe1.25·dimtxt20·dimcen2.5·dimgap2·dimtad1·dimzin8
-  const dimT = ['0', 'TABLE', '2', 'DIMSTYLE', '70', '1',
-    '0', 'DIMSTYLE', '2', 'STANDARD', '70', '0', '3', '', '4', '', '5', '', '6', '', '7', '',
-    '40', '1.0', '41', ff(ARROW), '42', '3.0', '43', '3.75', '44', '1.25', '140', String(TH), '141', '2.5', '144', '1.0', '147', '2.0',
-    '73', '0', '74', '0', '77', '1', '78', '8'];
-  return ['0', 'SECTION', '2', 'HEADER', '9', '$ACADVER', '1', 'AC1009', '9', '$INSUNITS', '70', '4', '9', '$DIMSTYLE', '2', 'STANDARD', '9', '$TEXTSTYLE', '7', 'STANDARD', '0', 'ENDSEC',
-    '0', 'SECTION', '2', 'TABLES', ...vportT, '0', 'ENDTAB', ...ltT, '0', 'ENDTAB', ...layT, '0', 'ENDTAB', ...styleT, '0', 'ENDTAB', ...dimT, '0', 'ENDTAB', '0', 'ENDSEC',
+  // DIMSTYLE·DIMENSION 미사용(분해치수) → 해당 테이블 제거로 엄격파서 폐기 원천 차단.
+  return ['0', 'SECTION', '2', 'HEADER', '9', '$ACADVER', '1', 'AC1009', '9', '$INSUNITS', '70', '4', '9', '$TEXTSTYLE', '7', 'STANDARD', '0', 'ENDSEC',
+    '0', 'SECTION', '2', 'TABLES', ...vportT, '0', 'ENDTAB', ...ltT, '0', 'ENDTAB', ...layT, '0', 'ENDTAB', ...styleT, '0', 'ENDTAB', '0', 'ENDSEC',
     '0', 'SECTION', '2', 'BLOCKS', ...ARCHTICK_BLOCK, ...doc.blk, '0', 'ENDSEC',
     '0', 'SECTION', '2', 'ENTITIES', ...doc.e, '0', 'ENDSEC', '0', 'EOF'].join('\r\n');   // CRLF: DXF 관례(엄격 파서 호환)
 }

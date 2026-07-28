@@ -5,34 +5,9 @@ import { aiscAutoCorrect } from '../engine/aisc/compat.ts';
 import type { AiscCheck, AiscStep, BlockCase } from '../engine/aisc/types.ts';
 import { parseName } from '../engine/sections.ts';
 import { useLang, type Lang } from '../i18n.ts';
+import { EN_LABEL, caseLabel, groupT as group } from './aiscI18n.ts';
 
 const nf = (n?: number, d = 1) => n == null ? '—' : n.toLocaleString('en-US', { maximumFractionDigits: d });
-
-// 검토 명칭(영문). 한글은 엔진 check.label 사용.
-const EN_LABEL: Record<string, string> = {
-  FB1: 'Bolt shear (double shear)', FB2: 'Bolt slip resistance (Class B)',
-  FP1: 'Outer plate — tension yielding', FP2: 'Outer plate — tension rupture', FP3: 'Outer plate — compression buckling', FP4: 'Outer plate — bearing & tear-out', FP5: 'Outer plate — block shear',
-  FI1: 'Inner plates — tension yielding', FI2: 'Inner plates — tension rupture', FI3: 'Inner plates — compression buckling', FI4: 'Inner plates — bearing & tear-out', FI5: 'Inner plates — block shear',
-  FM1: 'Beam flange — bearing & tear-out', FM2: 'Beam flange — flexural rupture (F13.1)', FM3: 'Beam flange (WT) — tension yielding', FM4: 'Beam flange (WT) — tension rupture', FM5: 'Beam flange — block shear',
-  WB1: 'Web bolt shear (double shear)', WB2: 'Web bolt slip resistance', WR1: 'Web — bearing & tear-out', WP1: 'Web plates — block shear', WI1: 'Web plates — yielding interaction', WI2: 'Web plates — rupture interaction', WM1: 'Beam web — shear yielding', WM2: 'Beam web — block shear',
-};
-// 블록전단 케이스 라벨(영문). 한글은 엔진 case.label 사용.
-const CASE_EN: Record<string, string> = {
-  '전열 U블록': 'full U-block (2 shear planes)', '외연 L블록': 'outer L-block', '중앙 L블록': 'central L-block',
-  '내측 페어': 'inner pair U-block', '양연 U블록': 'twin U-block',
-};
-const caseLabel = (label: string, lang: Lang): string => {
-  if (lang === 'ko') return label;
-  const letter = label[0];
-  const inner = label.slice(label.indexOf('(') + 1, label.lastIndexOf(')'));
-  return `${letter} — ${CASE_EN[inner] ?? inner}`;
-};
-// 그룹 헤더(영문). 한글은 원문.
-const groupEn = (g: string): string => g
-  .replace('볼트(웨브)', 'Bolts (web)').replace('볼트', 'Bolts')
-  .replace('외첨판', 'Outer plate').replace('내첨판', 'Inner plates').replace('웨브 첨판', 'Web plates')
-  .replace('부재 H형강', 'H-beam member').replace('부재 웨브', 'Beam web');
-const group = (g: string, lang: Lang) => lang === 'ko' ? g : groupEn(g);
 
 // step 라벨 한글 대응(영문은 엔진 원문)
 const SL_KO: Record<string, string> = {
