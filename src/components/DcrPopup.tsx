@@ -3,6 +3,7 @@
 import type { DesignResult, DesignCondition } from '../engine/types.ts';
 import { aiscCheck } from '../engine/aisc/compat.ts';
 import { kbcCheck } from '../engine/kbcCheck.ts';
+import { usesLimitState, stdLabel } from '../engine/std.ts';
 import { useLang } from '../i18n.ts';
 
 interface Row { id: string; group: string; label: string; demand: number; capacity: number; dcr: number; unit: string; ref: string; }
@@ -10,7 +11,7 @@ interface Row { id: string; group: string; label: string; demand: number; capaci
 export default function DcrPopup({ r, cond, onClose }: { r: DesignResult; cond: DesignCondition; onClose: () => void }) {
   const lang = useLang();
   const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
-  const isAisc = cond.designStd === 'AISC';
+  const isAisc = usesLimitState(cond.designStd);   // AISC·KDS = 한계상태 엔진
   let rows: Row[] = [], govId = '', govDcr: number | null = null;
   if (isAisc) {
     const a = aiscCheck(r, cond);
@@ -22,7 +23,7 @@ export default function DcrPopup({ r, cond, onClose }: { r: DesignResult; cond: 
     govId = k.govId ?? ''; govDcr = k.govDcr;
   }
   rows = rows.slice().sort((a, b) => b.dcr - a.dcr);   // DCR 내림차순
-  const std = isAisc ? 'AISC 360-16' : 'KBC-09';
+  const std = stdLabel(cond.designStd);
 
   return (
     <div className="dcr-back" onClick={onClose}>

@@ -15,6 +15,7 @@ const DcrPopup = lazy(() => import('./components/DcrPopup.tsx'));
 import { loadProject, persistProject, newItem, type ProjectItem } from './engine/project.ts';
 import { LangContext, type Lang, tMember, tJoint } from './i18n.ts';
 import { catalogFor } from './engine/sections.ts';
+import { usesLimitState } from './engine/std.ts';
 import { designConnection } from './engine/engine.ts';
 import { aiscAutoCorrect } from './engine/aisc/compat.ts';
 import { toDXF, toDXFAll, downloadFile } from './engine/dxf.ts';
@@ -70,7 +71,7 @@ export default function App() {
   // KPI 집계 (조건·Custom 변경 시)
   const stats = useMemo(() => {
     let bolts = 0, wt = 0, boltWt = 0, ok = 0;
-    const af = cond.designStd === 'AISC' && autoFix;
+    const af = usesLimitState(cond.designStd) && autoFix;
     let total = 0;
     catalogFor(cond.profile).forEach((s, i) => {
       if (hidden.has(s.name)) return;                 // 제거된 단면은 집계 제외
@@ -86,7 +87,7 @@ export default function App() {
   }, [cond, diaAt, autoFix, hidden]);
 
   // 자동보정 ON(AISC) 시 선택 부재를 보정 형상으로 표시
-  const selEff = (cond.designStd === 'AISC' && autoFix && selected) ? aiscAutoCorrect(selected, cond).result : selected;
+  const selEff = (usesLimitState(cond.designStd) && autoFix && selected) ? aiscAutoCorrect(selected, cond).result : selected;
   const detailQ = useMemo(() => (selEff ? quantityOf(selEff, cond) : null), [selEff, cond]);
 
   const addToProject = (r: DesignResult) => setProject(p => [...p, newItem(r.section, cond)]);
@@ -131,7 +132,7 @@ export default function App() {
           <aside className="cfilters">
             <div className="cfilters-h">☰ {L('설계 조건', 'Design Conditions')}</div>
             <FilterBar cond={cond} onChange={setCond} boltMode={boltMode} onBoltMode={setBoltMode} />
-            {cond.designStd === 'AISC' && (
+            {usesLimitState(cond.designStd) && (
               <div className="cf-autofix">
                 <button type="button" className={autoFix ? 'on' : ''} onClick={() => setAutoFix(v => !v)} aria-pressed={autoFix} title={L('전체 부재 AISC 자동보정(DCR≤1.0)', 'Auto-correct all members (DCR≤1.0)')}>⚙ {L('전체 자동보정', 'Auto-fix all')}</button>
               </div>
@@ -153,7 +154,7 @@ export default function App() {
           <aside className="cdetail">
             {selEff ? (
               <>
-                <div className="dh">{selEff.section}<span className="dbadge">{autoFix && cond.designStd === 'AISC' ? L('자동보정', 'Auto-fixed') : L('선택됨', 'Selected')}</span></div>
+                <div className="dh">{selEff.section}<span className="dbadge">{autoFix && usesLimitState(cond.designStd) ? L('자동보정', 'Auto-fixed') : L('선택됨', 'Selected')}</span></div>
                 <div className="dsub">{tMember(cond.member, lang)} · {tJoint(cond.jointType, lang)} · {cond.steel} · {cond.bolt}</div>
                 <div className="dspecs">
                   <div><span>{isCol ? L('압축강도', 'Compression') : L('휨모멘트', 'Moment')}</span><b>{nf(isCol ? selEff.Puf_kN : selEff.Mu_kNm)} kN{isCol ? '' : '·m'}</b></div>
@@ -199,10 +200,10 @@ export default function App() {
       </div>
 
       <Suspense fallback={<div className="lazy-load">{L('불러오는 중…', 'Loading…')}</div>}>
-        {showReport && selEff && (cond.designStd === 'AISC'
+        {showReport && selEff && (usesLimitState(cond.designStd)
           ? <AiscCalcReport result={selEff} cond={cond} onClose={() => setShowReport(false)} />
           : <CalcReport result={selEff} cond={cond} onClose={() => setShowReport(false)} onAdd={addToProject} />)}
-        {showDetail && selEff && (cond.designStd === 'AISC'
+        {showDetail && selEff && (usesLimitState(cond.designStd)
           ? <AiscDetailReport result={selEff} cond={cond} onClose={() => setShowDetail(false)} />
           : <KbcDetailReport result={selEff} cond={cond} onClose={() => setShowDetail(false)} />)}
         {showQty && <QuantityPanel cond={cond} diaAt={diaAt} autoFix={autoFix} onClose={() => setShowQty(false)} />}

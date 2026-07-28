@@ -1,5 +1,6 @@
 import type { DesignCondition } from '../engine/types.ts';
 import { catalogFor } from '../engine/sections.ts';
+import { usesLimitState } from '../engine/std.ts';
 import { designConnection } from '../engine/engine.ts';
 import { quantityOf, aggregate, quantityCsv } from '../engine/quantity.ts';
 import { downloadFile } from '../engine/dxf.ts';
@@ -16,7 +17,7 @@ const plateStr = (q: ReturnType<typeof quantityOf>, role: string) => {
 export default function QuantityPanel({ cond, onClose, diaAt, autoFix }: { cond: DesignCondition; onClose: () => void; diaAt?: (i: number) => number | undefined; autoFix?: boolean }) {
   const lang = useLang();
   const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
-  const af = cond.designStd === 'AISC' && !!autoFix;
+  const af = usesLimitState(cond.designStd) && !!autoFix;
   const secs = catalogFor(cond.profile);
   const qs = secs.map((s, i) => {
     let r = designConnection(cond, s, diaAt?.(i));

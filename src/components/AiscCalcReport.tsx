@@ -3,6 +3,7 @@ import { aiscAutoCorrect, type AiscCheck } from '../engine/aisc/compat.ts';
 import { parseName } from '../engine/sections.ts';
 import { useLang, tMember, tJoint } from '../i18n.ts';
 import { groupT, labelT, trA } from './aiscI18n.ts';
+import { stdLabel, stdLabelLong } from '../engine/std.ts';
 
 // 검토 대상 부위 글리프(육안 확인용). clause로 종류 판별.
 function glyphKey(c: AiscCheck): string {
@@ -61,12 +62,12 @@ export default function AiscCalcReport({ result, cond, onClose }: { result: Desi
         </div>
 
         <div className="doc-head">
-          <div className="doc-kicker">AISC 360-16 (15TH ED.) · LRFD · {L('플랜지·웨브 이음 전 한계상태 검토', 'FLANGE & WEB SPLICE — ALL LIMIT STATES')}</div>
-          <h2>{L('AISC 360-16 첨판 이음 계산서', 'AISC 360-16 Splice Calculation')}</h2>
+          <div className="doc-kicker">{stdLabelLong(cond.designStd)} · LRFD · {L('플랜지·웨브 이음 전 한계상태 검토', 'FLANGE & WEB SPLICE — ALL LIMIT STATES')}</div>
+          <h2>{stdLabel(cond.designStd)} {L('첨판 이음 계산서', 'Splice Calculation')}</h2>
           <table className="doc-meta"><tbody>
             <tr><th>{L('부재 / 접합', 'Member / Joint')}</th><td>{r.section} · {tMember(cond.member, lang)} {tJoint(cond.jointType, lang)}</td><th>{L('나사조건', 'Thread')}</th><td>{cond.threadCond ?? 'N'}</td></tr>
             <tr><th>{L('강종(H/판)', 'Steel H/PL')}</th><td>{cond.steel} / {cond.plateSteel ?? cond.steel} · {L('볼트', 'Bolt')} {cond.bolt}</td><th>{L('플랜지력 Pf', 'Flange force Pf')}</th><td>{r.Puf_kN.toLocaleString()} kN</td></tr>
-            <tr><th>{L('설계기준', 'Basis')}</th><td colSpan={3}>AISC 360-16 · {L('φ(항복0.9·파단/전단/지압0.75)', 'φ (yield 0.9, rupture/shear/bearing 0.75)')} · {L('분담 50:50·Ubs 1.0·K 1.2', 'split 50:50, Ubs 1.0, K 1.2')}</td></tr>
+            <tr><th>{L('설계기준', 'Basis')}</th><td colSpan={3}>{stdLabelLong(cond.designStd)} · {L('φ(항복0.9·파단/전단/지압0.75)', 'φ (yield 0.9, rupture/shear/bearing 0.75)')} · {L('분담 50:50·Ubs 1.0·K 1.2', 'split 50:50, Ubs 1.0, K 1.2')}</td></tr>
           </tbody></table>
         </div>
 

@@ -4,6 +4,7 @@ import { catalogFor } from '../engine/sections.ts';
 import { designConnection } from '../engine/engine.ts';
 import { aiscCheck, aiscAutoCorrect } from '../engine/aisc/compat.ts';
 import { kbcCheck } from '../engine/kbcCheck.ts';
+import { usesLimitState } from '../engine/std.ts';
 import { nominalOf, unitWeightOf } from '../engine/hbeam_catalog.ts';
 import { useLang } from '../i18n.ts';
 
@@ -28,7 +29,7 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
     .map((s, i) => ({ s, i, r: designConnection(cond, s, diaAt?.(i)) }))
     .filter(({ s }) => !hidden?.has(s.name));
   const isCol = cond.member === '기둥';
-  const isAisc = cond.designStd === 'AISC';
+  const isAisc = usesLimitState(cond.designStd);   // AISC·KDS = 한계상태 엔진(aiscCheck)
   const dbW = 46;                                     // 볼트 직경열: 지정/표준 동일 폭(토글 시 표 흔들림 방지)
   const hasHidden = (hidden?.size ?? 0) > 0;
   // 삭제 선택(체크) → 헤더 아이콘: + 선택만 남김 / − 선택 제외 / ⟳ 초기화

@@ -6,6 +6,7 @@ import type { AiscCheck, AiscStep, BlockCase } from '../engine/aisc/types.ts';
 import { parseName } from '../engine/sections.ts';
 import { useLang, type Lang } from '../i18n.ts';
 import { EN_LABEL, caseLabel, groupT as group } from './aiscI18n.ts';
+import { stdLabelLong } from '../engine/std.ts';
 
 const nf = (n?: number, d = 1) => n == null ? '—' : n.toLocaleString('en-US', { maximumFractionDigits: d });
 
@@ -147,7 +148,7 @@ export default function AiscDetailReport({ result, cond, onClose }: { result: De
         </div>
 
         <div className="doc-head">
-          <div className="doc-kicker">AISC 360-16 (15TH ED.) · LRFD · {L('상세 계산서', 'DETAILED CALCULATION')}</div>
+          <div className="doc-kicker">{stdLabelLong(cond.designStd)} · LRFD · {L('상세 계산서', 'DETAILED CALCULATION')}</div>
           <h2>{r.section} — {L('고력볼트 이음 상세 계산', 'Bolted Splice, Full Design Narrative')}</h2>
           <p className="narr-lead">
             {L(`${cond.member} · ${cond.jointType === '지압' ? '지압접합' : '마찰접합(Class B)'}. `, `${cond.member === '기둥' ? 'Column' : 'Beam'} splice, ${cond.jointType === '지압' ? 'bearing-type' : 'slip-critical (Class B)'} joint. `)}
