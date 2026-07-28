@@ -316,15 +316,35 @@ body {
 .svg-boltx { stroke: #c026d3; stroke-width: 1; }
 .svg-ver { stroke: #e5231b; stroke-width: 1.5; }
 
-/* ===== 인쇄 ===== */
+/* ===== 인쇄: 화면(앱)이 아니라 계산서 '내용'만 출력 ===== */
 @media print {
-  body { background: #fff; }
-  .app { height: auto; overflow: visible; }
-  .app > *:not(.report), .report { position: static !important; }
-  .topbar, .filterbar, .badge-row, .statusbar, .tablewrap:not(.report-card .tablewrap), .report-tools { display: none !important; }
-  .report { background: none !important; padding: 0 !important; display: block !important; overflow: visible !important; }
-  .report-card { box-shadow: none !important; border: none !important; max-width: 100% !important; padding: 0 !important; }
-  .report-card, .calc-step, .calc-group, section, .svg-wrap { break-inside: avoid; }
+  @page { margin: 12mm; }
+  html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
+  .console { display: block !important; height: auto !important; overflow: visible !important; }
+  /* 앱 UI 전부 숨김(3-pane 구조) — 리포트 모달만 남긴다 */
+  .rail, .cmain, .cstat, .lazy-load { display: none !important; }
+  /* 리포트 오버레이 → 일반 문서 흐름으로, 인쇄용 라이트 팔레트(리포트는 var()만 씀 → 변수 교체로 일괄 전환) */
+  .report {
+    position: static !important; display: block !important; overflow: visible !important;
+    inset: auto !important; background: #fff !important; padding: 0 !important; z-index: auto !important;
+    --bg:#fff; --bg2:#fff; --panel:#fff; --panel2:#f5f6fa; --panel3:#eef0f5;
+    --fg:#1a2330; --muted:#5a6472; --faint:#8a93a3;
+    --line:#c9d0da; --line-soft:#dde2ea; --line-strong:#aab3c0;
+    --accent:#5b4bc4; --accent2:#7c6fd0; --accent-soft:#ece9f7; --on-accent:#fff; --head-bg:#eceef5;
+    --ok:#1f8a4c; --ng:#c0392b; --wn:#a8730a; --grid:transparent; --shadow:none;
+  }
+  /* 스크롤 클리핑 해제 — 내용 전체가 여러 페이지로 흐르게 */
+  .report-card {
+    position: static !important; max-height: none !important; height: auto !important; overflow: visible !important;
+    box-shadow: none !important; border: none !important; border-radius: 0 !important;
+    max-width: 100% !important; width: 100% !important; margin: 0 !important;
+    background: #fff !important; color: var(--fg) !important;
+  }
+  .report-tools { display: none !important; }
+  /* 페이지 경계에서 항목이 잘리지 않도록 */
+  .doc-head, .doc-sec, .calc-step, .narr-check, section, .svg-wrap, .dprev,
+  .ag-table tr, .narr-bs tr, .doc-meta tr, .result-table2 tr { break-inside: avoid; }
+  .doc-sec h3, h2, h3 { break-after: avoid; }
 }
 
 /* ===== 반응형 ===== */
