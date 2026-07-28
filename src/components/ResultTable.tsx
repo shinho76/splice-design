@@ -103,7 +103,10 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
                     title={L('삭제 선택', 'Mark for deletion')} onClick={e => e.stopPropagation()}
                     onChange={e => { e.stopPropagation(); toggleCheck(s.name); }} />
                   <span className={`st-dot${ng ? ' ng' : ''}`} title={ng ? '재검토' : '적합'} />
-                  <button className="cn-txt" title={s.label ? `${s.label} · ${r.section}` : L('3D 형상 보기', 'View 3D shape')} onClick={e => { e.stopPropagation(); onView3D(dr); }}>{s.label ?? r.section}</button></td>
+                  <button className="cn-txt" title={s.label ? `${s.label} · ${r.section}` : L('3D 형상 보기', 'View 3D shape')} onClick={e => { e.stopPropagation(); onView3D(dr); }}>
+                    {s.label
+                      ? <span className="cn-two"><span className="cn-nom">{s.label}</span><span className="cn-mm">{r.section}</span></span>
+                      : r.section}</button></td>
                 <td className={`dcr-cell${govDcr != null && govDcr > 1.0 ? ' ng' : ''}${govDcr != null ? ' dcr-click' : ''}`}
                   title={govDcr == null ? undefined : L('검토항목별 DCR 보기', 'View DCR by limit state')}
                   onClick={govDcr != null ? (e => { e.stopPropagation(); onDcrClick?.(dr); }) : undefined}>

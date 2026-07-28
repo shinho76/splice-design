@@ -497,6 +497,11 @@ body {
 .col-name .cn-txt { display: inline-block; vertical-align: middle; border: 0; background: none; padding: 0; margin: 0;
   font: inherit; font-weight: 700; color: inherit; cursor: pointer; text-decoration: none; }
 .col-name .cn-txt:hover { color: var(--accent); }
+/* W형강: 호칭(W40X294) + 세부치수(W-1026x305x26.9x49) 2행 병기 */
+.col-name .cn-two { display: inline-flex; flex-direction: column; line-height: 1.18; vertical-align: middle; text-align: left; }
+.col-name .cn-nom { font-weight: 700; }
+.col-name .cn-mm { font-size: 8px; color: var(--muted); font-weight: 500; letter-spacing: -.03em; }
+.col-name .cn-txt:hover .cn-mm { color: var(--accent); }
 /* 행(단면) 삭제 선택 체크박스 / 헤더 적용✔·초기화↺ 버튼 */
 .col-name .cn-head { vertical-align: middle; }
 .row-chk { width: 13px; height: 13px; margin: 0 5px 0 0; vertical-align: middle; cursor: pointer; accent-color: var(--ng); flex-shrink: 0; }

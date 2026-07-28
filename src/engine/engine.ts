@@ -188,20 +188,26 @@ function designWeb(cond: DesignCondition, sec: HSection, bolt: BoltName, fy: num
   const { H, tw, tf, r } = sec;
   const phiRnW = boltStrength(cond, bolt, 2, tw, fu);   // 지압: 모재 웨브(tw) 지배
   const Nreq = Math.max(2, ceil(soryeok / phiRnW));
+  // 웨브 첨판이 웨브 필렛을 침범하지 않도록 춤 상한(플랫 웨브 높이 − 2·클리어런스).
+  // H형강은 편람 골든 유지 위해 제한 없음(진단상 0건). W형강만 필렛 클리어런스 강제.
+  const FCL = 8;                                  // 필렛 클리어런스(mm)
+  const isW = cond.profile === 'W';
+  const chumCap = isW ? (H - 2 * (tf + r) - 2 * FCL) : Infinity;
 
   let mW: number, nW: number, Pc: number | null, stagger: boolean, chum: number;
   if (H <= 150) {
-    mW = 1; nW = Nreq; Pc = null; stagger = H <= 125; chum = H <= 100 ? 60 : 80;
+    mW = 1; nW = Nreq; Pc = null; stagger = H <= 125;
+    chum = Math.round(Math.min(H <= 100 ? 60 : 80, chumCap));
   } else {
     stagger = H <= 210;
-    const C = stagger ? 2*(tf+r+40) : 2*(60+tf+r);
+    const C = (stagger && isW) ? 2*(tf+r+40+FCL) : (stagger ? 2*(tf+r+40) : 2*(60+tf+r));
     mW = 1; nW = Nreq; Pc = 60; let found = false;
     for (let nn=1; nn<=8 && !found; nn++) {
       const mm = ceil(Nreq/nn);
       const feas = WEB_PITCH_OPTIONS.filter(p => (mm-1)*p + C <= H);
       if (feas.length) { mW=mm; nW=nn; Pc=Math.max(...feas); found=true; }
     }
-    chum = (mW-1)*(Pc ?? 60) + 80;
+    chum = Math.round(Math.min((mW-1)*(Pc ?? 60) + 80, chumCap));
   }
   const dpw = chum;
   const webP = Math.max(60, Math.ceil(2.667 * boltDiaOf(bolt) / 5) * 5);   // C안: 웨브 가로피치
