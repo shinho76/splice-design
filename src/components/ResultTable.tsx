@@ -6,7 +6,7 @@ import { nominalOf, unitWeightOf } from '../engine/hbeam_catalog.ts';
 import { useLang } from '../i18n.ts';
 
 const nf = (v?: number) => v == null ? '' : v.toLocaleString('en-US');   // 1000+ 콤마
-const fmtPlate = (p?: Plate) => p ? `${p.t}×${nf(p.w)}×${nf(p.L)}` : null;
+const fmtPlate = (p?: Plate) => p ? `${p.t}×${p.w}×${p.L}` : null;   // 판 치수(mm)는 콤마 없이 — 도면 관례·열폭 절약
 const fmtBolt = (b: BoltArray) => `${b.m}×${b.n % 1 ? b.n.toFixed(1) : b.n}`;
 const fmtW = (w: number) => w.toLocaleString('en-US');                   // 단위무게
 
@@ -27,16 +27,17 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
     <div className="tablewrap">
       <table className="design-table">
         <colgroup>
-          <col style={{ width: 158 }} /><col style={{ width: 46 }} /><col style={{ width: 78 }} />
-          <col style={{ width: 84 }} /><col style={{ width: 84 }} />
-          <col style={{ width: 54 }} />
-          <col style={{ width: 64 }} /><col style={{ width: 50 }} /><col style={{ width: 50 }} />
-          <col style={{ width: 130 }} /><col style={{ width: 130 }} />
-          <col style={{ width: 64 }} /><col style={{ width: 50 }} /><col style={{ width: 130 }} />
+          <col style={{ width: 120 }} /><col style={{ width: 34 }} /><col style={{ width: 32 }} /><col style={{ width: 42 }} />
+          <col style={{ width: 48 }} /><col style={{ width: 46 }} />
+          <col style={{ width: 34 }} />
+          <col style={{ width: 40 }} /><col style={{ width: 28 }} /><col style={{ width: 28 }} />
+          <col style={{ width: 76 }} /><col style={{ width: 76 }} />
+          <col style={{ width: 40 }} /><col style={{ width: 28 }} /><col style={{ width: 76 }} />
         </colgroup>
         <thead>
           <tr>
             <th rowSpan={2} className="col-name g-info">{L('단면치수', 'Section')}</th>
+            <th rowSpan={2} className="g-info dcr-h">DCR</th>
             <th rowSpan={2} className="g-info">r<br /><span className="unit">mm</span></th>
             <th rowSpan={2} className="gcol g-info">{L('단위중량', 'Unit wt')}<br /><span className="unit">kg/m</span></th>
             <th colSpan={2} className="gcol g-str">{L('설계강도', 'Design Strength')}</th>
@@ -71,9 +72,10 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
               <tr key={r.section} onClick={() => onSelect(dr)} className={`${newSeries ? 'series-top' : ''}${sel ? ' row-sel' : ''}`}>
                 <td className="col-name">
                   <span className={`st-dot${ng ? ' ng' : ''}`} title={ng ? '재검토' : '적합'} />
-                  <span className="cn-txt">{r.section}</span>
-                  {govDcr != null && <span className={`ag-dcr${govDcr > 1.0 ? ' ng' : ''}`} title={ac ? L('AISC 지배 DCR(자동보정)', 'AISC gov. DCR (auto-fixed)') : L('AISC 지배 DCR(편람 배치)', 'AISC gov. DCR (KBC layout)')}>{govDcr.toFixed(2)}</span>}
-                  <button className="t3d" title="3D 보기" onClick={e => { e.stopPropagation(); onView3D(dr); }}>3D</button></td>
+                  <button className="cn-txt" title={L('3D 형상 보기', 'View 3D shape')} onClick={e => { e.stopPropagation(); onView3D(dr); }}>{r.section}</button></td>
+                <td className={`dcr-cell${govDcr != null && govDcr > 1.0 ? ' ng' : ''}`}
+                  title={govDcr == null ? undefined : ac ? L('AISC 지배 DCR(자동보정)', 'AISC gov. DCR (auto-fixed)') : L('AISC 지배 DCR(편람 배치)', 'AISC gov. DCR (KBC layout)')}>
+                  {govDcr != null ? govDcr.toFixed(2) : <span className="dash">—</span>}</td>
                 <td>{s.r}</td>
                 <td className="gcol">{fmtW(unitWeightOf(s))}</td>
                 <td>{nf(isCol ? dr.Puf_kN : dr.Mu_kNm)}</td>
