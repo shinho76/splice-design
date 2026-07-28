@@ -1,5 +1,5 @@
 import type { DesignResult, DesignCondition } from '../engine/types.ts';
-import { parseName } from '../engine/sections.ts';
+import { parseName, sectionByName } from '../engine/sections.ts';
 import { useLang, tJoint, tMember } from '../i18n.ts';
 
 /**
@@ -103,7 +103,7 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
         {/* 제목 셀 */}
         <rect x={30} y={yHead} width={(W - 60) / 2} height={hHead} className="svg-cell" />
         <rect x={30 + (W - 60) / 2} y={yHead} width={(W - 60) / 2} height={hHead} className="svg-cell" />
-        <text x={30 + (W - 60) / 4} y={yHead + hHead / 2 + 5} className="svg-title" textAnchor="middle">{r.section}</text>
+        <text x={30 + (W - 60) / 4} y={yHead + hHead / 2 + 5} className="svg-title" textAnchor="middle">{sectionByName(r.section)?.label ?? r.section}</text>
         <text x={30 + (W - 60) * 3 / 4} y={yHead + hHead / 2 + 5} className="svg-title" textAnchor="middle">{cond.steel} {Math.round(cond.strengthRatio * 100)}% {cond.bolt} {tJoint(cond.jointType, lang)}</text>
 
         {/* ── 웨브 입면도 ── */}

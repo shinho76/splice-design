@@ -422,7 +422,8 @@ body {
 .cfilters .fld.alpha .alpha-ctl select { width: 100%; }
 .cfilters .seg { display: flex; flex: 1; padding: 2px; }
 .cfilters .seg button { flex: 1; text-align: center; padding: 3px 4px; font-size: 10.5px; }
-.dh { font-size: 15px; font-weight: 800; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; }
+.dh { font-size: 15px; font-weight: 800; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dh-mm { font-size: 11px; color: var(--muted); font-weight: 500; font-family: var(--mono); }
 .dbadge { font-size: 9.5px; font-weight: 700; letter-spacing: .4px; color: var(--accent); background: var(--accent-soft);
   border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 999px; padding: 2px 8px; }
 .dsub { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
@@ -516,6 +517,7 @@ body {
   border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 24px 70px rgba(0,0,0,.55); }
 .v3d-top { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 13px; }
 .v3d-top b { color: var(--accent); font-size: 14px; } .v3d-top span { color: var(--muted); }
+.v3d-mm { font-family: var(--mono); font-size: 11px; color: var(--muted); font-weight: 500; }
 .v3d-top .close { margin-left: auto; width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); color: var(--fg); cursor: pointer; }
 .v3d-canvas { flex: 1; min-height: 0; background: #0d1524; position: relative; } .v3d-canvas canvas { display: block; }
 .v3d-toggle { height: 28px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--panel); color: var(--fg); font-size: 12px; font-weight: 700; cursor: pointer; }

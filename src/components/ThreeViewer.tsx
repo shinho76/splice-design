@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { DesignResult, DesignCondition } from '../engine/types.ts';
 import { connParts, type PartBolt } from '../engine/connParts.ts';
+import { sectionByName } from '../engine/sections.ts';
 import { connChecks } from '../engine/connChecks.ts';
 import { useLang, tr, tMember, tJoint } from '../i18n.ts';
 
@@ -196,7 +197,7 @@ export default function ThreeViewer({ r, cond, onClose }: { r: DesignResult; con
     <div className="v3d-back" onClick={onClose}>
       <div className="v3d-card" onClick={e => e.stopPropagation()}>
         <div className="v3d-top">
-          <b>{r.section}</b><span>· {tMember(cond.member, lang)} {tJoint(cond.jointType, lang)}{L('접합', '')} · {cond.bolt}</span>
+          <b>{sectionByName(r.section)?.label ?? r.section}</b>{sectionByName(r.section)?.label && <span className="v3d-mm">{r.section}</span>}<span>· {tMember(cond.member, lang)} {tJoint(cond.jointType, lang)}{L('접합', '')} · {cond.bolt}</span>
           <div className="v3d-mode">
             <button className={mode === '2D' ? 'on' : ''} onClick={() => setMode('2D')}>2D</button>
             <button className={mode === '3D' ? 'on' : ''} onClick={() => setMode('3D')}>3D</button>

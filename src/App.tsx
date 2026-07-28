@@ -14,7 +14,7 @@ const ThreeViewer = lazy(() => import('./components/ThreeViewer.tsx'));
 const DcrPopup = lazy(() => import('./components/DcrPopup.tsx'));
 import { loadProject, persistProject, newItem, type ProjectItem } from './engine/project.ts';
 import { LangContext, type Lang, tMember, tJoint } from './i18n.ts';
-import { catalogFor } from './engine/sections.ts';
+import { catalogFor, sectionByName } from './engine/sections.ts';
 import { usesLimitState } from './engine/std.ts';
 import { designConnection } from './engine/engine.ts';
 import { aiscAutoCorrect } from './engine/aisc/compat.ts';
@@ -154,7 +154,9 @@ export default function App() {
           <aside className="cdetail">
             {selEff ? (
               <>
-                <div className="dh">{selEff.section}<span className="dbadge">{autoFix && usesLimitState(cond.designStd) ? L('자동보정', 'Auto-fixed') : L('선택됨', 'Selected')}</span></div>
+                <div className="dh">{sectionByName(selEff.section)?.label ?? selEff.section}
+                  {sectionByName(selEff.section)?.label && <span className="dh-mm">{selEff.section}</span>}
+                  <span className="dbadge">{autoFix && usesLimitState(cond.designStd) ? L('자동보정', 'Auto-fixed') : L('선택됨', 'Selected')}</span></div>
                 <div className="dsub">{tMember(cond.member, lang)} · {tJoint(cond.jointType, lang)} · {cond.steel} · {cond.bolt}</div>
                 <div className="dspecs">
                   <div><span>{isCol ? L('압축강도', 'Compression') : L('휨모멘트', 'Moment')}</span><b>{nf(isCol ? selEff.Puf_kN : selEff.Mu_kNm)} kN{isCol ? '' : '·m'}</b></div>
