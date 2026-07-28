@@ -10,7 +10,7 @@ const TH = 20;   // 도면 문자높이
 const TB = 24;   // 정보표 문자높이(셀폭 150 내 라벨 수용 — 겹침 방지)
 const FONT = 'STANDARD';  // 표준 텍스트 스타일(txt.shx 기반) — 특정 폰트 미설치 PC에서도 열리도록 이식성 확보
 const ARROW = 5.0;                        // exe DIMSTYLE dimasz(41) = _ARCHTICK INSERT scale
-const PW = 4;                             // 입면 첨판 두꺼운 선 폭(POLYLINE width)
+const PW = 1.6;                           // 입면 첨판 선 폭(POLYLINE width) — 녹색/시안 얇게
 
 // ── 좌표 변환(회전+평행이동) : 보 deg=0, 기둥 deg=90 ──
 interface Xf { c: number; s: number; ox: number; oy: number; deg: number; }

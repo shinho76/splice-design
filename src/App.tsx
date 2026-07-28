@@ -34,6 +34,7 @@ export default function App() {
   const [showQty, setShowQty] = useState(false);
   const [showProj, setShowProj] = useState(false);
   const [view3D, setView3D] = useState<DesignResult | null>(null);
+  const [zoomPrev, setZoomPrev] = useState(false);   // 접합 상세도 확대 보기
   const [boltMode, setBoltMode] = useState<'Default' | 'Custom'>('Default');
   const [boltOv, setBoltOv] = useState<Record<number, number>>({});   // 행index → 지정직경(위 행 따름)
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());  // 테이블에서 제거한 단면(−버튼)
@@ -173,7 +174,10 @@ export default function App() {
                   <button className="db" onClick={() => exportOneIFC(selEff)}>IFC</button>
                   <button className="db" onClick={() => addToProject(selEff)}>＋ {L('프로젝트', 'Project')}</button>
                 </div>
-                <div className="dprev"><ConnectionSVG r={selEff} cond={cond} /></div>
+                <div className="dprev">
+                  <button className="prev-zoom" title={L('크게 보기', 'Enlarge')} onClick={() => setZoomPrev(true)}>🔍</button>
+                  <ConnectionSVG r={selEff} cond={cond} />
+                </div>
               </>
             ) : (
               <div className="dempty">
@@ -203,6 +207,20 @@ export default function App() {
         {showProj && <ProjectPanel items={project} onChange={setProject} onClose={() => setShowProj(false)} />}
         {view3D && <ThreeViewer r={view3D} cond={cond} onClose={() => setView3D(null)} />}
       </Suspense>
+      {zoomPrev && selEff && (
+        <div className="prev-back" onClick={() => setZoomPrev(false)}>
+          <div className="prev-modal" onClick={e => e.stopPropagation()}>
+            <div className="prev-modal-hd">
+              <span>{selEff.section} · {tMember(cond.member, lang)} {tJoint(cond.jointType, lang)}</span>
+              <div className="prev-modal-act">
+                <button className="db" onClick={() => exportOneDXF(selEff)}>DXF</button>
+                <button className="prev-close" title={L('닫기', 'Close')} onClick={() => setZoomPrev(false)}>✕</button>
+              </div>
+            </div>
+            <div className="prev-modal-bd"><ConnectionSVG r={selEff} cond={cond} /></div>
+          </div>
+        </div>
+      )}
     </div>
     </LangContext.Provider>
   );

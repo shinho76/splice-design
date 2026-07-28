@@ -27,12 +27,14 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
     .filter(({ s }) => !hidden?.has(s.name));
   const isCol = cond.member === '기둥';
   const isAisc = cond.designStd === 'AISC';
-  const dbW = custom ? 58 : 34;                       // 볼트 직경열: 지정(드롭다운) 시 확장
+  const dbW = 46;                                     // 볼트 직경열: 지정/표준 동일 폭(토글 시 표 흔들림 방지)
   const hasHidden = (hidden?.size ?? 0) > 0;
-  // 삭제 선택(체크) → 적용(✓) 시 일괄 제거
+  // 삭제 선택(체크) → 헤더 아이콘: + 선택만 남김 / − 선택 제외 / ⟳ 초기화
   const [checked, setChecked] = useState<Set<string>>(() => new Set());
   const toggleCheck = (name: string) => setChecked(c => { const n = new Set(c); n.has(name) ? n.delete(name) : n.add(name); return n; });
-  const applyDelete = () => { checked.forEach(n => onHide?.(n)); setChecked(new Set()); };
+  const hideMany = (names: string[]) => { names.forEach(n => onHide?.(n)); setChecked(new Set()); };
+  const keepOnly = () => hideMany(rows.filter(({ s }) => !checked.has(s.name)).map(({ s }) => s.name));  // 선택만 남김
+  const excludeChecked = () => hideMany(rows.filter(({ s }) => checked.has(s.name)).map(({ s }) => s.name)); // 선택 제외
   const doReset = () => { onResetHidden?.(); setChecked(new Set()); };
   const checkedVisible = rows.reduce((a, { s }) => a + (checked.has(s.name) ? 1 : 0), 0);
 
@@ -51,10 +53,14 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
           <tr>
             <th rowSpan={2} className="col-name g-info">
               <span className="cn-head">{L('단면치수', 'Section')}</span>
-              <button className="col-apply" disabled={checkedVisible === 0} title={L('선택 단면 삭제 적용', 'Delete checked sections')}
-                onClick={applyDelete}>✔</button>
-              <button className="col-reset" disabled={!hasHidden} title={L('전체 단면 복원', 'Restore all sections')}
-                onClick={doReset}>↺</button>
+              <span className="col-tools">
+                <button className="col-keep" disabled={checkedVisible === 0} title={L('선택 단면만 남기기', 'Keep only checked')}
+                  onClick={keepOnly}>＋</button>
+                <button className="col-excl" disabled={checkedVisible === 0} title={L('선택 단면 제외', 'Exclude checked')}
+                  onClick={excludeChecked}>－</button>
+                <button className="col-reset" disabled={!hasHidden} title={L('전체 단면 복원', 'Restore all')}
+                  onClick={doReset}>⟳</button>
+              </span>
             </th>
             <th rowSpan={2} className="g-info dcr-h">DCR</th>
             <th rowSpan={2} className="g-info">r<br /><span className="unit">mm</span></th>
