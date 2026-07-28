@@ -154,33 +154,9 @@ function boltPlan(p: Pen, x: number, y: number, rad: number) {
 }
 const gpl = (pl: Plate | undefined, n: number) => pl ? `G.PL. ${pl.t}x${pl.w}x${pl.L}x${n}EA` : '-';
 
-// H형강 단면 그리기(필렛 R 반영) — 중심 (cx,cy), 직선 외곽 + 4개 필렛 ARC
-function hSection(p: Pen, cx: number, cy: number, H: number, B: number, tw: number, tf: number, r: number, lay: string) {
-  const b = B / 2, h = H / 2, w = tw / 2, yi = h - tf;   // yi: 플랜지 안쪽면
-  const X = (x: number) => cx + x, Y = (y: number) => cy + y;
-  const rr = Math.min(r, yi - 1, b - w - 1);              // 안전 반경(치수 초과 방지)
-  p.line(X(-b), Y(h), X(b), Y(h), lay);                  // 상단 플랜지 윗변
-  p.line(X(b), Y(h), X(b), Y(yi), lay);                  // 우상 플랜지 옆변
-  p.line(X(b), Y(yi), X(w + rr), Y(yi), lay);            // 우상 플랜지 밑면
-  p.arc(X(w + rr), Y(yi - rr), rr, 90, 180, lay);        // 우상 필렛
-  p.line(X(w), Y(yi - rr), X(w), Y(-(yi - rr)), lay);    // 우측 웨브면
-  p.arc(X(w + rr), Y(-(yi - rr)), rr, 180, 270, lay);    // 우하 필렛
-  p.line(X(w + rr), Y(-yi), X(b), Y(-yi), lay);          // 우하 플랜지 윗면
-  p.line(X(b), Y(-yi), X(b), Y(-h), lay);                // 우하 플랜지 옆변
-  p.line(X(b), Y(-h), X(-b), Y(-h), lay);                // 하단 플랜지 아랫변
-  p.line(X(-b), Y(-h), X(-b), Y(-yi), lay);              // 좌하 플랜지 옆변
-  p.line(X(-b), Y(-yi), X(-(w + rr)), Y(-yi), lay);      // 좌하 플랜지 윗면
-  p.arc(X(-(w + rr)), Y(-(yi - rr)), rr, 270, 360, lay); // 좌하 필렛
-  p.line(X(-w), Y(-(yi - rr)), X(-w), Y(yi - rr), lay);  // 좌측 웨브면
-  p.arc(X(-(w + rr)), Y(yi - rr), rr, 0, 90, lay);       // 좌상 필렛
-  p.line(X(-(w + rr)), Y(yi), X(-b), Y(yi), lay);        // 좌상 플랜지 밑면
-  p.line(X(-b), Y(yi), X(-b), Y(h), lay);                // 좌상 플랜지 옆변(닫힘)
-  p.line(X(0), Y(-h - 12), X(0), Y(h + 12), 'MAIN');     // 중심선(웨브)
-}
-
 export function layout(r: DesignResult, isCol: boolean) {
   const { H, B, tw, tf } = parseName(r.section);
-  const csStrip = B + 120;                        // 우측 단면도 영역 폭
+  const csStrip = 0;                              // 단면도(SECTION) 제거 — 우측 스트립 없음(참고 도면 규약)
   const oT = r.flange.outerPlate?.t ?? 9;
   const Lpf = r.flange.outerPlate?.L ?? 300, outerW = r.flange.outerPlate?.w ?? 200;
   const wB = r.web.bolt;
@@ -228,8 +204,6 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   const F: UniFrame = uni ?? { frameL: L.frameL, frameRC: L.frameRC, frameR: L.frameR, frameTop: L.frameTop, frameBot: L.frameBot };
   const cdx = uni ? ((F.frameL + F.frameRC) / 2 - (L.frameL + L.frameRC) / 2) : 0;
   const cdy = uni ? ((F.frameTop + F.frameBot) / 2 - (L.frameTop + L.frameBot) / 2) : 0;
-  const csCx = uni ? F.frameRC + (F.frameR - F.frameRC) / 2 : L.csCx;
-  const csCy = uni ? (F.frameTop + F.frameBot) / 2 : L.csCy;
   const boxTopE = uni ? F.frameBot + 4 * L.boxRow + 16 : L.boxTop;   // 표제란을 도곽 하단에 고정
   const tM = mkXf(ox + cdx + L.mOx, oy + cdy + L.mOy, L.deg);        // 부재·치수(회전·콘텐츠 중앙이동)
   const tFc = mkXf(ox + cdx, oy + cdy, 0);                           // 지시선(콘텐츠 앵커)
@@ -241,8 +215,7 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   const stag = r.flange.staggered ?? false;
   const inner = r.flange.innerPlate;
   const hole = BOLT_HOLE[boltNameByDia[dia]].hole, rad = hole / 2;
-  const grade = cond.bolt;                                   // 볼트 등급(F10T·A490 등) — NOTES에 명기
-  const btb = (n: number) => `${n}-M${dia} H.T.B`;           // 지시선 볼트 콜아웃(등급은 NOTES)
+  const btb = (n: number) => `${n}-M${dia} H.T.B`;           // 지시선 볼트 콜아웃
   const flCount = fB.m * round(fB.n) * 4, wCount = wB.m * wB.n * 2;
   const B = parseName(r.section).B;
   const secLbl = `H-${H}x${B}x${tw}x${tf}`;
@@ -320,7 +293,11 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   const webA = pt(tMl, -webWid / 2, yW), wbA = pt(tMl, -webWid / 4, yW - chum / 2 + 20), fbA = pt(tMl, -base, yF + g1 / 2);
   // 지시선 텍스트는 도곽 여백에 두되, 콘텐츠 앵커펜(pfc) 기준 로컬로 환산(−cd)해 앵커와 좌표계 일치
   const lx = F.frameL + 70 - cdx, rx = F.frameRC - 70 - cdx;
-  if (!isCol) {                                   // 보: 좌측 여백 스택
+  if (!isCol) {                                   // 보
+    // H형강 라벨 → 우상단(부재 플랜지 가리킴, SECTION 뷰 대체)
+    const hpA = pt(tMl, memHalf * 0.5, yW + H / 2 + oT);
+    leader(pfc, hpA[0], hpA[1], rx - 30, F.frameTop - 55 - cdy, secLbl);
+    // 판·볼트 라벨 → 좌측 여백 스택
     let ly = F.frameTop - 70 - cdy;
     const put = (a: [number, number], txt: string) => { leader(pfc, a[0], a[1], lx, ly, txt); ly -= 62; };
     put(outerA, gpl(r.flange.outerPlate, 2));
@@ -340,14 +317,9 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
     putR(fbA, btb(flCount));
   }
 
-  // ── 외곽 테두리 + 단면라벨 + 하단 MINI_BOX(도곽 좌표) + 우측 단면도 ──
+  // ── 외곽 테두리 + 도면 제목(상단 중앙) + 하단 표제란 (SECTION 뷰·NOTES 제거: 참고 도면 규약) ──
   pff.rect(F.frameL, F.frameBot, F.frameR - F.frameL, F.frameTop - F.frameBot, 'MINI_BOX');
-  pff.line(F.frameRC, F.frameBot, F.frameRC, F.frameTop, 'MINI_BOX');   // 본도면/단면도 구분선
-  pff.text((F.frameL + F.frameRC) / 2, F.frameTop - 34, TH * 1.2, secLbl, 'DIM', { align: 'c' });
-  // 우측 단면도 : H형강 단면(필렛 R 반영)
-  hSection(pff, csCx, csCy, H, B, tw, tf, fr, 'MAIN');
-  pff.text(csCx, csCy + H / 2 + 40, TH * 1.2, 'SECTION', 'DIM', { align: 'c' });
-  pff.text(csCx, csCy - H / 2 - 56, TH, secLbl, 'DIM', { align: 'c' });
+  pff.text((F.frameL + F.frameRC) / 2, F.frameTop - 34, TH * 1.3, secLbl, 'DIM', { align: 'c' });
   const bl2 = F.frameL + 6, br2 = F.frameRC - 6, midX = (bl2 + br2) / 2;
   // 표제란 값 — 참고 도면 전체 형식(G.PL. …EA / …-M… H.T.B). 폭은 적응형 폰트(tbe)로 수용.
   const gplT = (pl: Plate | undefined, n: number) => pl ? `G.PL. ${pl.t}x${pl.w}x${pl.L}x${n}EA` : '-';
@@ -367,18 +339,6 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   tx(bl2, 1, 'Web PL.'); tx(bl2 + Lw, 1, gplT(r.web.webPlate, 2)); tx(midX, 1, 'O-Flg PL.'); tx(midX + Lw, 1, gplT(r.flange.outerPlate, 2));
   tx(bl2, 2, 'Web Bolt'); tx(bl2 + Lw, 2, btbT(wCount)); tx(midX, 2, 'I-Flg PL.'); tx(midX + Lw, 2, inner ? gplT(inner, 4) : '-');
   tx(bl2, 3, 'Joint'); tx(bl2 + Lw, 3, jointLbl); tx(midX, 3, 'Flg Bolt'); tx(midX + Lw, 3, btbT(flCount));
-
-  // ── 디테일러 노트(우측 단면도 스트립 하단, 정립) — 볼트·구멍·연단·피치·갭·기준 ──
-  const fEdge = r.flange.edge ?? 40, fPitchN = r.flange.pitch ?? 60;
-  const std = cond.designStd === 'AISC' ? 'AISC 360-16 LRFD' : 'KBC-09 LSD';
-  const notes = [
-    'NOTES',
-    `1. BOLT: M${dia} ${grade} H.T.B,  HOLE DIA ${hole} STD`,
-    `2. ${cond.jointType === '지압' ? 'BEARING-TYPE JOINT' : 'SLIP-CRITICAL, FAYING CLASS B (u=0.50)'}`,
-    `3. EDGE ${fEdge}  PITCH ${fPitchN}  GAP ${gap}  (mm)`,
-    `4. DESIGN: ${std}`,
-  ];
-  notes.forEach((s, i) => pff.text(F.frameRC + 16, F.frameBot + 44 + (notes.length - 1 - i) * 30, i === 0 ? TH : TH * 0.85, s, 'DIM', { align: 'l' }));
 }
 
 const LAYERS: [string, number][] = [['MAIN', 7], ['FLG_PL', 3], ['WEB_PL', 4], ['BOLT', 6], ['VER_BOLT', 1], ['DIM', 7], ['MINI_BOX', 7]];
