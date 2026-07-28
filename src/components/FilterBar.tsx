@@ -16,6 +16,11 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
 
   return (
     <div className="filterbar">
+      {/* Ⓐ 형강 프로파일 (H형강 편람 / W형강 AISC v16.0) */}
+      <div className="fgrp">
+        <Seg label={L('형강', 'Profile')} value={cond.profile ?? 'H'} opts={['H', 'W']} optLabels={['H-Shape', 'W-Shape']} onPick={v => set('profile', v as 'H' | 'W')} />
+      </div>
+
       {/* ⓪ 설계기준 */}
       <div className="fgrp">
         <Seg label={L('설계기준', 'Std')} value={cond.designStd ?? 'KBC'} opts={['KBC', 'AISC']} optLabels={['KBC-09', 'AISC360-16']} onPick={v => set('designStd', v as 'KBC' | 'AISC')} />

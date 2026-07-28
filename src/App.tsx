@@ -13,7 +13,7 @@ const ProjectPanel = lazy(() => import('./components/ProjectPanel.tsx'));
 const ThreeViewer = lazy(() => import('./components/ThreeViewer.tsx'));
 import { loadProject, persistProject, newItem, type ProjectItem } from './engine/project.ts';
 import { LangContext, type Lang, tMember, tJoint } from './i18n.ts';
-import { SECTIONS } from './engine/sections.ts';
+import { catalogFor } from './engine/sections.ts';
 import { designConnection } from './engine/engine.ts';
 import { aiscAutoCorrect } from './engine/aisc/compat.ts';
 import { toDXF, toDXFAll, downloadFile } from './engine/dxf.ts';
@@ -70,7 +70,7 @@ export default function App() {
     let bolts = 0, wt = 0, boltWt = 0, ok = 0;
     const af = cond.designStd === 'AISC' && autoFix;
     let total = 0;
-    SECTIONS.forEach((s, i) => {
+    catalogFor(cond.profile).forEach((s, i) => {
       if (hidden.has(s.name)) return;                 // 제거된 단면은 집계 제외
       total++;
       let r = designConnection(cond, s, diaAt(i)), okThis: boolean;
@@ -89,7 +89,7 @@ export default function App() {
 
   const addToProject = (r: DesignResult) => setProject(p => [...p, newItem(r.section, cond)]);
   const exportAllDXF = () => {
-    const rows = SECTIONS.map((s, i) => ({ s, i })).filter(({ s }) => !hidden.has(s.name))
+    const rows = catalogFor(cond.profile).map((s, i) => ({ s, i })).filter(({ s }) => !hidden.has(s.name))
       .map(({ s, i }) => designConnection(cond, s, diaAt(i)));
     downloadFile(`splice_전체_${cond.member}_${cond.jointType}.dxf`, toDXFAll(rows, cond), 'application/dxf');
   };

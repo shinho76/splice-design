@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { DesignCondition, DesignResult, Plate, BoltArray } from '../engine/types.ts';
-import { SECTIONS } from '../engine/sections.ts';
+import { catalogFor } from '../engine/sections.ts';
 import { designConnection } from '../engine/engine.ts';
 import { aiscCheck, aiscAutoCorrect } from '../engine/aisc/compat.ts';
 import { nominalOf, unitWeightOf } from '../engine/hbeam_catalog.ts';
@@ -21,8 +21,8 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
 }) {
   const lang = useLang();
   const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
-  // 원본 인덱스(i) 유지 — Custom 직경 지정(diaAt/onSetDia)은 SECTIONS 순번 기준
-  const rows = SECTIONS
+  // 원본 인덱스(i) 유지 — Custom 직경 지정(diaAt/onSetDia)은 카탈로그 순번 기준
+  const rows = catalogFor(cond.profile)
     .map((s, i) => ({ s, i, r: designConnection(cond, s, diaAt?.(i)) }))
     .filter(({ s }) => !hidden?.has(s.name));
   const isCol = cond.member === '기둥';
@@ -46,8 +46,8 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
           <col style={{ width: 46 }} /><col style={{ width: 44 }} />
           <col style={{ width: dbW }} />
           <col style={{ width: 40 }} /><col style={{ width: 28 }} /><col style={{ width: 28 }} />
-          <col style={{ width: 76 }} /><col style={{ width: 76 }} />
-          <col style={{ width: 40 }} /><col style={{ width: 28 }} /><col style={{ width: 76 }} />
+          <col style={{ width: 80 }} /><col style={{ width: 80 }} />
+          <col style={{ width: 40 }} /><col style={{ width: 28 }} /><col style={{ width: 80 }} />
         </colgroup>
         <thead>
           <tr>
@@ -100,7 +100,7 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
                     title={L('삭제 선택', 'Mark for deletion')} onClick={e => e.stopPropagation()}
                     onChange={e => { e.stopPropagation(); toggleCheck(s.name); }} />
                   <span className={`st-dot${ng ? ' ng' : ''}`} title={ng ? '재검토' : '적합'} />
-                  <button className="cn-txt" title={L('3D 형상 보기', 'View 3D shape')} onClick={e => { e.stopPropagation(); onView3D(dr); }}>{r.section}</button></td>
+                  <button className="cn-txt" title={s.label ? `${s.label} · ${r.section}` : L('3D 형상 보기', 'View 3D shape')} onClick={e => { e.stopPropagation(); onView3D(dr); }}>{s.label ?? r.section}</button></td>
                 <td className={`dcr-cell${govDcr != null && govDcr > 1.0 ? ' ng' : ''}`}
                   title={govDcr == null ? undefined : ac ? L('AISC 지배 DCR(자동보정)', 'AISC gov. DCR (auto-fixed)') : L('AISC 지배 DCR(편람 배치)', 'AISC gov. DCR (KBC layout)')}>
                   {govDcr != null ? govDcr.toFixed(2) : <span className="dash">—</span>}</td>

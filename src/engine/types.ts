@@ -23,8 +23,9 @@ export interface HSection {
   Aw: number;        // 웨브 유효단면적 = H·tw (전단용, mm²)
   Sx: number;        // 탄성 단면계수 (mm³)
   Zx: number;        // 소성 단면계수 (mm³)
-  /** 단면성능 출처: 'ks'=KS 규격표 확정값, 'calc'=치수 기반 계산값 */
-  propSource: 'ks' | 'calc';
+  /** 단면성능 출처: 'ks'=KS 규격표 확정값, 'calc'=치수 기반 계산값, 'aisc'=AISC v16.0(inch→mm) */
+  propSource: 'ks' | 'calc' | 'aisc';
+  label?: string;    // AISC W형강 원 표기(예 "W16X40"). H형강은 미사용
 }
 
 /** 설계조건 (필터 → 엔진 입력) */
@@ -41,6 +42,7 @@ export interface DesignCondition {
   gap?: number;          // 이음부 이격 갭(mm, 0·5·10). 기본 10
   designStd?: 'KBC' | 'AISC';  // 설계기준. 기본 KBC-09(편람). AISC=360-16 전 한계상태 검토
   threadCond?: 'N' | 'X';      // AISC 볼트 나사조건(전단면 통과 N / 제외 X). 기본 N
+  profile?: 'H' | 'W';         // 형강 카탈로그. H=편람 73종(기본) / W=AISC v16.0 289종
 }
 
 /** 첨판 치수 (두께 × 폭[or 춤] × 길이[or 너비]) */

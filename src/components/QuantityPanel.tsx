@@ -1,5 +1,5 @@
 import type { DesignCondition } from '../engine/types.ts';
-import { SECTIONS } from '../engine/sections.ts';
+import { catalogFor } from '../engine/sections.ts';
 import { designConnection } from '../engine/engine.ts';
 import { quantityOf, aggregate, quantityCsv } from '../engine/quantity.ts';
 import { downloadFile } from '../engine/dxf.ts';
@@ -17,7 +17,8 @@ export default function QuantityPanel({ cond, onClose, diaAt, autoFix }: { cond:
   const lang = useLang();
   const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
   const af = cond.designStd === 'AISC' && !!autoFix;
-  const qs = SECTIONS.map((s, i) => {
+  const secs = catalogFor(cond.profile);
+  const qs = secs.map((s, i) => {
     let r = designConnection(cond, s, diaAt?.(i));
     if (af) r = aiscAutoCorrect(r, cond).result;   // 자동보정 형상 기준 물량
     return quantityOf(r, cond);
@@ -59,7 +60,7 @@ export default function QuantityPanel({ cond, onClose, diaAt, autoFix }: { cond:
             </thead>
             <tbody>
               {qs.map((q, i) => (
-                <tr key={q.section} className={i > 0 && Math.floor(SECTIONS[i].H / 50) !== Math.floor(SECTIONS[i - 1].H / 50) ? 'series-top' : ''}>
+                <tr key={q.section} className={i > 0 && Math.floor(secs[i].H / 50) !== Math.floor(secs[i - 1].H / 50) ? 'series-top' : ''}>
                   <td className="col-name gcol">{q.section}</td>
                   <td className="gcol">{q.bolts[0].name}</td>
                   <td className="gcol">{q.boltCount}</td>
