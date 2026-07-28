@@ -255,7 +255,8 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   ([1, -1] as const).forEach(s => webPosX.forEach(wx => webRowY.forEach(wy => boltPlan(p, s * wx, yW + wy, rad))));
   p.line(0, yW - H / 2 - 20, 0, yW + H / 2 + 20, 'MAIN');
   const webYs = [yW + H / 2, yW + chum / 2, ...webRowY.slice().sort((a, b) => b - a).map(y => yW + y), yW - chum / 2, yW - H / 2];
-  dimChainV(doc, tM, [...new Set(webYs)].sort((a, b) => b - a), contentHalf, contentHalf + 46, contentHalf + 120);
+  const DS = isCol ? 1 : -1;   // 세로 치수 배치측: 기둥=우(+) / 보=좌(−) — 지시선(우측)과 좌우 역할 분리
+  dimChainV(doc, tM, [...new Set(webYs)].sort((a, b) => b - a), DS * contentHalf, DS * (contentHalf + 46), DS * (contentHalf + 120));
   const webXs = [-webWid / 2, ...webPosX.map(x => -x).sort((a, b) => a - b), -gap / 2, gap / 2, ...webPosX, webWid / 2];
   dimChainH(doc, tM, [...new Set(webXs)].sort((a, b) => a - b), yW - H / 2 - oT, yW - H / 2 - oT - 46, yW - H / 2 - oT - 100);
 
@@ -278,13 +279,14 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
     else { const off = ci % 2 ? 45 : 0, rows = ci % 2 ? nLo : nHi; for (let j = 0; j < rows; j++) boltPlan(p, s * (base + off + j * 90), cy, rad); }
   }));
   const flYs = [outerW / 2, ...[...colY].sort((a, b) => b - a), -outerW / 2].map(y => yF + y);
-  dimChainV(doc, tM, [...new Set(flYs)].sort((a, b) => b - a), Lpf / 2, Lpf / 2 + 46, Lpf / 2 + 120);
+  dimChainV(doc, tM, [...new Set(flYs)].sort((a, b) => b - a), DS * Lpf / 2, DS * (Lpf / 2 + 46), DS * (Lpf / 2 + 120));
   const flXs = [-Lpf / 2, ...fPosX.map(x => -x).sort((a, b) => a - b), -gap / 2, gap / 2, ...fPosX, Lpf / 2];
   dimChainH(doc, tM, [...new Set(flXs)].sort((a, b) => a - b), yF - outerW / 2, yF - outerW / 2 - 46, yF - outerW / 2 - 100);
-  // 내첨판 폭 치수선(좌측) — inner.w (양측 중 +측 중심)
+  // 내첨판 폭 치수선 — 게이지 치수 체인과 반대측(−DS)에 배치해 중복 회피
   if (inner) {
     const cyT = innerCy[1];
-    emitDim(doc, tM, [-Lpf / 2, yF + cyT - inner.w / 2], [-Lpf / 2, yF + cyT + inner.w / 2], [-Lpf / 2 - 46, 0], `${round(inner.w)}`, true);
+    const ix = -DS * Lpf / 2;
+    emitDim(doc, tM, [ix, yF + cyT - inner.w / 2], [ix, yF + cyT + inner.w / 2], [-DS * (Lpf / 2 + 46), 0], `${round(inner.w)}`, true);
   }
 
   // ── 지시선(판·볼트) : 앵커는 로컬(오프셋 제외) 좌표 → pf(정립+오프셋)가 한 번만 적용 ──
@@ -307,21 +309,37 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
       prevY = ly;
     }
   };
-  if (!isCol) {                                   // 보
-    // H형강 부재 콜아웃 → 우상단, 우측정렬 L자 지시선(uni 도곽·소형 단면에서도 프레임 내 수용 보장)
+  // 우측 지시선(라벨) 스택 — 우측정렬로 프레임 내 수용, 앵커 높이 정렬 + 넉넉한 간격 분산
+  const stackRight = (items: Lab[], gap: number) => {
+    const sorted = items.slice().sort((p, q) => q.a[1] - p.a[1]);
+    let prevY = Infinity;
+    for (const it of sorted) {
+      let ly = Math.min(it.a[1], F.frameTop - 40 - cdy);
+      if (prevY - ly < gap) ly = prevY - gap;
+      const w = it.txt.length * TH * 0.62, tleft = rx - w;
+      pfc.dot(it.a[0], it.a[1], 'DIM');
+      pfc.line(it.a[0], it.a[1], tleft - 12, ly, 'DIM'); pfc.line(tleft - 12, ly, tleft - 3, ly, 'DIM');
+      pfc.text(rx, ly - TH / 2, TH, it.txt, 'DIM', { align: 'r' });
+      prevY = ly;
+    }
+  };
+  if (!isCol) {                                   // 보: 지시선 우측(치수 좌측) · 라벨 더 분산
+    // H형강 부재 콜아웃 → 좌상단, 좌측정렬 L자 지시선
     const hty = F.frameTop - 52 - cdy;
-    const hA = pt(tMl, memHalf * 0.5, yW + H / 2 + oT);
+    const hA = pt(tMl, -memHalf * 0.5, yW + H / 2 + oT);
     pfc.dot(hA[0], hA[1], 'DIM');
-    pfc.line(hA[0], hA[1], rx, hA[1], 'DIM'); pfc.line(rx, hA[1], rx, hty, 'DIM');
-    pfc.text(rx, hty - TH / 2, TH, secLbl, 'DIM', { align: 'r' });
-    // 판·볼트 라벨 → 좌측 여백, 앵커 높이 정렬(외첨판↑ … 플랜지볼트↓)
-    stackAt([
-      { a: outerA, txt: gpl(r.flange.outerPlate, 2) },
-      ...(inner ? [{ a: innerA, txt: gpl(inner, 4) }] : []),
-      { a: webA, txt: gpl(r.web.webPlate, 2) },
-      { a: wbA, txt: btb(wCount) },
-      { a: fbA, txt: btb(flCount) },
-    ], lx);
+    pfc.line(hA[0], hA[1], lx, hA[1], 'DIM'); pfc.line(lx, hA[1], lx, hty, 'DIM');
+    pfc.text(lx, hty - TH / 2, TH, secLbl, 'DIM', { align: 'l' });
+    // 판·볼트 라벨 → 우측 여백(대칭 우측 앵커), 앵커 높이 정렬(외첨판↑ … 플랜지볼트↓)
+    const oR = pt(tMl, Lpf / 3, yW + H / 2 + oT), iR = pt(tMl, (inner?.L ?? Lpf) / 3, yW + H / 2 - tf - (inner?.t ?? 0) / 2);
+    const wR = pt(tMl, webWid / 2, yW), wbR = pt(tMl, webWid / 4, yW - chum / 2 + 20), fbR = pt(tMl, base, yF + g1 / 2);
+    stackRight([
+      { a: oR, txt: gpl(r.flange.outerPlate, 2) },
+      ...(inner ? [{ a: iR, txt: gpl(inner, 4) }] : []),
+      { a: wR, txt: gpl(r.web.webPlate, 2) },
+      { a: wbR, txt: btb(wCount) },
+      { a: fbR, txt: btb(flCount) },
+    ], 60);
   } else {                                        // 기둥: 좌(웨브)·우(플랜지) 여백에 앵커 높이 정렬
     stackAt([
       { a: webA, txt: gpl(r.web.webPlate, 2) },
