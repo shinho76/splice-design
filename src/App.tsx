@@ -11,6 +11,7 @@ const KbcDetailReport = lazy(() => import('./components/KbcDetailReport.tsx'));
 const QuantityPanel = lazy(() => import('./components/QuantityPanel.tsx'));
 const ProjectPanel = lazy(() => import('./components/ProjectPanel.tsx'));
 const ThreeViewer = lazy(() => import('./components/ThreeViewer.tsx'));
+const DcrPopup = lazy(() => import('./components/DcrPopup.tsx'));
 import { loadProject, persistProject, newItem, type ProjectItem } from './engine/project.ts';
 import { LangContext, type Lang, tMember, tJoint } from './i18n.ts';
 import { catalogFor } from './engine/sections.ts';
@@ -35,6 +36,7 @@ export default function App() {
   const [showProj, setShowProj] = useState(false);
   const [view3D, setView3D] = useState<DesignResult | null>(null);
   const [zoomPrev, setZoomPrev] = useState(false);   // 접합 상세도 확대 보기
+  const [dcrView, setDcrView] = useState<DesignResult | null>(null);   // DCR 팝업 대상
   const [boltMode, setBoltMode] = useState<'Default' | 'Custom'>('Default');
   const [boltOv, setBoltOv] = useState<Record<number, number>>({});   // 행index → 지정직경(위 행 따름)
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());  // 테이블에서 제거한 단면(−버튼)
@@ -145,7 +147,7 @@ export default function App() {
               <div className="kpi"><div className="k">{L('고력볼트', 'H.S. Bolts')}</div><div className="v num">{nf(stats.bolts)}<small> {L('본', 'ea')}</small> / {(stats.boltWt / 1000).toFixed(2)}<small> t</small></div><div className="d">{cond.bolt}</div></div>
               <div className="kpi"><div className="k">{L('강재 물량', 'Steel Qty')}</div><div className="v num">{(stats.wt / 1000).toFixed(2)}<small> t</small></div><div className="d">{L('첨판', 'plates')}</div></div>
             </div>
-            <div className="cgrid"><ResultTable cond={cond} onSelect={setSelected} onView3D={setView3D} custom={boltMode === 'Custom'} diaAt={diaAt} onSetDia={setDiaAt} selectedSection={selected?.section} autoFix={autoFix} hidden={hidden} onHide={hideSection} onResetHidden={resetHidden} /></div>
+            <div className="cgrid"><ResultTable cond={cond} onSelect={setSelected} onView3D={setView3D} custom={boltMode === 'Custom'} diaAt={diaAt} onSetDia={setDiaAt} selectedSection={selected?.section} autoFix={autoFix} hidden={hidden} onHide={hideSection} onResetHidden={resetHidden} onDcrClick={setDcrView} /></div>
           </div>
 
           <aside className="cdetail">
@@ -206,6 +208,7 @@ export default function App() {
         {showQty && <QuantityPanel cond={cond} diaAt={diaAt} autoFix={autoFix} onClose={() => setShowQty(false)} />}
         {showProj && <ProjectPanel items={project} onChange={setProject} onClose={() => setShowProj(false)} />}
         {view3D && <ThreeViewer r={view3D} cond={cond} onClose={() => setView3D(null)} />}
+        {dcrView && <DcrPopup r={dcrView} cond={cond} onClose={() => setDcrView(null)} />}
       </Suspense>
       {zoomPrev && selEff && (
         <div className="prev-back" onClick={() => setZoomPrev(false)}>

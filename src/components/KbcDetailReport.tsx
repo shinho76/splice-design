@@ -1,6 +1,7 @@
 // KBC-09 상세 계산서(서술형·한/영) — 편람 설계절차를 단계별로 읽어 내려가도록 전개.
 // 데이터 소스: 엔진 result.steps(CalcStep). 한→영은 i18n tr() 용어치환.
 import type { DesignCondition, DesignResult, CalcStep } from '../engine/types.ts';
+import { kbcCheck } from '../engine/kbcCheck.ts';
 import { useLang, tr, tMember, tJoint } from '../i18n.ts';
 
 const nf = (v?: number) => v == null ? '' : v.toLocaleString('en-US');
@@ -34,6 +35,8 @@ export default function KbcDetailReport({ result, cond, onClose }: { result: Des
   const order: string[] = [];
   const groups: Record<string, CalcStep[]> = {};
   for (const s of result.steps) { if (!groups[s.group]) order.push(s.group); (groups[s.group] ??= []).push(s); }
+  const dcr = kbcCheck(result, cond);
+  const dcrRows = dcr.items.slice().sort((a, b) => b.dcr - a.dcr);
 
   return (
     <div className="report" onClick={onClose}>
@@ -94,6 +97,35 @@ export default function KbcDetailReport({ result, cond, onClose }: { result: Des
             <tr><th>{L('웨브 첨판', 'Web plate')}</th><td>{plate(result.web.webPlate)} ×2</td></tr>
           </tbody></table>
         </section>
+
+        {dcr.govDcr != null && (
+          <section className="doc-sec">
+            <h3><span className="sec-no">{order.length + 2}.</span>{L('한계상태별 DCR 검토', 'DCR by Limit State')}</h3>
+            <p className="narr-intro">
+              {L('각 한계상태의 소요강도(Ru)를 설계강도(φRn)로 나눈 DCR = Ru/φRn 를 정리한다. 지배(최대) DCR = ',
+                'DCR = Ru/φRn for each limit state — demand over design capacity. Governing (max) DCR = ')}
+              <b className={dcr.govDcr > 1 ? '' : 'narr-dcr'}>{dcr.govDcr.toFixed(2)}</b>
+              {dcr.govDcr > 1 ? L(' 로 1.0을 초과하여 재검토가 필요하다.', ' exceeds 1.0 — review required.') : L(' ≤ 1.0 이므로 전 항목이 만족한다.', ' ≤ 1.0, so all limit states are satisfied.')}
+            </p>
+            <table className="result-table2 dcr-report">
+              <thead><tr><th>{L('검토항목', 'Limit state')}</th><th>Ru</th><th>φRn</th><th>{L('조항', 'Ref')}</th><th>DCR</th></tr></thead>
+              <tbody>
+                {dcrRows.map(it => {
+                  const gov = it.id === dcr.govId, ng = it.dcr > 1;
+                  return (
+                    <tr key={it.id} className={`${gov ? 'dcr-govrow' : ''}${ng ? ' dcr-ngrow' : ''}`}>
+                      <td>{gov && <span className="dcr-star">▲</span>}{tr(it.label, lang)}</td>
+                      <td>{nf(Math.round(it.demand))} {it.unit}</td>
+                      <td>{nf(Math.round(it.capacity))} {it.unit}</td>
+                      <td className="narr-cl">{it.ref}</td>
+                      <td className={`dcr-val${ng ? ' ng' : ''}${gov ? ' gov' : ''}`}>{it.dcr.toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </section>
+        )}
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import type { DesignCondition, DesignResult, Plate, BoltArray } from '../engine/
 import { catalogFor } from '../engine/sections.ts';
 import { designConnection } from '../engine/engine.ts';
 import { aiscCheck, aiscAutoCorrect } from '../engine/aisc/compat.ts';
+import { kbcCheck } from '../engine/kbcCheck.ts';
 import { nominalOf, unitWeightOf } from '../engine/hbeam_catalog.ts';
 import { useLang } from '../i18n.ts';
 
@@ -13,11 +14,12 @@ const fmtW = (w: number) => w.toLocaleString('en-US');                   // 단�
 
 const DIAS = [16, 20, 22, 24];   // 사용 직경(표준구멍 d+2 자동 적용)
 
-export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, onSetDia, selectedSection, autoFix, hidden, onHide, onResetHidden }: {
+export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, onSetDia, selectedSection, autoFix, hidden, onHide, onResetHidden, onDcrClick }: {
   cond: DesignCondition; onSelect: (r: DesignResult) => void; onView3D: (r: DesignResult) => void;
   custom?: boolean; diaAt?: (i: number) => number | undefined; onSetDia?: (i: number, d: number) => void;
   selectedSection?: string; autoFix?: boolean;
   hidden?: Set<string>; onHide?: (name: string) => void; onResetHidden?: () => void;
+  onDcrClick?: (r: DesignResult) => void;
 }) {
   const lang = useLang();
   const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
@@ -89,7 +91,7 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
             const newSeries = idx === 0 || nominal !== nominalOf(rows[idx - 1].s.H, rows[idx - 1].s.B);
             const ac = (isAisc && autoFix) ? aiscAutoCorrect(r, cond) : null;
             const dr = ac ? ac.result : r;                       // 표시 형상(자동보정 반영)
-            const govDcr = ac ? ac.report.govDcr : (isAisc ? aiscCheck(r, cond).govDcr : null);
+            const govDcr = ac ? ac.report.govDcr : (isAisc ? aiscCheck(r, cond).govDcr : kbcCheck(r, cond).govDcr);
             const inner = fmtPlate(dr.flange.innerPlate);
             const ng = govDcr != null ? govDcr > 1.0 : r.steps.some(st => st.check === 'NG');
             const sel = r.section === selectedSection;
@@ -101,8 +103,9 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
                     onChange={e => { e.stopPropagation(); toggleCheck(s.name); }} />
                   <span className={`st-dot${ng ? ' ng' : ''}`} title={ng ? '재검토' : '적합'} />
                   <button className="cn-txt" title={s.label ? `${s.label} · ${r.section}` : L('3D 형상 보기', 'View 3D shape')} onClick={e => { e.stopPropagation(); onView3D(dr); }}>{s.label ?? r.section}</button></td>
-                <td className={`dcr-cell${govDcr != null && govDcr > 1.0 ? ' ng' : ''}`}
-                  title={govDcr == null ? undefined : ac ? L('AISC 지배 DCR(자동보정)', 'AISC gov. DCR (auto-fixed)') : L('AISC 지배 DCR(편람 배치)', 'AISC gov. DCR (KBC layout)')}>
+                <td className={`dcr-cell${govDcr != null && govDcr > 1.0 ? ' ng' : ''}${govDcr != null ? ' dcr-click' : ''}`}
+                  title={govDcr == null ? undefined : L('검토항목별 DCR 보기', 'View DCR by limit state')}
+                  onClick={govDcr != null ? (e => { e.stopPropagation(); onDcrClick?.(dr); }) : undefined}>
                   {govDcr != null ? govDcr.toFixed(2) : <span className="dash">—</span>}</td>
                 <td>{s.r}</td>
                 <td className="gcol">{fmtW(unitWeightOf(s))}</td>
