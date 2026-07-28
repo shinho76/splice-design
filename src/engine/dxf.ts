@@ -135,10 +135,10 @@ function dimChainV(doc: Doc, t: Xf, ys: number[], fx: number, x1: number, x2: nu
 // 지시선 : (px,py)=display 판점 → 텍스트(tx,ty)=display. side>0 우측(좌측정렬)/side<0 좌측(우측정렬)
 function leader(p: Pen, px: number, py: number, tx: number, ty: number, txt: string) {
   const side = tx >= px ? 1 : -1;
-  const knee = tx - side * 16;
+  const knee = tx - side * 24;                        // 수평 착지선(참고 도면처럼 길게)
   p.dot(px, py, 'DIM');
   p.line(px, py, knee, ty, 'DIM'); p.line(knee, ty, tx, ty, 'DIM');
-  p.text(tx + side * 6, ty - TH / 2, TH, txt, 'DIM', { align: side > 0 ? 'l' : 'r' });
+  p.text(tx + side * 8, ty - TH / 2, TH, txt, 'DIM', { align: side > 0 ? 'l' : 'r' });
 }
 
 function breakV(p: Pen, x: number, cy: number, half: number) {
@@ -146,12 +146,13 @@ function breakV(p: Pen, x: number, cy: number, half: number) {
   p.line(x, cy - half, x, cy - 10, 'MAIN'); p.line(x, cy + 10, x, cy + half, 'MAIN');
   p.line(x - z, cy, x, cy - 10, 'MAIN'); p.line(x, cy + 10, x + z, cy, 'MAIN'); p.line(x - z, cy, x + z, cy, 'MAIN');
 }
+// 볼트 입면(⊕): 구멍 원 + 관통 크로스헤어(원 밖으로 약간 연장) — 참고 도면 규약
 function boltPlan(p: Pen, x: number, y: number, rad: number) {
   p.circle(x, y, rad, 'BOLT');
-  const m = rad + 5;
+  const m = rad * 1.45;                                   // 크로스헤어 팔(원보다 확장)
   p.line(x - m, y, x + m, y, 'BOLT'); p.line(x, y - m, x, y + m, 'BOLT');
 }
-const gpl = (pl: Plate | undefined, n: number) => pl ? `PL-${pl.t}x${pl.w}x${pl.L}·${n}` : '-';
+const gpl = (pl: Plate | undefined, n: number) => pl ? `G.PL. ${pl.t}x${pl.w}x${pl.L}x${n}EA` : '-';
 
 // H형강 단면 그리기(필렛 R 반영) — 중심 (cx,cy), 직선 외곽 + 4개 필렛 ARC
 function hSection(p: Pen, cx: number, cy: number, H: number, B: number, tw: number, tf: number, r: number, lay: string) {
@@ -348,9 +349,9 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   pff.text(csCx, csCy + H / 2 + 40, TH * 1.2, 'SECTION', 'DIM', { align: 'c' });
   pff.text(csCx, csCy - H / 2 - 56, TH, secLbl, 'DIM', { align: 'c' });
   const bl2 = F.frameL + 6, br2 = F.frameRC - 6, midX = (bl2 + br2) / 2;
-  // 표제란 값 간소 표기(볼트등급·H.T.B는 NOTES) — 셀 침범 방지
-  const gplT = (pl: Plate | undefined, n: number) => pl ? `${pl.t}x${pl.w}x${pl.L}·${n}` : '-';
-  const btbT = (n: number) => `${n}-M${dia}`;
+  // 표제란 값 — 참고 도면 전체 형식(G.PL. …EA / …-M… H.T.B). 폭은 적응형 폰트(tbe)로 수용.
+  const gplT = (pl: Plate | undefined, n: number) => pl ? `G.PL. ${pl.t}x${pl.w}x${pl.L}x${n}EA` : '-';
+  const btbT = (n: number) => `${n}-M${dia} H.T.B`;
   // 라벨 열폭·문자높이를 프레임 폭에 적응(좁은 도곽에서도 겹치지 않도록)
   const maxValLen = Math.max(secLbl.length, jointLbl.length, gplT(r.flange.outerPlate, 2).length, 12);
   const Lw = Math.max(80, Math.min(160, (br2 - bl2) * 0.26));
@@ -386,9 +387,9 @@ const ARCHTICK_BLOCK = ['0', 'BLOCK', '8', '0', '2', '_ARCHTICK', '70', '0', '10
   '0', 'LINE', '8', '0', '10', '-0.5', '20', '-0.5', '30', '0', '11', '0.5', '21', '0.5', '31', '0',
   '0', 'ENDBLK', '8', '0'];
 function wrap(doc: Doc): string {
-  // STYLE: 단일 STANDARD 스타일(SHX 'txt' — 모든 CAD 내장). 외부 TTF 의존 제거 → 이식성.
+  // STYLE: 단일 STANDARD 스타일(SHX 'romans' — AutoCAD/호환 CAD 표준 내장 로만 심플렉스).
   const styleT = ['0', 'TABLE', '2', 'STYLE', '70', '1',
-    '0', 'STYLE', '2', 'STANDARD', '70', '0', '40', '0.0', '41', '1.0', '50', '0.0', '71', '0', '42', '2.5', '3', 'txt', '4', ''];
+    '0', 'STYLE', '2', 'STANDARD', '70', '0', '40', '0.0', '41', '1.0', '50', '0.0', '71', '0', '42', '2.5', '3', 'romans', '4', ''];
   // VPORT: *ACTIVE 뷰포트(R12 필수 테이블) — 누락 시 엄격한 리더가 파일 거부
   const vportT = ['0', 'TABLE', '2', 'VPORT', '70', '1',
     '0', 'VPORT', '2', '*ACTIVE', '70', '0',
