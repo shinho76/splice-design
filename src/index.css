@@ -21,10 +21,10 @@
 @media (prefers-color-scheme: dark) {
   :root {
     /* 다크: 청사진 */
-    --bg: #14162a; --bg2: #1c1f38; --panel: #1c1f38; --panel2: #242844; --panel3: #2c3154;
-    --fg: #e7e8f4; --muted: #8b90b3; --faint: #5a6088;
-    --line: #333a5e; --line-soft: #262c48; --line-strong: #454d78;
-    --accent: #8b7fd6; --accent2: #a99ee8; --accent-soft: rgba(139,127,214,.16); --on-accent: #ffffff; --head-bg: #242844;
+    --bg: #0e1322; --bg2: #171d31; --panel: #171d31; --panel2: #1e2540; --panel3: #262f52;
+    --fg: #e7e9f5; --muted: #8890b3; --faint: #565d86;
+    --line: #2a3350; --line-soft: #1f2640; --line-strong: #3d4670;
+    --accent: #8b7fd6; --accent2: #a99ee8; --accent-soft: rgba(139,127,214,.16); --on-accent: #ffffff; --head-bg: #1e2540;
     --ok: #5ed68f; --ng: #e5737c; --wn: #e0b15a;
     --grid: rgba(139,127,214,.05);
     --grad: linear-gradient(135deg, #7c6fd0, #9488db);
@@ -46,10 +46,10 @@
   color-scheme: light;
 }
 :root[data-theme="dark"] {
-  --bg: #14162a; --bg2: #1c1f38; --panel: #1c1f38; --panel2: #242844; --panel3: #2c3154;
-  --fg: #e7e8f4; --muted: #8b90b3; --faint: #5a6088;
-  --line: #333a5e; --line-soft: #262c48; --line-strong: #454d78;
-  --accent: #8b7fd6; --accent2: #a99ee8; --accent-soft: rgba(139,127,214,.16); --on-accent: #ffffff; --head-bg: #242844;
+  --bg: #0e1322; --bg2: #171d31; --panel: #171d31; --panel2: #1e2540; --panel3: #262f52;
+  --fg: #e7e9f5; --muted: #8890b3; --faint: #565d86;
+  --line: #2a3350; --line-soft: #1f2640; --line-strong: #3d4670;
+  --accent: #8b7fd6; --accent2: #a99ee8; --accent-soft: rgba(139,127,214,.16); --on-accent: #ffffff; --head-bg: #1e2540;
   --ok: #5ed68f; --ng: #e5737c; --wn: #e0b15a;
   --grid: rgba(139,127,214,.05);
   --grad: linear-gradient(135deg, #7c6fd0, #9488db);
@@ -447,14 +447,22 @@ body {
 /* 유사 컨트롤 그룹(한 줄, 설계흐름 순) — 구분선 없이 간격으로 구분 */
 .fgrp { display: flex; align-items: center; }
 .fgrp:not(:last-child) { margin-right: 4px; }
-.dia-sel { width: 50px; height: 22px; padding: 0 2px; border: 1px solid var(--accent); border-radius: 5px; background: var(--bg2); color: var(--accent); font-family: var(--mono); font-weight: 800; font-size: 11px; cursor: pointer; }
+.dia-sel { width: 100%; max-width: 100%; height: 20px; padding: 0 1px; border: 1px solid var(--accent); border-radius: 5px; background: var(--bg2); color: var(--accent); font-family: var(--mono); font-weight: 800; font-size: 11px; cursor: pointer; }
 
-/* 단면치수 텍스트 = 3D 형상 보기 트리거 */
+/* 단면치수 텍스트 = 3D 형상 보기 트리거(밑줄 없음) */
 .col-name { position: relative; }
 .col-name .cn-txt { display: inline-block; vertical-align: middle; border: 0; background: none; padding: 0; margin: 0;
-  font: inherit; font-weight: 700; color: inherit; cursor: pointer; text-decoration: underline; text-decoration-color: var(--line-strong);
-  text-underline-offset: 3px; text-decoration-thickness: 1px; }
-.col-name .cn-txt:hover { color: var(--accent); text-decoration-color: var(--accent); }
+  font: inherit; font-weight: 700; color: inherit; cursor: pointer; text-decoration: none; }
+.col-name .cn-txt:hover { color: var(--accent); }
+/* 행(단면) 제거 −버튼 / 헤더 초기화 ↺버튼 */
+.col-name .cn-head { vertical-align: middle; }
+.row-del { border: 0; background: none; color: var(--faint); cursor: pointer; font-size: 15px; line-height: 1;
+  padding: 0; margin-right: 4px; width: 14px; vertical-align: middle; border-radius: 4px; transition: .12s; }
+.row-del:hover { color: var(--on-accent); background: var(--ng); }
+.col-reset { border: 0; background: none; color: var(--accent); cursor: pointer; font-size: 13px; margin-left: 6px;
+  padding: 0 4px; border-radius: 4px; vertical-align: middle; transition: .12s; }
+.col-reset:hover:not(:disabled) { background: var(--accent-soft); }
+.col-reset:disabled { color: var(--faint); opacity: .45; cursor: default; }
 
 /* 3D 뷰어 모달 */
 .v3d-back { position: fixed; inset: 0; background: rgba(4,10,22,.72); display: flex; align-items: center; justify-content: center; z-index: 1000; }

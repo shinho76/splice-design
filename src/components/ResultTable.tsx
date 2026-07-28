@@ -12,31 +12,41 @@ const fmtW = (w: number) => w.toLocaleString('en-US');                   // 단�
 
 const DIAS = [16, 20, 22, 24];   // 사용 직경(표준구멍 d+2 자동 적용)
 
-export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, onSetDia, selectedSection, autoFix }: {
+export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, onSetDia, selectedSection, autoFix, hidden, onHide, onResetHidden }: {
   cond: DesignCondition; onSelect: (r: DesignResult) => void; onView3D: (r: DesignResult) => void;
   custom?: boolean; diaAt?: (i: number) => number | undefined; onSetDia?: (i: number, d: number) => void;
   selectedSection?: string; autoFix?: boolean;
+  hidden?: Set<string>; onHide?: (name: string) => void; onResetHidden?: () => void;
 }) {
   const lang = useLang();
   const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
-  const rows = SECTIONS.map((s, i) => ({ s, r: designConnection(cond, s, diaAt?.(i)) }));
+  // 원본 인덱스(i) 유지 — Custom 직경 지정(diaAt/onSetDia)은 SECTIONS 순번 기준
+  const rows = SECTIONS
+    .map((s, i) => ({ s, i, r: designConnection(cond, s, diaAt?.(i)) }))
+    .filter(({ s }) => !hidden?.has(s.name));
   const isCol = cond.member === '기둥';
   const isAisc = cond.designStd === 'AISC';
+  const dbW = custom ? 58 : 34;                       // 볼트 직경열: 지정(드롭다운) 시 확장
+  const hasHidden = (hidden?.size ?? 0) > 0;
 
   return (
     <div className="tablewrap">
       <table className="design-table">
         <colgroup>
-          <col style={{ width: 120 }} /><col style={{ width: 34 }} /><col style={{ width: 32 }} /><col style={{ width: 42 }} />
-          <col style={{ width: 48 }} /><col style={{ width: 46 }} />
-          <col style={{ width: 34 }} />
+          <col style={{ width: 138 }} /><col style={{ width: 34 }} /><col style={{ width: 32 }} /><col style={{ width: 40 }} />
+          <col style={{ width: 46 }} /><col style={{ width: 44 }} />
+          <col style={{ width: dbW }} />
           <col style={{ width: 40 }} /><col style={{ width: 28 }} /><col style={{ width: 28 }} />
           <col style={{ width: 76 }} /><col style={{ width: 76 }} />
           <col style={{ width: 40 }} /><col style={{ width: 28 }} /><col style={{ width: 76 }} />
         </colgroup>
         <thead>
           <tr>
-            <th rowSpan={2} className="col-name g-info">{L('단면치수', 'Section')}</th>
+            <th rowSpan={2} className="col-name g-info">
+              <span className="cn-head">{L('단면치수', 'Section')}</span>
+              <button className="col-reset" disabled={!hasHidden} title={L('전체 단면 복원', 'Restore all sections')}
+                onClick={onResetHidden}>↺</button>
+            </th>
             <th rowSpan={2} className="g-info dcr-h">DCR</th>
             <th rowSpan={2} className="g-info">r<br /><span className="unit">mm</span></th>
             <th rowSpan={2} className="gcol g-info">{L('단위중량', 'Unit wt')}<br /><span className="unit">kg/m</span></th>
@@ -59,9 +69,9 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
           </tr>
         </thead>
         <tbody>
-          {rows.map(({ s, r }, i) => {
+          {rows.map(({ s, i, r }, idx) => {
             const nominal = nominalOf(s.H, s.B);
-            const newSeries = i === 0 || nominal !== nominalOf(rows[i - 1].s.H, rows[i - 1].s.B);
+            const newSeries = idx === 0 || nominal !== nominalOf(rows[idx - 1].s.H, rows[idx - 1].s.B);
             const ac = (isAisc && autoFix) ? aiscAutoCorrect(r, cond) : null;
             const dr = ac ? ac.result : r;                       // 표시 형상(자동보정 반영)
             const govDcr = ac ? ac.report.govDcr : (isAisc ? aiscCheck(r, cond).govDcr : null);
@@ -71,6 +81,8 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
             return (
               <tr key={r.section} onClick={() => onSelect(dr)} className={`${newSeries ? 'series-top' : ''}${sel ? ' row-sel' : ''}`}>
                 <td className="col-name">
+                  <button className="row-del" title={L('이 단면 제거', 'Remove this section')}
+                    onClick={e => { e.stopPropagation(); onHide?.(s.name); }}>−</button>
                   <span className={`st-dot${ng ? ' ng' : ''}`} title={ng ? '재검토' : '적합'} />
                   <button className="cn-txt" title={L('3D 형상 보기', 'View 3D shape')} onClick={e => { e.stopPropagation(); onView3D(dr); }}>{r.section}</button></td>
                 <td className={`dcr-cell${govDcr != null && govDcr > 1.0 ? ' ng' : ''}`}
