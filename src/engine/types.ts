@@ -26,6 +26,7 @@ export interface HSection {
   /** 단면성능 출처: 'ks'=KS 규격표 확정값, 'calc'=치수 기반 계산값, 'aisc'=AISC v16.0(inch→mm) */
   propSource: 'ks' | 'calc' | 'aisc';
   label?: string;    // AISC W형강 원 표기(예 "W16X40"). H형강은 미사용
+  k1?: number;       // 공표 k1(mm): 웨브중심~플랜지필렛선단. 내첨판 폭 산정에 사용(W형강). 없으면 tw/2+r 폴백
 }
 
 /** 설계조건 (필터 → 엔진 입력) */

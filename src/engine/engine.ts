@@ -132,9 +132,12 @@ function designColumn(cond: DesignCondition, sec: HSection, forceDia?: number): 
 // ─────────────────────────────── 플랜지 이음 (공용) ───────────────────────────────
 function designFlange(cond: DesignCondition, sec: HSection, std: ReturnType<typeof flangeStdFor>, fy: number, fu: number, pfy: number, pfu: number, Puf: number, bearing: boolean, steps: CalcStep[]): JointDesign {
   const outerW = std.outerW;
-  // 내첨판 폭 = 플랜지끝(B/2)~필렛선단(tw/2+r) 거리에서 권장 여유 3mm 확보 후 이하 10mm 단위 (필렛 간섭 회피)
+  // 내첨판 폭 = 플랜지끝(B/2)~필렛선단 거리에서 권장 여유 3mm 확보 후 이하 10mm 단위 (필렛 간섭 회피)
+  // 필렛선단: W형강은 AISC 공표 k1(mm) 사용(기하근사 tw/2+r는 공표 대비 평균 8.5mm 과소평가 → 침범).
+  //           H형강은 KS 실측 필렛이 정확하여 tw/2+r 폴백 유지(편람 골든 보존).
   const INNER_CLEAR = 3;   // 필렛선단 이격 권장 여유(mm)
-  const flatHalf = sec.B / 2 - (sec.tw / 2 + sec.r) - INNER_CLEAR;
+  const filletToe = sec.k1 ?? (sec.tw / 2 + sec.r);
+  const flatHalf = sec.B / 2 - filletToe - INNER_CLEAR;
   const innerW = std.innerW != null ? Math.max(10, Math.floor(flatHalf / 10) * 10) : null;
   const Aupf = (Puf * 1e3) / (PHI_FLEX * pfy);                   // 총단면 항복(첨판 강종)
   const equalT = innerW != null && !!cond.equalPlateT;          // 내·외첨판 동일 두께 옵션
