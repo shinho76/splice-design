@@ -105,7 +105,8 @@ export default function App() {
       <div className="cmain">
         <header className="ctop">
           <div className="cbrand">SPLICE<span className="accent">DESIGN</span></div>
-          <FilterBar cond={cond} onChange={setCond} boltMode={boltMode} onBoltMode={setBoltMode} />
+          <div className="ctop-title">{L('고력볼트 표준접합 설계', 'H.S. Bolt Standard Connection Design')}</div>
+          <span className="ctop-sp" />
           <div className="seg-theme" role="group" aria-label={L('언어 전환', 'Language')}>
             <button type="button" className={lang === 'ko' ? 'on' : ''} onClick={() => setLang('ko')} aria-pressed={lang === 'ko'} title="한국어">한</button>
             <button type="button" className={lang === 'en' ? 'on' : ''} onClick={() => setLang('en')} aria-pressed={lang === 'en'} title="English">EN</button>
@@ -117,16 +118,24 @@ export default function App() {
           </div>
         </header>
 
-        <div className="kpi-strip">
-          <div className="kpi"><div className="k">{L('검토 부재', 'Members')}</div><div className="v num">{stats.total}</div><div className="d">{tMember(cond.member, lang)} · {tJoint(cond.jointType, lang)}</div></div>
-          <div className="kpi"><div className="k">{L('적합', 'Pass')}</div><div className="v num ok">{stats.ok}</div><div className="d ok">{Math.round(stats.ok / stats.total * 100)}%</div></div>
-          <div className="kpi"><div className="k">{L('부적합', 'Fail')}</div><div className="v num ng">{stats.total - stats.ok}</div><div className="d ng">{stats.total - stats.ok ? L('재검토', 'recheck') : '—'}</div></div>
-          <div className="kpi"><div className="k">{L('고력볼트', 'H.S. Bolts')}</div><div className="v num">{nf(stats.bolts)}<small> {L('본', 'ea')}</small> / {(stats.boltWt / 1000).toFixed(2)}<small> t</small></div><div className="d">{cond.bolt}</div></div>
-          <div className="kpi"><div className="k">{L('강재 물량', 'Steel Qty')}</div><div className="v num">{(stats.wt / 1000).toFixed(2)}<small> t</small></div><div className="d">{L('첨판', 'plates')}</div></div>
-        </div>
-
         <div className="cbody">
-          <div className="cgrid"><ResultTable cond={cond} onSelect={setSelected} onView3D={setView3D} custom={boltMode === 'Custom'} diaAt={diaAt} onSetDia={setDiaAt} selectedSection={selected?.section} autoFix={autoFix} /></div>
+          <aside className="cfilters">
+            <div className="cfilters-h">☰ {L('설계 조건', 'Design Conditions')}</div>
+            <FilterBar cond={cond} onChange={setCond} boltMode={boltMode} onBoltMode={setBoltMode} />
+            <div className="cfilters-hint">▸ {L('조건을 바꾸면 결과표가 즉시 갱신됩니다.', 'Changing conditions updates the table instantly.')}</div>
+          </aside>
+
+          <div className="ccenter">
+            <div className="kpi-strip">
+              <div className="kpi"><div className="k">{L('검토 부재', 'Members')}</div><div className="v num">{stats.total}</div><div className="d">{tMember(cond.member, lang)} · {tJoint(cond.jointType, lang)}</div></div>
+              <div className="kpi"><div className="k">{L('적합', 'Pass')}</div><div className="v num ok">{stats.ok}</div><div className="d ok">{Math.round(stats.ok / stats.total * 100)}%</div></div>
+              <div className="kpi"><div className="k">{L('부적합', 'Fail')}</div><div className="v num ng">{stats.total - stats.ok}</div><div className="d ng">{stats.total - stats.ok ? L('재검토', 'recheck') : '—'}</div></div>
+              <div className="kpi"><div className="k">{L('고력볼트', 'H.S. Bolts')}</div><div className="v num">{nf(stats.bolts)}<small> {L('본', 'ea')}</small> / {(stats.boltWt / 1000).toFixed(2)}<small> t</small></div><div className="d">{cond.bolt}</div></div>
+              <div className="kpi"><div className="k">{L('강재 물량', 'Steel Qty')}</div><div className="v num">{(stats.wt / 1000).toFixed(2)}<small> t</small></div><div className="d">{L('첨판', 'plates')}</div></div>
+            </div>
+            <div className="cgrid"><ResultTable cond={cond} onSelect={setSelected} onView3D={setView3D} custom={boltMode === 'Custom'} diaAt={diaAt} onSetDia={setDiaAt} selectedSection={selected?.section} autoFix={autoFix} /></div>
+          </div>
+
           <aside className="cdetail">
             {selEff ? (
               <>

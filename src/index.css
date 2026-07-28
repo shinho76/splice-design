@@ -7,10 +7,10 @@
   --bg: #eef1f5; --bg2: #ffffff; --panel: #ffffff; --panel2: #f7f9fc; --panel3: #eef2f7;
   --fg: #1a2330; --muted: #647084; --faint: #9aa6b6;
   --line: #cfd8e4; --line-soft: #dde4ee; --line-strong: #a3b2c7;
-  --accent: #2b64c4; --accent2: #6d4fc4; --accent-soft: rgba(43,100,196,.10); --on-accent: #ffffff; --head-bg: #e7edf7;
-  --ok: #158a46; --ng: #cf3b3b; --wn: #b8860b;
+  --accent: #6d5fc4; --accent2: #8b7fd6; --accent-soft: rgba(109,95,196,.10); --on-accent: #ffffff; --head-bg: #ece9f7;
+  --ok: #1f9d57; --ng: #cf3b4f; --wn: #b8860b;
   --grid: transparent;
-  --grad: linear-gradient(135deg, #2b64c4, #1e5fae);
+  --grad: linear-gradient(135deg, #6d5fc4, #8b7fd6);
   --shadow: 0 10px 30px rgba(30,50,90,.10);
   --radius: 10px;
   --mono: 'JetBrains Mono', ui-monospace, "SF Mono", "Consolas", monospace;
@@ -21,13 +21,13 @@
 @media (prefers-color-scheme: dark) {
   :root {
     /* 다크: 청사진 */
-    --bg: #0b2140; --bg2: #0d2748; --panel: #0d2748; --panel2: #0e2c52; --panel3: #103158;
-    --fg: #d6e8f4; --muted: #6f93b3; --faint: #4d7194;
-    --line: #295585; --line-soft: #1d4069; --line-strong: #4a7cae;
-    --accent: #39d4e8; --accent2: #8fb7ff; --accent-soft: rgba(57,212,232,.14); --on-accent: #04222b; --head-bg: #103a5e;
-    --ok: #5fd8a0; --ng: #ff9166; --wn: #f4b740;
-    --grid: rgba(57,212,232,.07);
-    --grad: linear-gradient(135deg, #0e7c8c, #39d4e8);
+    --bg: #14162a; --bg2: #1c1f38; --panel: #1c1f38; --panel2: #242844; --panel3: #2c3154;
+    --fg: #e7e8f4; --muted: #8b90b3; --faint: #5a6088;
+    --line: #333a5e; --line-soft: #262c48; --line-strong: #454d78;
+    --accent: #8b7fd6; --accent2: #a99ee8; --accent-soft: rgba(139,127,214,.16); --on-accent: #ffffff; --head-bg: #242844;
+    --ok: #5ed68f; --ng: #e5737c; --wn: #e0b15a;
+    --grid: rgba(139,127,214,.05);
+    --grad: linear-gradient(135deg, #7c6fd0, #9488db);
     --shadow: 0 10px 34px rgba(0,0,0,.5);
     --ui: 'JetBrains Mono', ui-monospace, "SF Mono", monospace;
     color-scheme: dark;
@@ -37,22 +37,22 @@
   --bg: #eef1f5; --bg2: #ffffff; --panel: #ffffff; --panel2: #f7f9fc; --panel3: #eef2f7;
   --fg: #1a2330; --muted: #647084; --faint: #9aa6b6;
   --line: #cfd8e4; --line-soft: #dde4ee; --line-strong: #a3b2c7;
-  --accent: #2b64c4; --accent2: #6d4fc4; --accent-soft: rgba(43,100,196,.10); --on-accent: #ffffff; --head-bg: #e7edf7;
-  --ok: #158a46; --ng: #cf3b3b; --wn: #b8860b;
+  --accent: #6d5fc4; --accent2: #8b7fd6; --accent-soft: rgba(109,95,196,.10); --on-accent: #ffffff; --head-bg: #ece9f7;
+  --ok: #1f9d57; --ng: #cf3b4f; --wn: #b8860b;
   --grid: transparent;
-  --grad: linear-gradient(135deg, #2b64c4, #1e5fae);
+  --grad: linear-gradient(135deg, #6d5fc4, #8b7fd6);
   --shadow: 0 10px 30px rgba(30,50,90,.10);
   --ui: 'Noto Sans KR', -apple-system, system-ui, "Segoe UI", "Malgun Gothic", sans-serif;
   color-scheme: light;
 }
 :root[data-theme="dark"] {
-  --bg: #0b2140; --bg2: #0d2748; --panel: #0d2748; --panel2: #0e2c52; --panel3: #103158;
-  --fg: #d6e8f4; --muted: #6f93b3; --faint: #4d7194;
-  --line: #295585; --line-soft: #1d4069; --line-strong: #4a7cae;
-  --accent: #39d4e8; --accent2: #8fb7ff; --accent-soft: rgba(57,212,232,.14); --on-accent: #04222b; --head-bg: #103a5e;
-  --ok: #5fd8a0; --ng: #ff9166; --wn: #f4b740;
-  --grid: rgba(57,212,232,.07);
-  --grad: linear-gradient(135deg, #0e7c8c, #39d4e8);
+  --bg: #14162a; --bg2: #1c1f38; --panel: #1c1f38; --panel2: #242844; --panel3: #2c3154;
+  --fg: #e7e8f4; --muted: #8b90b3; --faint: #5a6088;
+  --line: #333a5e; --line-soft: #262c48; --line-strong: #454d78;
+  --accent: #8b7fd6; --accent2: #a99ee8; --accent-soft: rgba(139,127,214,.16); --on-accent: #ffffff; --head-bg: #242844;
+  --ok: #5ed68f; --ng: #e5737c; --wn: #e0b15a;
+  --grid: rgba(139,127,214,.05);
+  --grad: linear-gradient(135deg, #7c6fd0, #9488db);
   --shadow: 0 10px 34px rgba(0,0,0,.5);
   --ui: 'JetBrains Mono', ui-monospace, "SF Mono", monospace;
   color-scheme: dark;
@@ -376,9 +376,27 @@ body {
 .kpi .d { font-size: 10px; font-weight: 700; margin-top: 1px; color: var(--faint); }
 .kpi .d.ok { color: var(--ok); } .kpi .d.ng { color: var(--ng); }
 
-.cbody { flex: 1; display: grid; grid-template-columns: 1fr 340px; min-height: 0; }
-.cgrid { display: flex; flex-direction: column; overflow: hidden; min-width: 0; border-right: 1px solid var(--line); }
-.cdetail { overflow: auto; background: var(--panel2); padding: 14px 15px; }
+.cbody { flex: 1; display: grid; grid-template-columns: 288px 1fr 344px; min-height: 0; }
+.cgrid { display: flex; flex-direction: column; overflow: hidden; min-width: 0; flex: 1; }
+.cdetail { overflow: auto; background: var(--panel2); padding: 14px 15px; border-left: 1px solid var(--line); }
+
+/* ===== 3-pane: 좌측 설계조건 · 중앙 결과 · 우측 상세 ===== */
+.cfilters { display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; background: var(--panel); border-right: 1px solid var(--line); }
+.cfilters-h { padding: 13px 14px 9px; font-size: 12.5px; font-weight: 800; color: var(--fg); letter-spacing: .02em; }
+.cfilters-hint { margin-top: auto; padding: 12px 14px; font-size: 10.5px; color: var(--muted); border-top: 1px solid var(--line-soft); }
+.ccenter { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+.ctop-title { font-size: 11.5px; color: var(--muted); font-weight: 600; margin-left: 2px; }
+.ctop-sp { flex: 1; }
+/* FilterBar 세로화 */
+.cfilters .filterbar { flex-direction: column; flex-wrap: nowrap; background: transparent; border-bottom: 0; gap: 0; padding: 0 12px 6px; overflow: visible; }
+.cfilters .fgrp { flex-direction: column; align-items: stretch; gap: 9px; margin: 0 0 11px; padding-bottom: 11px; border-bottom: 1px solid var(--line-soft); }
+.cfilters .fgrp:last-child { border-bottom: 0; margin-bottom: 0; }
+.cfilters .fld { padding: 0; width: 100%; }
+.cfilters .fld > label { font-size: 10px; margin-bottom: 2px; }
+.cfilters .fld select { width: 100%; }
+.cfilters .alpha-ctl, .cfilters .alpha input { width: 100%; }
+.cfilters .seg { display: flex; }
+.cfilters .seg button { flex: 1; text-align: center; }
 .dh { font-size: 15px; font-weight: 800; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; }
 .dbadge { font-size: 9.5px; font-weight: 700; letter-spacing: .4px; color: var(--accent); background: var(--accent-soft);
   border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 999px; padding: 2px 8px; }
