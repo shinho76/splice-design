@@ -35,10 +35,15 @@ export function connParts(r: DesignResult): ConnParts {
   const stag = r.flange.staggered ?? false;                          // 엔진 기준 엇모 여부
   const colY = fB.m === 2 ? [-g1 / 2, g1 / 2] : [-(g1 / 2 + g2), -g1 / 2, g1 / 2, g1 / 2 + g2];
   const fp = r.flange.pitch ?? 60, wp = r.web.pitch ?? 60;           // 엔진 피치(Custom 대구경 상향)
-  // 열별 Z위치 : 정렬=fp간격, 엇모=지그재그(짝수열 j·90 / 홀수열 45+j·90) — SVG·DXF와 동일
-  const flangeZof = (ci: number) => stag
-    ? Array.from({ length: ci % 2 ? nLo : nHi }, (_, j) => base + (ci % 2 ? 45 : 0) + j * 90)
-    : Array.from({ length: nHi }, (_, i) => base + i * fp);
+  // 열별 Z위치 : 정렬=fp간격, 엇모=웨브 대칭 지그재그 — 외측 게이지선(|cy|최대)이 이음부 첫 볼트
+  // (off=0·nHi행), 내측선은 off=45·nLo행. 상·하가 웨브 기준 대칭. SVG·DXF와 동일.
+  const maxAbsCy = Math.max(...colY.map(v => Math.abs(v)));
+  const flangeZof = (cy: number) => {
+    if (!stag) return Array.from({ length: nHi }, (_, i) => base + i * fp);
+    const isOut = Math.abs(cy) >= maxAbsCy - 0.5;
+    const off = isOut ? 0 : 45, rows = isOut ? nHi : nLo;
+    return Array.from({ length: rows }, (_, j) => base + off + j * 90);
+  };
   const Pc = r.web.Pc ?? 60;
   const webOff = (r.web.staggered ?? false) ? 30 : 0;                 // 웨브볼트 절반피치 엇갈림(체결 간섭 회피, [그림 3.4])
   const webZ = Array.from({ length: wB.n }, (_, i) => base + webOff + i * wp);
@@ -67,8 +72,8 @@ export function connParts(r: DesignResult): ConnParts {
 
   // 플랜지 볼트(연직 Y) — 머리=외측, 너트+여장=내측
   const flGrip = oT + tf + (inner?.t ?? 0);
-  colY.forEach((cx, ci) => {
-    const zs = flangeZof(ci);
+  colY.forEach((cx) => {
+    const zs = flangeZof(cx);
     for (const fy of [1, -1] as const) for (const sgn of [1, -1] as const) for (const z of zs) {
       const top = fy * (H / 2 + oT), bot = fy * (H / 2 - tf - (inner?.t ?? 0));
       // 상부=머리 위(외측)/너트 아래(내측), 하부=머리 위(내측)/너트 아래(외측) → 하부 체결방향 반대

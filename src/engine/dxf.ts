@@ -226,9 +226,11 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   const nHi = Math.ceil(fB.n), nLo = Math.floor(fB.n);
   const fp = r.flange.pitch ?? 60, wp = r.web.pitch ?? 60;   // 엔진 피치(Custom 대구경 상향)
   const fBolts: { x: number; y: number }[] = [];
-  ([1, -1] as const).forEach(s => colY.forEach((cy, ci) => {
+  const maxAbsCy = Math.max(...colY.map(v => Math.abs(v)));   // 엇모: 외측 게이지선이 이음부 첫 볼트(웨브 대칭)
+  const stagOf = (cy: number) => { const isOut = Math.abs(cy) >= maxAbsCy - 0.5; return { off: isOut ? 0 : 45, rows: isOut ? nHi : nLo }; };
+  ([1, -1] as const).forEach(s => colY.forEach((cy) => {
     if (!stag) for (let i = 0; i < nHi; i++) fBolts.push({ x: s * (base + i * fp), y: cy });
-    else { const off = ci % 2 ? 45 : 0, rows = ci % 2 ? nLo : nHi; for (let j = 0; j < rows; j++) fBolts.push({ x: s * (base + off + j * 90), y: cy }); }
+    else { const { off, rows } = stagOf(cy); for (let j = 0; j < rows; j++) fBolts.push({ x: s * (base + off + j * 90), y: cy }); }
   }));
   const fPosX = [...new Set(fBolts.filter(b => b.x > 0).map(b => b.x))].sort((a, b) => a - b);
   const chum = r.web.webPlate?.w ?? 140, Pc = r.web.Pc ?? 60;
@@ -274,9 +276,9 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   // 내첨판 외곽(점선·안쪽선 포함) — 웨브 양측당 1장, 그 측 볼트열 중심에 폭 inner.w
   const innerCy = [colY.filter(c => c < 0), colY.filter(c => c > 0)].map(a => a.reduce((x, y) => x + y, 0) / a.length);
   if (inner) innerCy.forEach(cy => p.drect(-inner.L / 2, yF + cy - inner.w / 2, inner.L, inner.w, 'FLG_PL'));
-  ([1, -1] as const).forEach(s => colY.forEach((cy, ci) => {
+  ([1, -1] as const).forEach(s => colY.forEach((cy) => {
     if (!stag) for (let i = 0; i < nHi; i++) boltPlan(p, s * (base + i * fp), cy, rad);
-    else { const off = ci % 2 ? 45 : 0, rows = ci % 2 ? nLo : nHi; for (let j = 0; j < rows; j++) boltPlan(p, s * (base + off + j * 90), cy, rad); }
+    else { const { off, rows } = stagOf(cy); for (let j = 0; j < rows; j++) boltPlan(p, s * (base + off + j * 90), cy, rad); }
   }));
   const flYs = [outerW / 2, ...[...colY].sort((a, b) => b - a), -outerW / 2].map(y => yF + y);
   dimChainV(doc, tM, [...new Set(flYs)].sort((a, b) => b - a), DS * Lpf / 2, DS * (Lpf / 2 + 46), DS * (Lpf / 2 + 120));

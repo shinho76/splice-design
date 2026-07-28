@@ -170,16 +170,14 @@ function designFlange(cond: DesignCondition, sec: HSection, std: ReturnType<type
 
   const gap = cond.gap ?? 10;
   const pitch = staggered ? PITCH_STAGGERED : alignP;
-  // 플랜지판 끝단 연단거리: H형강=40(편람 골든 유지) / W형강=대구경 볼트머리 여유 위해 2.5d 확대(≥40)
-  const endE = cond.profile === 'W' ? Math.max(40, Math.round(2.5 * boltDiaOf(std.bolt))) : 40;
-  const Lpf = staggered ? 2*((2*n-1)*pitch + 40 + endE) + gap : 2*((n-1)*pitch + 40 + endE) + gap;
-  steps.push({ group:'라) 플랜지 첨판 길이', label:'첨판 길이', formula: staggered?`2[(2n−1)·${pitch}+40+${endE}]+${gap}`:`2[(n−1)·${alignP}+40+${endE}]+${gap}`, value:Lpf, unit:'mm', ref:'5.5.2', note: endE>40?`W형강 끝단 연단 ${endE}mm(2.5d)`:undefined });
+  const Lpf = staggered ? 2*((2*n-1)*pitch+2*40)+gap : 2*((n-1)*pitch+2*40)+gap;
+  steps.push({ group:'라) 플랜지 첨판 길이', label:'첨판 길이', formula: staggered?`2[(2n−1)·45+80]+${gap}`:`2[(n−1)·${alignP}+80]+${gap}`, value:Lpf, unit:'mm', ref:'5.5.2' });
 
   return {
     bolt:{ m, n, count:m*n }, gauge:{ g1:std.g1, g2:std.g2 ?? undefined },
     outerPlate:{ t:tOuter, w:outerW, L:Lpf },
     innerPlate: innerW ? { t:tInner, w:innerW, L:Lpf } : undefined,
-    staggered, gap, pitch: pitchEff, edge: endE,   // 도면 배치용(끝단 연단)
+    staggered, gap, pitch: pitchEff, edge: 40,   // 도면 배치용
   };
 }
 
@@ -211,8 +209,7 @@ function designWeb(cond: DesignCondition, sec: HSection, bolt: BoltName, fy: num
   }
   const dpw = chum;
   const webP = Math.max(60, Math.ceil(2.667 * boltDiaOf(bolt) / 5) * 5);   // C안: 웨브 가로피치
-  const endEw = cond.profile === 'W' ? Math.max(40, Math.round(2.5 * boltDiaOf(bolt))) : 40;   // W형강 끝단 연단 확대
-  const wpw = 2*((nW-1)*webP + 40 + endEw) + (cond.gap ?? 10) + (stagger?60:0);
+  const wpw = 2*((nW-1)*webP + 2*40) + (cond.gap ?? 10) + (stagger?60:0);
   // 보=전단(0.6Fy), 기둥=압축(Fy). 양면 첨판이 소요력의 절반씩 분담.
   const nomFactor = cond.member === '기둥' ? 1.0 : 0.6;
   const tpw = roundUpThickness(Math.max(0.5*(soryeok*1e3)/(0.9*nomFactor*pfy*dpw), 6), WEB_PLATE_T);   // 웨브첨판 강종(pfy)
