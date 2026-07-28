@@ -293,28 +293,45 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   const webA = pt(tMl, -webWid / 2, yW), wbA = pt(tMl, -webWid / 4, yW - chum / 2 + 20), fbA = pt(tMl, -base, yF + g1 / 2);
   // 지시선 텍스트는 도곽 여백에 두되, 콘텐츠 앵커펜(pfc) 기준 로컬로 환산(−cd)해 앵커와 좌표계 일치
   const lx = F.frameL + 70 - cdx, rx = F.frameRC - 70 - cdx;
+  type Lab = { a: [number, number]; txt: string };
+  const GAPL = 46;
+  // 라벨을 앵커 높이에 맞춰 좌/우 여백에 수직 배치 → 지시선이 거의 수평이 되어 교차·겹침 방지.
+  // 앵커 높이 내림차순으로 배치하되, 너무 가까우면(<GAPL) 아래로 밀어 최소 간격 확보.
+  const stackAt = (items: Lab[], xText: number) => {
+    const sorted = items.slice().sort((p, q) => q.a[1] - p.a[1]);
+    let prevY = Infinity;
+    for (const it of sorted) {
+      let ly = Math.min(it.a[1], F.frameTop - 40 - cdy);
+      if (prevY - ly < GAPL) ly = prevY - GAPL;
+      leader(pfc, it.a[0], it.a[1], xText, ly, it.txt);
+      prevY = ly;
+    }
+  };
   if (!isCol) {                                   // 보
-    // H형강 라벨 → 우상단(부재 플랜지 가리킴, SECTION 뷰 대체)
-    const hpA = pt(tMl, memHalf * 0.5, yW + H / 2 + oT);
-    leader(pfc, hpA[0], hpA[1], rx - 30, F.frameTop - 55 - cdy, secLbl);
-    // 판·볼트 라벨 → 좌측 여백 스택
-    let ly = F.frameTop - 70 - cdy;
-    const put = (a: [number, number], txt: string) => { leader(pfc, a[0], a[1], lx, ly, txt); ly -= 62; };
-    put(outerA, gpl(r.flange.outerPlate, 2));
-    if (inner) put(innerA, gpl(inner, 4));
-    put(webA, gpl(r.web.webPlate, 2));
-    put(wbA, btb(wCount));
-    put(fbA, btb(flCount));
-  } else {                                        // 기둥: 좌(웨브)·우(플랜지) 여백에 수직 스택(겹침 방지)
-    let lyL = F.frameTop - 100 - cdy;
-    const putL = (a: [number, number], txt: string) => { leader(pfc, a[0], a[1], lx, lyL, txt); lyL -= 62; };
-    putL(webA, gpl(r.web.webPlate, 2));
-    putL(wbA, btb(wCount));
-    let lyR = F.frameTop - 100 - cdy;
-    const putR = (a: [number, number], txt: string) => { leader(pfc, a[0], a[1], rx, lyR, txt); lyR -= 62; };
-    putR(outerA, gpl(r.flange.outerPlate, 2));
-    if (inner) putR(innerA, gpl(inner, 4));
-    putR(fbA, btb(flCount));
+    // H형강 부재 콜아웃 → 우상단, 우측정렬 L자 지시선(uni 도곽·소형 단면에서도 프레임 내 수용 보장)
+    const hty = F.frameTop - 52 - cdy;
+    const hA = pt(tMl, memHalf * 0.5, yW + H / 2 + oT);
+    pfc.dot(hA[0], hA[1], 'DIM');
+    pfc.line(hA[0], hA[1], rx, hA[1], 'DIM'); pfc.line(rx, hA[1], rx, hty, 'DIM');
+    pfc.text(rx, hty - TH / 2, TH, secLbl, 'DIM', { align: 'r' });
+    // 판·볼트 라벨 → 좌측 여백, 앵커 높이 정렬(외첨판↑ … 플랜지볼트↓)
+    stackAt([
+      { a: outerA, txt: gpl(r.flange.outerPlate, 2) },
+      ...(inner ? [{ a: innerA, txt: gpl(inner, 4) }] : []),
+      { a: webA, txt: gpl(r.web.webPlate, 2) },
+      { a: wbA, txt: btb(wCount) },
+      { a: fbA, txt: btb(flCount) },
+    ], lx);
+  } else {                                        // 기둥: 좌(웨브)·우(플랜지) 여백에 앵커 높이 정렬
+    stackAt([
+      { a: webA, txt: gpl(r.web.webPlate, 2) },
+      { a: wbA, txt: btb(wCount) },
+    ], lx);
+    stackAt([
+      { a: outerA, txt: gpl(r.flange.outerPlate, 2) },
+      ...(inner ? [{ a: innerA, txt: gpl(inner, 4) }] : []),
+      { a: fbA, txt: btb(flCount) },
+    ], rx);
   }
 
   // ── 외곽 테두리 + 도면 제목(상단 중앙) + 하단 표제란 (SECTION 뷰·NOTES 제거: 참고 도면 규약) ──
