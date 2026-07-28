@@ -7,7 +7,7 @@ import { BOLT_HOLE, boltNameByDia } from './bolts.ts';
 
 const round = Math.round;
 const TH = 20;   // 도면 문자높이
-const TB = 34;   // 정보표 문자높이
+const TB = 24;   // 정보표 문자높이(셀폭 150 내 라벨 수용 — 겹침 방지)
 const FONT = 'STANDARD';  // 표준 텍스트 스타일(txt.shx 기반) — 특정 폰트 미설치 PC에서도 열리도록 이식성 확보
 const ARROW = 5.0;                        // exe DIMSTYLE dimasz(41) = _ARCHTICK INSERT scale
 const PW = 4;                             // 입면 첨판 두꺼운 선 폭(POLYLINE width)
@@ -154,7 +154,7 @@ function boltPlan(p: Pen, x: number, y: number, rad: number) {
   const m = rad + 5;
   p.line(x - m, y, x + m, y, 'BOLT'); p.line(x, y - m, x, y + m, 'BOLT');
 }
-const gpl = (pl: Plate | undefined, n: number) => pl ? `G.PL. ${pl.t}x${pl.w}x${pl.L}x${n}EA` : '-';
+const gpl = (pl: Plate | undefined, n: number) => pl ? `PL-${pl.t}x${pl.w}x${pl.L}·${n}` : '-';
 
 // H형강 단면 그리기(필렛 R 반영) — 중심 (cx,cy), 직선 외곽 + 4개 필렛 ARC
 function hSection(p: Pen, cx: number, cy: number, H: number, B: number, tw: number, tf: number, r: number, lay: string) {
@@ -243,8 +243,8 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   const stag = r.flange.staggered ?? false;
   const inner = r.flange.innerPlate;
   const hole = BOLT_HOLE[boltNameByDia[dia]].hole, rad = hole / 2;
-  const grade = cond.bolt;                                   // 볼트 등급(F10T·A490 등) 병기
-  const btb = (n: number) => `${n}-M${dia} ${grade} H.T.B`;  // 표준 볼트 콜아웃
+  const grade = cond.bolt;                                   // 볼트 등급(F10T·A490 등) — NOTES에 명기
+  const btb = (n: number) => `${n}-M${dia} H.T.B`;           // 지시선 볼트 콜아웃(등급은 NOTES)
   const flCount = fB.m * round(fB.n) * 4, wCount = wB.m * wB.n * 2;
   const B = parseName(r.section).B;
   const secLbl = `H-${H}x${B}x${tw}x${tf}`;
@@ -330,13 +330,16 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
     put(webA, gpl(r.web.webPlate, 2));
     put(wbA, btb(wCount));
     put(fbA, btb(flCount));
-  } else {                                        // 기둥: 웨브뷰=좌 / 플랜지뷰=우, 앵커 높이로 수평 라우팅
-    const putH = (a: [number, number], txX: number, dy: number, txt: string) => leader(pfc, a[0], a[1], txX, a[1] + dy, txt);
-    putH(webA, lx, 40, gpl(r.web.webPlate, 2));
-    putH(wbA, lx, -40, btb(wCount));
-    putH(outerA, rx, 40, gpl(r.flange.outerPlate, 2));
-    if (inner) putH(innerA, rx, 0, gpl(inner, 4));
-    putH(fbA, rx, -40, btb(flCount));
+  } else {                                        // 기둥: 좌(웨브)·우(플랜지) 여백에 수직 스택(겹침 방지)
+    let lyL = F.frameTop - 100 - cdy;
+    const putL = (a: [number, number], txt: string) => { leader(pfc, a[0], a[1], lx, lyL, txt); lyL -= 62; };
+    putL(webA, gpl(r.web.webPlate, 2));
+    putL(wbA, btb(wCount));
+    let lyR = F.frameTop - 100 - cdy;
+    const putR = (a: [number, number], txt: string) => { leader(pfc, a[0], a[1], rx, lyR, txt); lyR -= 62; };
+    putR(outerA, gpl(r.flange.outerPlate, 2));
+    if (inner) putR(innerA, gpl(inner, 4));
+    putR(fbA, btb(flCount));
   }
 
   // ── 외곽 테두리 + 단면라벨 + 하단 MINI_BOX(도곽 좌표) + 우측 단면도 ──
@@ -347,16 +350,25 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   hSection(pff, csCx, csCy, H, B, tw, tf, fr, 'MAIN');
   pff.text(csCx, csCy + H / 2 + 40, TH * 1.2, 'SECTION', 'DIM', { align: 'c' });
   pff.text(csCx, csCy - H / 2 - 56, TH, secLbl, 'DIM', { align: 'c' });
-  const bl2 = F.frameL + 6, br2 = F.frameRC - 6, midX = (bl2 + br2) / 2, Lw = 150;
+  const bl2 = F.frameL + 6, br2 = F.frameRC - 6, midX = (bl2 + br2) / 2;
+  // 표제란 값 간소 표기(볼트등급·H.T.B는 NOTES) — 셀 침범 방지
+  const gplT = (pl: Plate | undefined, n: number) => pl ? `${pl.t}x${pl.w}x${pl.L}·${n}` : '-';
+  const btbT = (n: number) => `${n}-M${dia}`;
+  // 라벨 열폭·문자높이를 프레임 폭에 적응(좁은 도곽에서도 겹치지 않도록)
+  const maxValLen = Math.max(secLbl.length, jointLbl.length, gplT(r.flange.outerPlate, 2).length, 12);
+  const Lw = Math.max(80, Math.min(160, (br2 - bl2) * 0.26));
+  const valW = midX - (bl2 + Lw);
+  const CW = 0.62;                                          // txt.shx 문자폭 계수
+  const tbe = Math.max(10, Math.min(TB, valW / (maxValLen * CW), Lw / (9.5 * CW)));
   const rw = [boxTopE, boxTopE - L.boxRow, boxTopE - 2 * L.boxRow, boxTopE - 3 * L.boxRow, boxTopE - 4 * L.boxRow];
   pff.rect(bl2, rw[4], br2 - bl2, rw[0] - rw[4], 'MINI_BOX');
   for (let i = 1; i < 4; i++) pff.line(bl2, rw[i], br2, rw[i], 'MINI_BOX');
   [bl2 + Lw, midX, midX + Lw].forEach(x => pff.line(x, rw[4], x, rw[0], 'MINI_BOX'));
-  const tx = (x: number, ri: number, s: string) => pff.text(x + 10, (rw[ri] + rw[ri + 1]) / 2 - TB / 2, TB, s, 'DIM');
+  const tx = (x: number, ri: number, s: string) => pff.text(x + 8, (rw[ri] + rw[ri + 1]) / 2 - tbe / 2, tbe, s, 'DIM');
   tx(bl2, 0, 'Title'); tx(bl2 + Lw, 0, secLbl); tx(midX, 0, 'Steel'); tx(midX + Lw, 0, cond.steel);
-  tx(bl2, 1, 'Web PL.'); tx(bl2 + Lw, 1, gpl(r.web.webPlate, 2)); tx(midX, 1, 'O-Flg PL.'); tx(midX + Lw, 1, gpl(r.flange.outerPlate, 2));
-  tx(bl2, 2, 'Web Bolt'); tx(bl2 + Lw, 2, btb(wCount)); tx(midX, 2, 'I-Flg PL.'); tx(midX + Lw, 2, inner ? gpl(inner, 4) : '-');
-  tx(bl2, 3, 'Joint'); tx(bl2 + Lw, 3, jointLbl); tx(midX, 3, 'Flg Bolt'); tx(midX + Lw, 3, btb(flCount));
+  tx(bl2, 1, 'Web PL.'); tx(bl2 + Lw, 1, gplT(r.web.webPlate, 2)); tx(midX, 1, 'O-Flg PL.'); tx(midX + Lw, 1, gplT(r.flange.outerPlate, 2));
+  tx(bl2, 2, 'Web Bolt'); tx(bl2 + Lw, 2, btbT(wCount)); tx(midX, 2, 'I-Flg PL.'); tx(midX + Lw, 2, inner ? gplT(inner, 4) : '-');
+  tx(bl2, 3, 'Joint'); tx(bl2 + Lw, 3, jointLbl); tx(midX, 3, 'Flg Bolt'); tx(midX + Lw, 3, btbT(flCount));
 
   // ── 디테일러 노트(우측 단면도 스트립 하단, 정립) — 볼트·구멍·연단·피치·갭·기준 ──
   const fEdge = r.flange.edge ?? 40, fPitchN = r.flange.pitch ?? 60;

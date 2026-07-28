@@ -7,6 +7,7 @@ import ConnectionSVG from './components/ConnectionSVG.tsx';
 const CalcReport = lazy(() => import('./components/CalcReport.tsx'));
 const AiscCalcReport = lazy(() => import('./components/AiscCalcReport.tsx'));
 const AiscDetailReport = lazy(() => import('./components/AiscDetailReport.tsx'));
+const KbcDetailReport = lazy(() => import('./components/KbcDetailReport.tsx'));
 const QuantityPanel = lazy(() => import('./components/QuantityPanel.tsx'));
 const ProjectPanel = lazy(() => import('./components/ProjectPanel.tsx'));
 const ThreeViewer = lazy(() => import('./components/ThreeViewer.tsx'));
@@ -146,7 +147,7 @@ export default function App() {
                 </div>
                 <div className="dact">
                   <button className="db primary" onClick={() => setShowReport(true)}>{L('요약계산서', 'Summary')}</button>
-                  {cond.designStd === 'AISC' && <button className="db" onClick={() => setShowDetail(true)}>{L('상세계산서', 'Detailed')}</button>}
+                  <button className="db" onClick={() => setShowDetail(true)}>{L('상세계산서', 'Detailed')}</button>
                   <button className="db" onClick={() => exportOneDXF(selEff)}>DXF</button>
                   <button className="db" onClick={() => setView3D(selEff)}>3D</button>
                   <button className="db" onClick={() => exportOneIFC(selEff)}>IFC</button>
@@ -175,8 +176,9 @@ export default function App() {
         {showReport && selEff && (cond.designStd === 'AISC'
           ? <AiscCalcReport result={selEff} cond={cond} onClose={() => setShowReport(false)} />
           : <CalcReport result={selEff} cond={cond} onClose={() => setShowReport(false)} onAdd={addToProject} />)}
-        {showDetail && selEff && cond.designStd === 'AISC' &&
-          <AiscDetailReport result={selEff} cond={cond} onClose={() => setShowDetail(false)} />}
+        {showDetail && selEff && (cond.designStd === 'AISC'
+          ? <AiscDetailReport result={selEff} cond={cond} onClose={() => setShowDetail(false)} />
+          : <KbcDetailReport result={selEff} cond={cond} onClose={() => setShowDetail(false)} />)}
         {showQty && <QuantityPanel cond={cond} diaAt={diaAt} autoFix={autoFix} onClose={() => setShowQty(false)} />}
         {showProj && <ProjectPanel items={project} onChange={setProject} onClose={() => setShowProj(false)} />}
         {view3D && <ThreeViewer r={view3D} cond={cond} onClose={() => setView3D(null)} />}
