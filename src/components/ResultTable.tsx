@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { DesignCondition, DesignResult, Plate, BoltArray } from '../engine/types.ts';
 import { SECTIONS } from '../engine/sections.ts';
 import { designConnection } from '../engine/engine.ts';
@@ -28,6 +29,12 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
   const isAisc = cond.designStd === 'AISC';
   const dbW = custom ? 58 : 34;                       // 볼트 직경열: 지정(드롭다운) 시 확장
   const hasHidden = (hidden?.size ?? 0) > 0;
+  // 삭제 선택(체크) → 적용(✓) 시 일괄 제거
+  const [checked, setChecked] = useState<Set<string>>(() => new Set());
+  const toggleCheck = (name: string) => setChecked(c => { const n = new Set(c); n.has(name) ? n.delete(name) : n.add(name); return n; });
+  const applyDelete = () => { checked.forEach(n => onHide?.(n)); setChecked(new Set()); };
+  const doReset = () => { onResetHidden?.(); setChecked(new Set()); };
+  const checkedVisible = rows.reduce((a, { s }) => a + (checked.has(s.name) ? 1 : 0), 0);
 
   return (
     <div className="tablewrap">
@@ -44,8 +51,10 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
           <tr>
             <th rowSpan={2} className="col-name g-info">
               <span className="cn-head">{L('단면치수', 'Section')}</span>
+              <button className="col-apply" disabled={checkedVisible === 0} title={L('선택 단면 삭제 적용', 'Delete checked sections')}
+                onClick={applyDelete}>✔</button>
               <button className="col-reset" disabled={!hasHidden} title={L('전체 단면 복원', 'Restore all sections')}
-                onClick={onResetHidden}>↺</button>
+                onClick={doReset}>↺</button>
             </th>
             <th rowSpan={2} className="g-info dcr-h">DCR</th>
             <th rowSpan={2} className="g-info">r<br /><span className="unit">mm</span></th>
@@ -81,8 +90,9 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
             return (
               <tr key={r.section} onClick={() => onSelect(dr)} className={`${newSeries ? 'series-top' : ''}${sel ? ' row-sel' : ''}`}>
                 <td className="col-name">
-                  <button className="row-del" title={L('이 단면 제거', 'Remove this section')}
-                    onClick={e => { e.stopPropagation(); onHide?.(s.name); }}>−</button>
+                  <input type="checkbox" className="row-chk" checked={checked.has(s.name)}
+                    title={L('삭제 선택', 'Mark for deletion')} onClick={e => e.stopPropagation()}
+                    onChange={e => { e.stopPropagation(); toggleCheck(s.name); }} />
                   <span className={`st-dot${ng ? ' ng' : ''}`} title={ng ? '재검토' : '적합'} />
                   <button className="cn-txt" title={L('3D 형상 보기', 'View 3D shape')} onClick={e => { e.stopPropagation(); onView3D(dr); }}>{r.section}</button></td>
                 <td className={`dcr-cell${govDcr != null && govDcr > 1.0 ? ' ng' : ''}`}
