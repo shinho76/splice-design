@@ -44,6 +44,7 @@ export interface DesignCondition {
   designStd?: 'KBC' | 'KDS' | 'AISC';  // 설계기준. KBC-09(편람) / KDS 14 31 25(AISC 준용) / AISC 360-16
   threadCond?: 'N' | 'X';      // AISC 볼트 나사조건(전단면 통과 N / 제외 X). 기본 N
   profile?: 'H' | 'W';         // 형강 카탈로그. H=편람 73종(기본) / W=AISC v16.0 289종
+  webDist?: 'flange' | 'inertia';  // 보 휨 분배: flange=플랜지전담(현재·기본) / inertia=I값 분배(웨브가 Iw/Ix 분담)
 }
 
 /** 첨판 치수 (두께 × 폭[or 춤] × 길이[or 너비]) */

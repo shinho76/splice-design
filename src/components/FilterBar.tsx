@@ -21,9 +21,11 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
         <Seg label={L('형강', 'Profile')} value={cond.profile ?? 'H'} opts={['H', 'W']} optLabels={['H-Shape', 'W-Shape']} onPick={v => set('profile', v as 'H' | 'W')} />
       </div>
 
-      {/* ⓪ 설계기준 */}
+      {/* ⓪ 설계기준 · 휨 분배(보 한정) */}
       <div className="fgrp">
         <Seg label={L('설계기준', 'Std')} value={cond.designStd ?? 'KBC'} opts={['KBC', 'KDS', 'AISC']} optLabels={['KBC-09', 'KDS 22', 'AISC 16']} onPick={v => set('designStd', v as 'KBC' | 'KDS' | 'AISC')} />
+        {cond.member === '보' && <Seg label={L('휨 분배', 'M-Dist')} value={cond.webDist ?? 'flange'} opts={['flange', 'inertia']}
+          optLabels={[L('플랜지전담', 'Flange'), L('I값분배', 'Inertia')]} onPick={v => set('webDist', v as 'flange' | 'inertia')} />}
       </div>
 
       {/* ① 기본 조건 (부재→접합) */}

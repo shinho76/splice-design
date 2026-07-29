@@ -13,6 +13,23 @@ import { flangeLB_Mn, webLB_Mn } from './nominal.ts';
 
 const ceil = Math.ceil;
 const ceilHalf = (x: number) => Math.ceil(x * 2) / 2;
+
+// 웨브 볼트군 탄성 편심 최악볼트력(kN) — V(kN, 수직전단) + M(kN·mm, 모멘트) · 한쪽 볼트군.
+// I값 분배 시 웨브가 Mw+V·e를 부담 → 탄성법으로 최외곽 볼트 합력 산정(전통 편심접합).
+function webWorstBolt(mV: number, nH: number, Pc: number, webP: number, V: number, M: number): number {
+  const xs = Array.from({ length: nH }, (_, i) => (i - (nH - 1) / 2) * webP);
+  const ys = Array.from({ length: mV }, (_, i) => (i - (mV - 1) / 2) * Pc);
+  let sumR2 = 0;
+  for (const x of xs) for (const y of ys) sumR2 += x * x + y * y;
+  const N = mV * nH;
+  if (sumR2 === 0) return V / N;
+  let worst = 0;
+  for (const x of xs) for (const y of ys) {
+    const fx = M * (-y) / sumR2, fy = V / N + M * x / sumR2;
+    worst = Math.max(worst, Math.hypot(fx, fy));
+  }
+  return worst;
+}
 const boltDiaOf = (b: string) => parseInt(b.slice(1), 10) as import('./types.ts').BoltDia;
 const boltNameOf = (d: number) => ('M' + d) as import('./types.ts').BoltName;
 
@@ -83,7 +100,12 @@ function designBeam(cond: DesignCondition, sec: HSection, forceDia?: number): De
   const Mn = Math.min(MnF, MnW);
   const Mu = alpha * PHI_FLEX * Mn;
   const dm = hasInner ? sec.H - sec.tf : sec.H;
-  const Puf = (Mu * 1e6) / dm / 1e3;
+  // (B) I값 분배: 웨브가 Mw=Mu·(Iw/Ix) 분담 → 플랜지는 Mf=Mu·(1−Iw/Ix)만. flange(기본)=웨브분담 0.
+  const inertia = cond.webDist === 'inertia';
+  const hw = sec.H - 2 * sec.tf, Iw = sec.tw * hw ** 3 / 12, Ix = sec.Sx * sec.H / 2;
+  const webFrac = inertia ? Math.min(0.5, Iw / Ix) : 0;
+  const Mw_kNmm = inertia ? Mu * webFrac * 1000 : 0;         // 웨브 분담모멘트 (kN·m→kN·mm)
+  const Puf = (Mu * (1 - webFrac) * 1e6) / dm / 1e3;
   steps.push(
     { group:'가) 소요휨강도 · 플랜지 소요축력', label:'공칭휨강도', formula:'Mn = min(플랜지·웨브 국부좌굴)', substitution:`min(${MnF.toFixed(0)}, ${MnW.toFixed(0)})`, value:+Mn.toFixed(0), unit:'kN·m', ref:'5.2.1~2',
       note:'횡좌굴은 무시하고 국부좌굴만, 총단면에 대해 산정한다.' },
@@ -97,7 +119,9 @@ function designBeam(cond: DesignCondition, sec: HSection, forceDia?: number): De
   // 웨브 이음 — 소요전단강도
   const Vu = alpha * PHI_SHEAR * 0.6 * fy * (sec.H * sec.tw) / 1e3;
   steps.push({ group:'마) 웨브 소요전단강도', label:'소요전단강도', formula:'Vu = α·φv·0.6·Fy·(H·tw)', substitution:`${alpha}×0.9×0.6×${fy}×${sec.H}×${sec.tw}`, value:+Vu.toFixed(0), unit:'kN', ref:'5.6' });
-  const web = designWeb(cond, sec, std.bolt, fy, fu, pfy, Vu, bearing, steps);
+  if (inertia) steps.push({ group:'마) 웨브 소요전단강도', label:'웨브 분담모멘트(I값 분배)', formula:'Mw = Mu·(Iw/Ix)', substitution:`${Mu.toFixed(0)}×${(Iw/Ix).toFixed(3)}`, value:+(Mu*webFrac).toFixed(0), unit:'kN·m', ref:'—',
+    note:`웨브가 강성비 Iw/Ix=${(webFrac*100).toFixed(0)}% 분담 → 플랜지 소요 그만큼 경감. 웨브볼트는 Mw+V·e 탄성편심 산정.` });
+  const web = designWeb(cond, sec, std.bolt, fy, fu, pfy, Vu, bearing, steps, Mw_kNmm);
 
   return { section: sec.name, boltDia: boltDiaOf(std.bolt), Mu_kNm:+Mu.toFixed(0), Vu_kN:+Vu.toFixed(0), Puf_kN:+Puf.toFixed(0), flange, web, steps };
 }
@@ -185,9 +209,10 @@ function designFlange(cond: DesignCondition, sec: HSection, std: ReturnType<type
 }
 
 // ─────────────────────────────── 웨브 이음 (공용) ───────────────────────────────
-function designWeb(cond: DesignCondition, sec: HSection, bolt: BoltName, fy: number, fu: number, pfy: number, soryeok: number, bearing: boolean, steps: CalcStep[]): JointDesign {
+function designWeb(cond: DesignCondition, sec: HSection, bolt: BoltName, fy: number, fu: number, pfy: number, soryeok: number, bearing: boolean, steps: CalcStep[], Mw = 0): JointDesign {
   const { H, tw, tf, r } = sec;
   const phiRnW = boltStrength(cond, bolt, 2, tw, fu);   // 지압: 모재 웨브(tw) 지배
+  const webP = Math.max(60, Math.ceil(2.667 * boltDiaOf(bolt) / 5) * 5);   // C안: 웨브 가로피치(축)
   const Nreq = Math.max(2, ceil(soryeok / phiRnW));
   // 웨브 첨판이 웨브 필렛을 침범하지 않도록 춤 상한(플랫 웨브 높이 − 2·클리어런스).
   // H형강은 편람 골든 유지 위해 제한 없음(진단상 0건). W형강만 필렛 클리어런스 강제.
@@ -210,9 +235,23 @@ function designWeb(cond: DesignCondition, sec: HSection, bolt: BoltName, fy: num
     }
     chum = Math.round(Math.min((mW-1)*(Pc ?? 60) + 80, chumCap));
   }
+  // (B) I값 분배: 웨브 볼트군이 Mw+V·e를 탄성편심으로 부담 → 최외곽볼트 초과 시 볼트 증설.
+  if (Mw > 0) {
+    const augCap = H - 2 * (tf + r) - 2 * FCL;      // 필렛 침범 방지 춤 상한(H·W 공통)
+    const PcA = Pc ?? 60;
+    for (let it = 0; it < 24; it++) {
+      const ecc = (cond.gap ?? 10) / 2 + 40 + (nW - 1) * webP / 2;   // 볼트군 중심~이음 편심
+      const worst = webWorstBolt(mW, nW, PcA, webP, soryeok, Mw + soryeok * ecc);
+      if (worst <= phiRnW) break;
+      if (mW * PcA + 80 <= augCap && mW < 12) mW++;   // 춤 여유 → 행(춤) 증설
+      else if (nW < 6) nW++;                           // 아니면 축열 증설
+      else break;
+    }
+    Pc = mW > 1 ? PcA : Pc;
+    chum = Math.round(Math.min((mW - 1) * (Pc ?? 60) + 80, augCap));
+  }
   if (mW === 1) Pc = null;   // 춤방향 단일볼트 → 피치 무의미(표·도면 혼동 방지)
   const dpw = chum;
-  const webP = Math.max(60, Math.ceil(2.667 * boltDiaOf(bolt) / 5) * 5);   // C안: 웨브 가로피치
   const wpw = 2*((nW-1)*webP + 2*40) + (cond.gap ?? 10);   // 웨브볼트 이음부 연단 40(플랜지와 동일)
   // 보=전단(0.6Fy), 기둥=압축(Fy). 양면 첨판이 소요력의 절반씩 분담.
   const nomFactor = cond.member === '기둥' ? 1.0 : 0.6;
