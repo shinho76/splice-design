@@ -7,6 +7,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 import type { DesignResult, DesignCondition } from '../types.ts';
 import { aiscRun } from './run.ts';
+import { sectionByName } from '../sections.ts';
 import type { AiscResult } from './types.ts';
 
 // 실무 표준 시리즈(KS D 3503/3515 상용 압연 강판 두께 mm · KS B 1010 볼트호칭)
@@ -60,14 +61,21 @@ export function aiscOptimize(r0: DesignResult, cond: DesignCondition, limits: Op
   const history: OptStep[] = [];
   let fScale = 1, wScale = 1, memberLimited = false;
 
-  // 지오메트리 상수(재산정용)
+  // 지오메트리 상수(재산정용) — 엔진 designFlange/designWeb 식과 반드시 일치해야 연단/필렛 정합
   const fPitch = r.flange.pitch ?? 60, fEdge = r.flange.edge ?? 40, gap = r.flange.gap ?? 10;
+  const fStag = r.flange.staggered ?? false;          // 엇모면 첨판 길이식이 다름((2n−1)·45)
   const Pc = r.web.Pc ?? 60, webP = r.web.pitch ?? 60, wEdge = r.web.edge ?? 40;
-  const { H } = parse(r.section);
-  const flangeLen = (n: number) => 2 * ((Math.round(n) - 1) * fPitch + 2 * fEdge) + gap;
+  const secG = sectionByName(r.section);          // 카탈로그 실치수(H·tf·r) — parse는 W-호칭 미지원
+  const H = secG?.H ?? 0, tf = secG?.tf ?? 0, rFil = secG?.r ?? 0;
+  const FCL = 8;    // 웨브첨판 필렛 클리어런스(엔진 designWeb과 동일). H형강은 플랫 이내만 강제.
+  const chumCap = cond.profile === 'W' ? (H - 2 * (tf + rFil) - 2 * FCL) : (H - 2 * (tf + rFil));
+  // 엇모: 엔진 Lpf = 2[(2n−1)·45 + 2·40] + gap.  정렬: 2[(n−1)·pitch + 2·40] + gap.
+  const flangeLen = (n: number) => fStag
+    ? 2 * ((2 * Math.round(n) - 1) * 45 + 2 * fEdge) + gap
+    : 2 * ((Math.round(n) - 1) * fPitch + 2 * fEdge) + gap;
   const webWidth = (nh: number) => 2 * ((nh - 1) * webP + 2 * wEdge) + gap;
-  const webDepth = (mv: number) => (mv - 1) * Pc + 80;
-  const maxWebVert = Math.max(2, Math.floor((H - 2 * 60) / Pc) + 1);   // 웨브볼트 수직 상한(춤 여유)
+  const webDepth = (mv: number) => Math.min((mv - 1) * Pc + 80, chumCap);   // 필렛플랫 초과 방지
+  const maxWebVert = Math.max(1, Math.floor((chumCap - 80) / Pc) + 1);      // 춤(첨판) 필렛플랫 이내
 
   const capBy = (res: AiscResult, ids: string[]): number => {
     const fs = res.checks.filter(c => ids.includes(c.id) && c.ok === false && c.phiRn && c.demand);
@@ -109,6 +117,8 @@ export function aiscOptimize(r0: DesignResult, cond: DesignCondition, limits: Op
     };
     const addWebVert = () => {
       const mv = r.web.bolt.m; if (mv >= maxWebVert) return false;
+      if (mv * Pc + 80 > chumCap) return false;   // 다음 행 추가 시 첨판 춤이 필렛플랫 초과 → 불가
+
       r.web.bolt = { m: mv + 1, n: r.web.bolt.n, count: (mv + 1) * r.web.bolt.n };
       if (r.web.webPlate) r.web.webPlate.w = webDepth(mv + 1);
       action = `웨브 볼트(춤) ${mv}→${mv + 1}`; return true;
@@ -202,14 +212,15 @@ export function aiscOptimize(r0: DesignResult, cond: DesignCondition, limits: Op
         const t0 = pl.t, i = series.indexOf(t0);
         if (i > 0) { pl.t = series[i - 1]; if (passOK()) trimmed = true; else pl.t = t0; }
       }
-      const n0 = Math.round(r.flange.bolt.n);
+      const b0 = r.flange.bolt;                      // 원본 보존(엇모 분수 n=2.5 등 라운딩 손상 방지)
+      const n0 = Math.round(b0.n);
       if (n0 > 2) {
         const oL0 = r.flange.outerPlate?.L, iL0 = r.flange.innerPlate?.L;
-        r.flange.bolt = { m: r.flange.bolt.m, n: n0 - 1, count: r.flange.bolt.m * (n0 - 1) };
+        r.flange.bolt = { m: b0.m, n: n0 - 1, count: b0.m * (n0 - 1) };
         if (r.flange.outerPlate) r.flange.outerPlate.L = flangeLen(n0 - 1);
         if (r.flange.innerPlate) r.flange.innerPlate.L = flangeLen(n0 - 1);
         if (passOK()) trimmed = true;
-        else { r.flange.bolt = { m: r.flange.bolt.m, n: n0, count: r.flange.bolt.m * n0 };
+        else { r.flange.bolt = b0;                    // 정확한 원본 복원(분수 n 유지 → 첨판길이 정합)
           if (r.flange.outerPlate && oL0 != null) r.flange.outerPlate.L = oL0;
           if (r.flange.innerPlate && iL0 != null) r.flange.innerPlate.L = iL0; }
       }
@@ -225,10 +236,4 @@ export function aiscOptimize(r0: DesignResult, cond: DesignCondition, limits: Op
       if (!trimmed) break;
     }
   }
-}
-
-/** "H-400x200x8x13" → 치수 (parse 로컬 최소판) */
-function parse(name: string) {
-  const [H, B, tw, tf] = name.replace(/^H-/, '').split('x').map(Number);
-  return { H, B, tw, tf };
 }
