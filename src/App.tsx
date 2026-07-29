@@ -49,7 +49,7 @@ export default function App() {
     return s ? s === 'dark' : true;          // 기본 다크, 이후 선택 기억
   });
   const [lang, setLang] = useState<Lang>(() => (localStorage.getItem('splice_lang') as Lang) || 'ko');
-  const [autoFix, setAutoFix] = useState(false);   // AISC 전체 부재 자동보정 토글
+  const [autoFix, setAutoFix] = useState(true);   // AISC 전체 부재 최적화(철판 최소·DCR≤1) — 기본 ON
   const L = <K,>(ko: K, en: K): K => (lang === 'en' ? en : ko);   // 짧은 인라인 번역 헬퍼
 
   useEffect(() => {
@@ -134,7 +134,7 @@ export default function App() {
             <FilterBar cond={cond} onChange={setCond} boltMode={boltMode} onBoltMode={setBoltMode} />
             {usesLimitState(cond.designStd) && (
               <div className="cf-autofix">
-                <button type="button" className={autoFix ? 'on' : ''} onClick={() => setAutoFix(v => !v)} aria-pressed={autoFix} title={L('전체 부재 AISC 자동보정(DCR≤1.0)', 'Auto-correct all members (DCR≤1.0)')}>⚙ {L('전체 자동보정', 'Auto-fix all')}</button>
+                <button type="button" className={autoFix ? 'on' : ''} onClick={() => setAutoFix(v => !v)} aria-pressed={autoFix} title={L('전체 부재 AISC 최적화 — 철판 물량 최소로 DCR≤1.0 달성(부재지배는 부분강도)', 'Optimize all members — minimum plate to reach DCR≤1.0 (member-governed → partial strength)')}>⚙ {L('최적화', 'Optimize')}</button>
               </div>
             )}
             <div className="cfilters-hint">▸ {L('조건을 바꾸면 결과표가 즉시 갱신됩니다.', 'Changing conditions updates the table instantly.')}</div>
@@ -156,7 +156,7 @@ export default function App() {
               <>
                 <div className="dh">{sectionByName(selEff.section)?.label ?? selEff.section}
                   {sectionByName(selEff.section)?.label && <span className="dh-mm">{selEff.section}</span>}
-                  <span className="dbadge">{autoFix && usesLimitState(cond.designStd) ? L('자동보정', 'Auto-fixed') : L('선택됨', 'Selected')}</span></div>
+                  <span className="dbadge">{autoFix && usesLimitState(cond.designStd) ? L('최적화', 'Optimized') : L('선택됨', 'Selected')}</span></div>
                 <div className="dsub">{tMember(cond.member, lang)} · {tJoint(cond.jointType, lang)} · {cond.steel} · {cond.bolt}</div>
                 <div className="dspecs">
                   <div><span>{isCol ? L('압축강도', 'Compression') : L('휨모멘트', 'Moment')}</span><b>{nf(isCol ? selEff.Puf_kN : selEff.Mu_kNm)} kN{isCol ? '' : '·m'}</b></div>

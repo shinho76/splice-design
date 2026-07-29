@@ -502,6 +502,9 @@ body {
 .col-name .cn-nom { font-weight: 700; }
 .col-name .cn-mm { font-size: 8px; color: var(--muted); font-weight: 500; letter-spacing: -.03em; }
 .col-name .cn-txt:hover .cn-mm { color: var(--accent); }
+/* 부분강도접합 발현 최대비율 배지(부재지배로 DCR≤1 불가 시) */
+.col-name .cn-partial { margin-left: 5px; font-size: 8.5px; font-weight: 700; color: var(--warn, #d08700);
+  background: color-mix(in srgb, var(--warn, #d08700) 15%, transparent); padding: 0 3px; border-radius: 3px; vertical-align: middle; white-space: nowrap; }
 /* 행(단면) 삭제 선택 체크박스 / 헤더 적용✔·초기화↺ 버튼 */
 .col-name .cn-head { vertical-align: middle; }
 .row-chk { width: 13px; height: 13px; margin: 0 5px 0 0; vertical-align: middle; cursor: pointer; accent-color: var(--ng); flex-shrink: 0; }

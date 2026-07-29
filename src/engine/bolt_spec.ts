@@ -23,7 +23,7 @@ export const KS_B_1010_SET: Partial<Record<BoltName, KsSet>> = {
 };
 
 // ── 부가길이(그립에 더하는 길이: 너트+와셔2매+나사여장) mm ──  ※표준시방 관례값
-const ADD_LEN: Record<BoltName, number> = { M16: 25, M18: 28, M20: 30, M22: 35, M24: 40 };
+const ADD_LEN: Record<BoltName, number> = { M16: 25, M18: 28, M20: 30, M22: 35, M24: 40, M27: 45, M30: 50 };
 
 const ceil5 = (v: number) => Math.ceil(v / 5) * 5;
 
