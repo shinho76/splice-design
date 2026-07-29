@@ -18,7 +18,7 @@ import { catalogFor, sectionByName } from './engine/sections.ts';
 import { usesLimitState } from './engine/std.ts';
 import { designConnection } from './engine/engine.ts';
 import { aiscAutoCorrect } from './engine/aisc/compat.ts';
-import { toDXF, toDXFAll, downloadFile } from './engine/dxf.ts';
+import { toDXF, toDXFAll, toDXFAll2, downloadFile } from './engine/dxf.ts';
 import { toIFC } from './engine/ifcOut.ts';
 import { quantityOf } from './engine/quantity.ts';
 
@@ -91,11 +91,12 @@ export default function App() {
   const detailQ = useMemo(() => (selEff ? quantityOf(selEff, cond) : null), [selEff, cond]);
 
   const addToProject = (r: DesignResult) => setProject(p => [...p, newItem(r.section, cond)]);
-  const exportAllDXF = () => {
-    const rows = catalogFor(cond.profile).map((s, i) => ({ s, i })).filter(({ s }) => !hidden.has(s.name))
-      .map(({ s, i }) => designConnection(cond, s, diaAt(i)));
-    downloadFile(`splice_전체_${cond.member}_${cond.jointType}.dxf`, toDXFAll(rows, cond), 'application/dxf');
-  };
+  const allRowsForDXF = () => catalogFor(cond.profile).map((s, i) => ({ s, i })).filter(({ s }) => !hidden.has(s.name))
+    .map(({ s, i }) => designConnection(cond, s, diaAt(i)));
+  const exportAllDXF = () =>
+    downloadFile(`splice_전체_${cond.member}_${cond.jointType}.dxf`, toDXFAll(allRowsForDXF(), cond), 'application/dxf');
+  const exportAllDXF2 = () =>   // 사무소 표준 포맷(ExT/INT/W·볼트길이·주기)
+    downloadFile(`splice_전체_${cond.member}_${cond.jointType}_표준포맷.dxf`, toDXFAll2(allRowsForDXF(), cond), 'application/dxf');
   const exportOneDXF = (r: DesignResult) => downloadFile(`${r.section}_${cond.jointType}.dxf`, toDXF(r, cond), 'application/dxf');
   const exportOneIFC = (r: DesignResult) => downloadFile(`${r.section}_${cond.jointType}.ifc`, toIFC(r, cond), 'application/x-step');
   const isCol = cond.member === '기둥';
@@ -110,6 +111,7 @@ export default function App() {
         <button className="rnav" title={L('물량산정', 'Quantities')} onClick={() => setShowQty(true)}>▦</button>
         <button className="rnav" title={L('프로젝트', 'Project')} onClick={() => setShowProj(true)}>◫{project.length ? <em className="rbadge">{project.length}</em> : null}</button>
         <button className="rnav" title={L('전체 DXF 다운로드', 'Download all DXF')} onClick={exportAllDXF}>⤓</button>
+        <button className="rnav" title={L('전체 DXF 다운로드 (사무소 표준 포맷)', 'Download all DXF2 (office format)')} onClick={exportAllDXF2}>⤓²</button>
         <span className="rspace" />
       </aside>
 

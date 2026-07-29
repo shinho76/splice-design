@@ -4,6 +4,7 @@
 import type { DesignResult, DesignCondition, Plate } from './types.ts';
 import { parseName, sectionByName } from './sections.ts';
 import { BOLT_HOLE, boltNameByDia } from './bolts.ts';
+import { standardLength, gripFlange, gripWeb } from './bolt_spec.ts';
 
 const round = Math.round;
 const TH = 20;   // 도면 문자높이
@@ -197,7 +198,7 @@ export function layout(r: DesignResult, isCol: boolean) {
   };
 }
 
-export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox: number, oy: number, uni?: UniFrame) {
+export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox: number, oy: number, uni?: UniFrame, office = false) {
   const isCol = cond.member === '기둥';
   const L = layout(r, isCol);
   // 통일 도곽(uni) 사용 시: 테두리·표제·단면도는 도곽(F) 좌표, 콘텐츠는 도곽 중앙에 오도록 cd만큼 이동.
@@ -215,10 +216,19 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   const stag = r.flange.staggered ?? false;
   const inner = r.flange.innerPlate;
   const hole = BOLT_HOLE[boltNameByDia[dia]].hole, rad = hole / 2;
-  const btb = (n: number) => `${n}-M${dia} H.T.B`;           // 지시선 볼트 콜아웃
+  const btb = (n: number) => `${n}-M${dia} H.T.B`;           // 지시선 볼트 콜아웃(기본)
   const flCount = fB.m * round(fB.n) * 4, wCount = wB.m * wB.n * 2;
   const B = parseName(r.section).B;
   const secLbl = `H-${H}x${B}x${tw}x${tf}`;
+  // ── 사무소 포맷(office) 라벨: ExT/INT/W-PL + 볼트길이. 값은 현 앱 계산 그대로 ──
+  const bName = boltNameByDia[dia];
+  const flLen = standardLength(gripFlange(r), bName), wLen = standardLength(gripWeb(r), bName);
+  const plO = (pl: Plate | undefined, pre: string) => pl ? `${pre}-${pl.t}x${pl.w}x${pl.L}` : '-';
+  const outerLbl = office ? plO(r.flange.outerPlate, 'ExT.2PL') : gpl(r.flange.outerPlate, 2);
+  const innerLbl = office ? plO(inner, 'INT.4PL') : gpl(inner, 4);
+  const webLbl = office ? plO(r.web.webPlate, 'W.2PL') : gpl(r.web.webPlate, 2);
+  const flBoltLbl = office ? `${flCount}-M${dia}x${flLen}` : btb(flCount);
+  const wBoltLbl = office ? `${wCount}-M${dia}x${wLen}` : btb(wCount);
   // 정보표 영문화(exe 폰트 OpenSansCondensed엔 한글 글리프 없음 → CAD 깨짐 방지)
   const jointLbl = `${cond.member === '기둥' ? 'Column' : 'Beam'} ${cond.jointType === '지압' ? 'Bearing' : 'Friction'}`;
 
@@ -336,21 +346,21 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
     const oR = pt(tMl, Lpf / 3, yW + H / 2 + oT), iR = pt(tMl, (inner?.L ?? Lpf) / 3, yW + H / 2 - tf - (inner?.t ?? 0) / 2);
     const wR = pt(tMl, webWid / 2, yW), wbR = pt(tMl, webWid / 4, yW - chum / 2 + 20), fbR = pt(tMl, base, yF + g1 / 2);
     stackRight([
-      { a: oR, txt: gpl(r.flange.outerPlate, 2) },
-      ...(inner ? [{ a: iR, txt: gpl(inner, 4) }] : []),
-      { a: wR, txt: gpl(r.web.webPlate, 2) },
-      { a: wbR, txt: btb(wCount) },
-      { a: fbR, txt: btb(flCount) },
+      { a: oR, txt: outerLbl },
+      ...(inner ? [{ a: iR, txt: innerLbl }] : []),
+      { a: wR, txt: webLbl },
+      { a: wbR, txt: wBoltLbl },
+      { a: fbR, txt: flBoltLbl },
     ], 60);
   } else {                                        // 기둥: 좌(웨브)·우(플랜지) 여백에 앵커 높이 정렬
     stackAt([
-      { a: webA, txt: gpl(r.web.webPlate, 2) },
-      { a: wbA, txt: btb(wCount) },
+      { a: webA, txt: webLbl },
+      { a: wbA, txt: wBoltLbl },
     ], lx);
     stackAt([
-      { a: outerA, txt: gpl(r.flange.outerPlate, 2) },
-      ...(inner ? [{ a: innerA, txt: gpl(inner, 4) }] : []),
-      { a: fbA, txt: btb(flCount) },
+      { a: outerA, txt: outerLbl },
+      ...(inner ? [{ a: innerA, txt: innerLbl }] : []),
+      { a: fbA, txt: flBoltLbl },
     ], rx);
   }
 
@@ -359,8 +369,15 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   pff.text((F.frameL + F.frameRC) / 2, F.frameTop - 34, TH * 1.3, secLbl, 'DIM', { align: 'c' });
   const bl2 = F.frameL + 6, br2 = F.frameRC - 6, midX = (bl2 + br2) / 2;
   // 표제란 값 — 참고 도면 전체 형식(G.PL. …EA / …-M… H.T.B). 폭은 적응형 폰트(tbe)로 수용.
-  const gplT = (pl: Plate | undefined, n: number) => pl ? `G.PL. ${pl.t}x${pl.w}x${pl.L}x${n}EA` : '-';
-  const btbT = (n: number) => `${n}-M${dia} H.T.B`;
+  const gplT = office ? ((pl: Plate | undefined, n: number) => n === 2 ? (pl === r.web.webPlate ? webLbl : outerLbl) : innerLbl)
+    : ((pl: Plate | undefined, n: number) => pl ? `G.PL. ${pl.t}x${pl.w}x${pl.L}x${n}EA` : '-');
+  const btbT = (n: number) => office ? (n === wCount ? wBoltLbl : flBoltLbl) : `${n}-M${dia} H.T.B`;
+  // 사무소 포맷 주기(romans 폰트 호환 영문)
+  if (office) {
+    const nx = F.frameL + 10, ny = F.frameTop - 30;
+    ['STEEL : ' + cond.steel + ' (U.N.O)', 'BOLT : ' + cond.bolt + ' H.T.B', 'SCALE : 1/20'].forEach((s, i) =>
+      pff.text(nx, ny - i * TH * 1.7, TH, s, 'DIM', { align: 'l' }));
+  }
   // 라벨 열폭·문자높이를 프레임 폭에 적응(좁은 도곽에서도 겹치지 않도록)
   const maxValLen = Math.max(secLbl.length, jointLbl.length, gplT(r.flange.outerPlate, 2).length, 12);
   const Lw = Math.max(80, Math.min(160, (br2 - bl2) * 0.26));
@@ -438,7 +455,7 @@ export function uniformFrame(rows: DesignResult[], isCol: boolean): UniFrame {
   return { frameL, frameRC, frameR: frameRC + csStrip, frameTop, frameBot };
 }
 
-export function toDXFAll(rows: DesignResult[], cond: DesignCondition): string {
+export function toDXFAll(rows: DesignResult[], cond: DesignCondition, office = false): string {
   const doc = newDoc();
   const isCol = cond.member === '기둥';
   const uni = uniformFrame(rows, isCol);                          // 가장 큰 형강 기준 통일 도곽
@@ -448,10 +465,12 @@ export function toDXFAll(rows: DesignResult[], cond: DesignCondition): string {
     const col = i % COLS, row = Math.floor(i / COLS);
     const ox = col * cellW + GAP / 2 - uni.frameL;                // 통일 도곽을 셀에 정렬 배치
     const oy = -row * cellH - GAP / 2 - uni.frameTop;
-    emitMember(doc, r, cond, ox, oy, uni);                        // 각 상세를 통일 도곽 중앙에
+    emitMember(doc, r, cond, ox, oy, uni, office);               // 각 상세를 통일 도곽 중앙에
   });
   return wrap(doc);
 }
+/** 사무소 표준 포맷(ExT/INT/W-PL·볼트길이·주기) — 값은 현 앱 계산 그대로, 표기만 참조도면 규약. */
+export const toDXFAll2 = (rows: DesignResult[], cond: DesignCondition): string => toDXFAll(rows, cond, true);
 export function downloadFile(filename: string, content: string | ArrayBuffer, mime: string) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
