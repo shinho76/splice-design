@@ -20,7 +20,7 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
   custom?: boolean; diaAt?: (i: number) => number | undefined; onSetDia?: (i: number, d: number) => void;
   selectedSection?: string; autoFix?: boolean;
   hidden?: Set<string>; onHide?: (name: string) => void; onResetHidden?: () => void;
-  onDcrClick?: (r: DesignResult) => void;
+  onDcrClick?: (p: { r: DesignResult; fScale: number; wScale: number }) => void;
 }) {
   const lang = useLang();
   const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
@@ -34,7 +34,8 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
     const dr = ac ? ac.result : r;                       // 표시 형상(최적화 반영)
     const govDcr = ac ? ac.report.govDcr : (isAisc ? aiscCheck(r, cond).govDcr : kbcCheck(r, cond).govDcr);
     const partial = ac && ac.memberLimited ? Math.min(ac.flangeScale, ac.webScale) : null;  // 부분강도 최대비율
-    return { s, i, r, dr, govDcr, partial };
+    const fScale = ac ? ac.flangeScale : 1, wScale = ac ? ac.webScale : 1;   // DCR팝업 캡핑 기준(테이블 일치)
+    return { s, i, r, dr, govDcr, partial, fScale, wScale };
   }), [cond, diaAt, autoFix, isAisc]);
   const rows = allRows.filter(({ s }) => !hidden?.has(s.name));
   const dbW = 46;                                     // 볼트 직경열: 지정/표준 동일 폭(토글 시 표 흔들림 방지)
@@ -94,7 +95,7 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
           </tr>
         </thead>
         <tbody>
-          {rows.map(({ s, i, r, dr, govDcr, partial }, idx) => {
+          {rows.map(({ s, i, r, dr, govDcr, partial, fScale, wScale }, idx) => {
             const nominal = nominalOf(s.H, s.B);
             const newSeries = idx === 0 || nominal !== nominalOf(rows[idx - 1].s.H, rows[idx - 1].s.B);
             const inner = fmtPlate(dr.flange.innerPlate);
@@ -116,7 +117,7 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
                     {Math.round(partial * 100)}%</span>}</td>
                 <td className={`dcr-cell${govDcr != null && govDcr > 1.0 ? ' ng' : ''}${govDcr != null ? ' dcr-click' : ''}`}
                   title={govDcr == null ? undefined : L('검토항목별 DCR 보기', 'View DCR by limit state')}
-                  onClick={govDcr != null ? (e => { e.stopPropagation(); onDcrClick?.(dr); }) : undefined}>
+                  onClick={govDcr != null ? (e => { e.stopPropagation(); onDcrClick?.({ r: dr, fScale, wScale }); }) : undefined}>
                   {govDcr != null ? govDcr.toFixed(2) : <span className="dash">—</span>}</td>
                 <td>{s.r}</td>
                 <td className="gcol">{fmtW(unitWeightOf(s))}</td>

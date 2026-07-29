@@ -37,7 +37,7 @@ export default function App() {
   const [showProj, setShowProj] = useState(false);
   const [view3D, setView3D] = useState<DesignResult | null>(null);
   const [zoomPrev, setZoomPrev] = useState(false);   // 접합 상세도 확대 보기
-  const [dcrView, setDcrView] = useState<DesignResult | null>(null);   // DCR 팝업 대상
+  const [dcrView, setDcrView] = useState<{ r: DesignResult; fScale: number; wScale: number } | null>(null);   // DCR 팝업 대상(+캡핑배율)
   const [boltMode, setBoltMode] = useState<'Default' | 'Custom'>('Default');
   const [boltOv, setBoltOv] = useState<Record<number, number>>({});   // 행index → 지정직경(위 행 따름)
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());  // 테이블에서 제거한 단면(−버튼)
@@ -211,7 +211,7 @@ export default function App() {
         {showQty && <QuantityPanel cond={cond} diaAt={diaAt} autoFix={autoFix} onClose={() => setShowQty(false)} />}
         {showProj && <ProjectPanel items={project} onChange={setProject} onClose={() => setShowProj(false)} />}
         {view3D && <ThreeViewer r={view3D} cond={cond} onClose={() => setView3D(null)} />}
-        {dcrView && <DcrPopup r={dcrView} cond={cond} onClose={() => setDcrView(null)} />}
+        {dcrView && <DcrPopup r={dcrView.r} cond={cond} fScale={dcrView.fScale} wScale={dcrView.wScale} onClose={() => setDcrView(null)} />}
       </Suspense>
       {zoomPrev && selEff && (
         <div className="prev-back" onClick={() => setZoomPrev(false)}>

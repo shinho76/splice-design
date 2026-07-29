@@ -1,20 +1,23 @@
 // DCR 팝업 — 테이블 DCR 클릭 시 검토항목별 DCR(소요/설계강도) 표시. 최고 DCR 시각 강조.
 // KBC-09(kbcCheck)·AISC360-16(aiscCheck) 공용.
 import type { DesignResult, DesignCondition } from '../engine/types.ts';
-import { aiscCheck } from '../engine/aisc/compat.ts';
+import { aiscRun } from '../engine/aisc/run.ts';
 import { kbcCheck } from '../engine/kbcCheck.ts';
 import { usesLimitState, stdLabel } from '../engine/std.ts';
 import { useLang } from '../i18n.ts';
 
 interface Row { id: string; group: string; label: string; demand: number; capacity: number; dcr: number; unit: string; ref: string; }
 
-export default function DcrPopup({ r, cond, onClose }: { r: DesignResult; cond: DesignCondition; onClose: () => void }) {
+// fScale·wScale: 최적화(부분강도)가 소요에 적용한 캡핑 배율. 테이블과 동일 기준으로 표시(≤1.0).
+export default function DcrPopup({ r, cond, fScale = 1, wScale = 1, onClose }: { r: DesignResult; cond: DesignCondition; fScale?: number; wScale?: number; onClose: () => void }) {
   const lang = useLang();
   const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
   const isAisc = usesLimitState(cond.designStd);   // AISC·KDS = 한계상태 엔진
+  const partial = Math.min(fScale, wScale);        // 부분강도 발현비율(<1이면 부재지배)
   let rows: Row[] = [], govId = '', govDcr: number | null = null;
   if (isAisc) {
-    const a = aiscCheck(r, cond);
+    // 테이블과 동일: 최적화 캡핑 소요 기준(전 항목 ≤1.0). 캡핑 없으면 전강도와 동일.
+    const a = aiscRun(r, cond, { flangeScale: fScale, webScale: wScale });
     rows = a.checks.filter(c => c.dcr != null).map(c => ({ id: c.id, group: c.group, label: c.label, demand: c.demand ?? 0, capacity: c.phiRn ?? 0, dcr: c.dcr as number, unit: c.unit ?? 'kN', ref: c.clause }));
     govId = a.govId; govDcr = a.govDcr;
   } else {
@@ -32,6 +35,7 @@ export default function DcrPopup({ r, cond, onClose }: { r: DesignResult; cond: 
           <div>
             <b>{r.section}</b> · {std} · {L('검토항목별 DCR', 'DCR by limit state')}
             {govDcr != null && <span className={`dcr-gov-badge${govDcr > 1.0 ? ' ng' : ''}`}>{L('지배', 'Gov')} {govDcr.toFixed(2)}</span>}
+            {partial < 0.999 && <span className="dcr-gov-badge partial" title={L('부재지배로 전강도의 이 비율만 발현 — 소요를 이 비율로 제한한 부분강도접합', 'member-governed: only this fraction of full strength develops — designed as partial strength')}>{L('부분강도', 'Partial')} {Math.round(partial * 100)}%</span>}
           </div>
           <button className="dcr-close" onClick={onClose} title={L('닫기', 'Close')}>✕</button>
         </div>
@@ -63,7 +67,9 @@ export default function DcrPopup({ r, cond, onClose }: { r: DesignResult; cond: 
             </tbody>
           </table>
           <p className="dcr-note">{L('DCR = 소요강도 / 설계강도. 최고값(▲)이 접합부를 지배하며, 1.0 초과 시 재검토가 필요합니다.',
-            'DCR = demand / design capacity. The maximum (▲) governs; values above 1.0 require review.')}</p>
+            'DCR = demand / design capacity. The maximum (▲) governs; values above 1.0 require review.')}
+            {partial < 0.999 && L(` · 이 접합은 부재지배 부분강도(${Math.round(partial * 100)}%)로, 소요를 발현 가능 비율로 제한해 표시합니다(전강도 기준이면 1/비율≈${(1 / partial).toFixed(2)}배).`,
+              ` · Partial-strength ${Math.round(partial * 100)}% (member-governed); demand shown is capped to the developable fraction.`)}</p>
         </div>
       </div>
     </div>

@@ -462,6 +462,7 @@ body {
 .dcr-hd { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--fg); }
 .dcr-gov-badge { margin-left: 10px; font-family: var(--mono); font-weight: 800; font-size: 11px; color: var(--ok); background: color-mix(in srgb, var(--ok) 16%, transparent); padding: 2px 8px; border-radius: 999px; }
 .dcr-gov-badge.ng { color: var(--ng); background: color-mix(in srgb, var(--ng) 16%, transparent); }
+.dcr-gov-badge.partial { color: var(--warn, #d08700); background: color-mix(in srgb, var(--warn, #d08700) 16%, transparent); }
 .dcr-close { width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel2); color: var(--fg); cursor: pointer; }
 .dcr-close:hover { border-color: var(--ng); color: var(--ng); }
 .dcr-bd { overflow: auto; padding: 12px 16px 16px; }
