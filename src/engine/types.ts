@@ -5,8 +5,8 @@ export type Member = '보' | '기둥';
 export type JointType = '마찰' | '지압';
 export type SteelGrade = 'SS275' | 'SM355' | 'SN355' | 'SS400' | 'SM490' | 'SM520' | 'SM570' | 'SN490' | 'SHN490' | 'A36' | 'A572' | 'A992' | 'A588';
 export type BoltGrade = 'F10T' | 'F13T' | 'S10T' | 'A325' | 'A490';
-export type BoltName = 'M16' | 'M18' | 'M20' | 'M22' | 'M24';
-export type BoltDia = 16 | 18 | 20 | 22 | 24;
+export type BoltName = 'M16' | 'M18' | 'M20' | 'M22' | 'M24' | 'M27' | 'M30';
+export type BoltDia = 16 | 18 | 20 | 22 | 24 | 27 | 30;
 export type SectionType = '압연' | '용접';
 /** 부분강도비 α (0.1~1.0). 프리셋 50/60/70/80/90/100% 또는 직접 입력. */
 export type StrengthRatio = number;

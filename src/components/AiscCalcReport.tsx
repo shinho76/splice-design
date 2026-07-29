@@ -73,7 +73,7 @@ export default function AiscCalcReport({ result, cond, onClose }: { result: Desi
 
         {/* 자동보정 요약 */}
         <section className="doc-sec">
-          <h3><span className="sec-no">1.</span>{L('배치 · 자동보정', 'Layout & Auto-correction')}</h3>
+          <h3><span className="sec-no">1.</span>{L('배치 · 최적화', 'Layout & Optimization')}</h3>
           <table className="result-table2"><tbody>
             <tr><th>{L('편람 표준배치', 'KBC layout')}</th><td>{L('외첨판', 'Outer')} PL-{result.flange.outerPlate?.t}×{result.flange.outerPlate?.w} · {L('내첨판', 'Inner')} PL-{result.flange.innerPlate?.t}×{result.flange.innerPlate?.w}×2 · {L('볼트', 'Bolt')} {result.flange.bolt.m}×{Math.round(result.flange.bolt.n)}-M{result.boltDia}</td></tr>
             <tr><th>{L('보정 내역', 'Changes')}</th><td>{ac.changes.length ? ac.changes.map(x => trA(x, lang)).join(' · ') : L('보정 없음(전 항목 만족)', 'none (all pass)')}</td></tr>

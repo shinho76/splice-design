@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { DesignCondition, DesignResult, Plate, BoltArray } from '../engine/types.ts';
 import { catalogFor } from '../engine/sections.ts';
 import { designConnection } from '../engine/engine.ts';
@@ -13,7 +13,7 @@ const fmtPlate = (p?: Plate) => p ? `${p.t}×${p.w}×${p.L}` : null;   // 판 �
 const fmtBolt = (b: BoltArray) => `${b.m}×${b.n % 1 ? b.n.toFixed(1) : b.n}`;
 const fmtW = (w: number) => w.toLocaleString('en-US');                   // 단위무게
 
-const DIAS = [16, 20, 22, 24];   // 사용 직경(표준구멍 d+2 자동 적용)
+const DIAS = [16, 20, 22, 24, 27, 30];   // 사용 직경(M27·M30=KDS 표준구멍 d+3)
 
 export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, onSetDia, selectedSection, autoFix, hidden, onHide, onResetHidden, onDcrClick }: {
   cond: DesignCondition; onSelect: (r: DesignResult) => void; onView3D: (r: DesignResult) => void;
@@ -24,12 +24,19 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
 }) {
   const lang = useLang();
   const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
-  // 원본 인덱스(i) 유지 — Custom 직경 지정(diaAt/onSetDia)은 카탈로그 순번 기준
-  const rows = catalogFor(cond.profile)
-    .map((s, i) => ({ s, i, r: designConnection(cond, s, diaAt?.(i)) }))
-    .filter(({ s }) => !hidden?.has(s.name));
   const isCol = cond.member === '기둥';
   const isAisc = usesLimitState(cond.designStd);   // AISC·KDS = 한계상태 엔진(aiscCheck)
+  // 원본 인덱스(i) 유지 — Custom 직경 지정(diaAt/onSetDia)은 카탈로그 순번 기준.
+  // 최적화(자동보정) 기본 ON → 행별 옵티마이저를 memo로 캐시(선택 등 재렌더 시 재계산 방지).
+  const allRows = useMemo(() => catalogFor(cond.profile).map((s, i) => {
+    const r = designConnection(cond, s, diaAt?.(i));
+    const ac = (isAisc && autoFix) ? aiscAutoCorrect(r, cond) : null;
+    const dr = ac ? ac.result : r;                       // 표시 형상(최적화 반영)
+    const govDcr = ac ? ac.report.govDcr : (isAisc ? aiscCheck(r, cond).govDcr : kbcCheck(r, cond).govDcr);
+    const partial = ac && ac.memberLimited ? Math.min(ac.flangeScale, ac.webScale) : null;  // 부분강도 최대비율
+    return { s, i, r, dr, govDcr, partial };
+  }), [cond, diaAt, autoFix, isAisc]);
+  const rows = allRows.filter(({ s }) => !hidden?.has(s.name));
   const dbW = 46;                                     // 볼트 직경열: 지정/표준 동일 폭(토글 시 표 흔들림 방지)
   const hasHidden = (hidden?.size ?? 0) > 0;
   // 삭제 선택(체크) → 헤더 아이콘: + 선택만 남김 / − 선택 제외 / ⟳ 초기화
@@ -87,12 +94,9 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
           </tr>
         </thead>
         <tbody>
-          {rows.map(({ s, i, r }, idx) => {
+          {rows.map(({ s, i, r, dr, govDcr, partial }, idx) => {
             const nominal = nominalOf(s.H, s.B);
             const newSeries = idx === 0 || nominal !== nominalOf(rows[idx - 1].s.H, rows[idx - 1].s.B);
-            const ac = (isAisc && autoFix) ? aiscAutoCorrect(r, cond) : null;
-            const dr = ac ? ac.result : r;                       // 표시 형상(자동보정 반영)
-            const govDcr = ac ? ac.report.govDcr : (isAisc ? aiscCheck(r, cond).govDcr : kbcCheck(r, cond).govDcr);
             const inner = fmtPlate(dr.flange.innerPlate);
             const ng = govDcr != null ? govDcr > 1.0 : r.steps.some(st => st.check === 'NG');
             const sel = r.section === selectedSection;
@@ -106,7 +110,10 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
                   <button className="cn-txt" title={s.label ? `${s.label} · ${r.section}` : L('3D 형상 보기', 'View 3D shape')} onClick={e => { e.stopPropagation(); onView3D(dr); }}>
                     {s.label
                       ? <span className="cn-two"><span className="cn-nom">{s.label}</span><span className="cn-mm">{r.section}</span></span>
-                      : r.section}</button></td>
+                      : r.section}</button>
+                  {partial != null && <span className="cn-partial"
+                    title={L('부분강도접합 — 발현 가능한 최대 강도비율', 'Partial-strength splice — max developable ratio')}>
+                    {Math.round(partial * 100)}%</span>}</td>
                 <td className={`dcr-cell${govDcr != null && govDcr > 1.0 ? ' ng' : ''}${govDcr != null ? ' dcr-click' : ''}`}
                   title={govDcr == null ? undefined : L('검토항목별 DCR 보기', 'View DCR by limit state')}
                   onClick={govDcr != null ? (e => { e.stopPropagation(); onDcrClick?.(dr); }) : undefined}>

@@ -47,7 +47,8 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
   const pFy = FySteel(pSteel, 20), pFu = FuSteel(pSteel);
   const mFy = FySteel(cond.steel, tf), mFu = FuSteel(cond.steel);
 
-  const Pf = dem.Pf, half = dem.half, Mu = dem.Mu;
+  const Pf = dem.Pf, Mu = dem.Mu;
+  const halfOut = dem.halfOuter, halfIn = dem.halfInner;   // 외/내첨판 비례분배 소요
 
   const m = r.flange.bolt.m, nrow = Math.max(1, Math.round(r.flange.bolt.n));
   const nb = m * nrow;
@@ -99,7 +100,7 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
     const Ag = grossArea(oW, oT), An = netArea(oW, oT, m, d), Ae = Math.min(An, 0.85 * Ag);
     checks.push(finalize({
       id: 'FP1', region: 'outer', group: g, label: '인장 항복', clause: 'J4.1',
-      detail: `φFyAg = 0.90·${pFy}·${Ag.toFixed(0)}`, phiRn: kN(PHI.Y * pFy * Ag), demand: kN(half), unit: 'kN',
+      detail: `φFyAg = 0.90·${pFy}·${Ag.toFixed(0)}`, phiRn: kN(PHI.Y * pFy * Ag), demand: kN(halfOut), unit: 'kN',
       steps: [
         S('Gross area Ag', 'width × thickness', `${oW}·${oT}`, +Ag.toFixed(0), 'mm²'),
         S('Design yield φRn', 'φ·Fy·Ag', `0.90·${pFy}·${Ag.toFixed(0)}`, kN(PHI.Y * pFy * Ag), 'kN', 'J4.1'),
@@ -107,7 +108,7 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
     }));
     checks.push(finalize({
       id: 'FP2', region: 'outer', group: g, label: '인장 파단', clause: 'J4.2',
-      detail: `φFuAe, Ae=min(An,0.85Ag)=${Ae.toFixed(0)}`, phiRn: kN(PHI.V * pFu * Ae), demand: kN(half), unit: 'kN',
+      detail: `φFuAe, Ae=min(An,0.85Ag)=${Ae.toFixed(0)}`, phiRn: kN(PHI.V * pFu * Ae), demand: kN(halfOut), unit: 'kN',
       steps: [
         S('Gross area Ag', 'width × thickness', `${oW}·${oT}`, +Ag.toFixed(0), 'mm²'),
         S('Net area An (deduct m holes)', '(w − m·(dₕ+2mm))·t', `(${oW} − ${m}·${ndp})·${oT}`, +An.toFixed(0), 'mm²', 'B4.3b'),
@@ -118,7 +119,7 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
     const bk = buckling(oT, Ag, pFy, unbraced);
     checks.push(finalize({
       id: 'FP3', region: 'outer', group: g, label: '압축 좌굴', clause: 'J4.4/E3',
-      detail: `KL/r=${bk.slr.toFixed(1)}, Fcr=${bk.Fcr.toFixed(0)}`, phiRn: kN(bk.phiPn), demand: kN(half), unit: 'kN', note: '압축플랜지 한정',
+      detail: `KL/r=${bk.slr.toFixed(1)}, Fcr=${bk.Fcr.toFixed(0)}`, phiRn: kN(bk.phiPn), demand: kN(halfOut), unit: 'kN', note: '압축플랜지 한정',
       steps: [
         S('Radius of gyration r', 't/√12', `${oT}/√12`, +(oT / Math.sqrt(12)).toFixed(2), 'mm'),
         S('Slenderness KL/r', 'K·Lunbraced/r', `1.2·${unbraced}/${(oT / Math.sqrt(12)).toFixed(2)}`, +bk.slr.toFixed(1)),
@@ -128,14 +129,14 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
     }));
     const br = bearing(oT, pFu, d, m, nrow, edge, pitch);
     checks.push(finalize({
-      id: 'FP4', region: 'outer', group: g, label: '지압·찢김', clause: 'J3.10', detail: br.detail, phiRn: kN(br.total), demand: kN(half), unit: 'kN',
+      id: 'FP4', region: 'outer', group: g, label: '지압·찢김', clause: 'J3.10', detail: br.detail, phiRn: kN(br.total), demand: kN(halfOut), unit: 'kN',
       steps: [
         S('Edge bolt (tearout/bearing)', 'φ·min(2.4dtFu, 1.2·Lc,edge·t·Fu)', `Lc,edge=${(edge - dh / 2).toFixed(1)}`, kN(br.edge), 'kN', 'J3.10'),
         S('Interior bolt', 'φ·min(2.4dtFu, 1.2·Lc,pitch·t·Fu)', `Lc,pitch=${(pitch - dh).toFixed(1)}`, kN(br.spaced), 'kN'),
         S('Total (m edge + m(n−1) interior)', 'nₑ·edge + nᵢ·interior', `${br.nEdge}·${kN(br.edge)} + ${br.nSpaced}·${kN(br.spaced)}`, kN(br.total), 'kN'),
       ],
     }));
-    const bs = blockShearGovern({ t: oT, Fy: pFy, Fu: pFu, d, nrow, Lv, halfWidth: oW / 2, cols }, half, 1);
+    const bs = blockShearGovern({ t: oT, Fy: pFy, Fu: pFu, d, nrow, Lv, halfWidth: oW / 2, cols }, halfOut, 1);
     checks.push(finalize({
       id: 'FP5', region: 'outer', group: g, label: '블록 전단', clause: 'J4.3',
       detail: bsDetail(bs), phiRn: kN(bs.phiRn), demand: kN(bs.demand), unit: 'kN', cases: bs.cases,
@@ -149,7 +150,7 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
     const Ag = 2 * grossArea(iW, iT), An = 2 * netArea(iW, iT, nHalf, d), Ae = Math.min(An, 0.85 * Ag);
     checks.push(finalize({
       id: 'FI1', region: 'inner', group: g, label: '인장 항복', clause: 'J4.1',
-      detail: `φFy·2Ag = 0.90·${pFy}·${Ag.toFixed(0)}`, phiRn: kN(PHI.Y * pFy * Ag), demand: kN(half), unit: 'kN',
+      detail: `φFy·2Ag = 0.90·${pFy}·${Ag.toFixed(0)}`, phiRn: kN(PHI.Y * pFy * Ag), demand: kN(halfIn), unit: 'kN',
       steps: [
         S('Gross area (2 plates) Ag', '2·(width × thickness)', `2·${iW}·${iT}`, +Ag.toFixed(0), 'mm²'),
         S('Design yield φRn', 'φ·Fy·Ag', `0.90·${pFy}·${Ag.toFixed(0)}`, kN(PHI.Y * pFy * Ag), 'kN', 'J4.1'),
@@ -157,7 +158,7 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
     }));
     checks.push(finalize({
       id: 'FI2', region: 'inner', group: g, label: '인장 파단', clause: 'J4.2',
-      detail: `φFu·Ae, Ae=${Ae.toFixed(0)}`, phiRn: kN(PHI.V * pFu * Ae), demand: kN(half), unit: 'kN',
+      detail: `φFu·Ae, Ae=${Ae.toFixed(0)}`, phiRn: kN(PHI.V * pFu * Ae), demand: kN(halfIn), unit: 'kN',
       steps: [
         S('Gross area (2 plates) Ag', '2·w·t', `2·${iW}·${iT}`, +Ag.toFixed(0), 'mm²'),
         S('Net area An (deduct holes/plate)', '2·(w − nHalf·(dₕ+2))·t', `2·(${iW} − ${nHalf}·${ndp})·${iT}`, +An.toFixed(0), 'mm²', 'B4.3b'),
@@ -168,7 +169,7 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
     const bk = buckling(iT, Ag, pFy, unbraced);
     checks.push(finalize({
       id: 'FI3', region: 'inner', group: g, label: '압축 좌굴', clause: 'J4.4/E3',
-      detail: `KL/r=${bk.slr.toFixed(1)}`, phiRn: kN(bk.phiPn), demand: kN(half), unit: 'kN', note: '압축플랜지 한정',
+      detail: `KL/r=${bk.slr.toFixed(1)}`, phiRn: kN(bk.phiPn), demand: kN(halfIn), unit: 'kN', note: '압축플랜지 한정',
       steps: [
         S('Slenderness KL/r', 'K·Lunbraced/(t/√12)', `1.2·${unbraced}/(${iT}/√12)`, +bk.slr.toFixed(1)),
         S('Critical stress Fcr', bk.slr <= 25 ? 'Fy (KL/r≤25)' : 'E3', '', +bk.Fcr.toFixed(0), 'MPa'),
@@ -177,7 +178,7 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
     }));
     const br = bearing(iT, pFu, d, m, nrow, edge, pitch);
     checks.push(finalize({
-      id: 'FI4', region: 'inner', group: g, label: '지압·찢김', clause: 'J3.10', detail: br.detail, phiRn: kN(br.total), demand: kN(half), unit: 'kN',
+      id: 'FI4', region: 'inner', group: g, label: '지압·찢김', clause: 'J3.10', detail: br.detail, phiRn: kN(br.total), demand: kN(halfIn), unit: 'kN',
       steps: [
         S('Edge bolt', 'φ·min(2.4dtFu, 1.2·Lc,edge·t·Fu)', `Lc,edge=${(edge - dh / 2).toFixed(1)}`, kN(br.edge), 'kN', 'J3.10'),
         S('Interior bolt', 'φ·min(2.4dtFu, 1.2·Lc,pitch·t·Fu)', `Lc,pitch=${(pitch - dh).toFixed(1)}`, kN(br.spaced), 'kN'),
@@ -186,7 +187,7 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
     }));
     if (nHalf >= 2) {
       const iCols = [-g2 / 2, g2 / 2];
-      const bs = blockShearGovern({ t: iT, Fy: pFy, Fu: pFu, d, nrow, Lv, halfWidth: iW / 2, cols: iCols }, half, 2);
+      const bs = blockShearGovern({ t: iT, Fy: pFy, Fu: pFu, d, nrow, Lv, halfWidth: iW / 2, cols: iCols }, halfIn, 2);
       checks.push(finalize({
         id: 'FI5', region: 'inner', group: g, label: '블록 전단(×2)', clause: 'J4.3',
         detail: bsDetail(bs), phiRn: kN(bs.phiRn), demand: kN(bs.demand), unit: 'kN', cases: bs.cases,

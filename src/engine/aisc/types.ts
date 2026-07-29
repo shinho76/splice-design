@@ -60,7 +60,9 @@ export interface BlockCase {
 /** 소요력 세트 (demand.ts에서 산정, 단일 소스) */
 export interface DemandSet {
   Pf: number;         // 플랜지 소요축력 (N)  = M/(d−tf) + P/2
-  half: number;       // 판군 분담 Pf/2 (N)   (이중전단 50:50)
+  half: number;       // 판군 분담 Pf/2 (N)   (초기설계=이중전단 50:50)
+  halfOuter: number;  // 외첨판 분담 (N) = Pf·(A외/(A외+A내)) — 판 총단면적 비례분배
+  halfInner: number;  // 내첨판쌍 분담 (N) = Pf·(A내/(A외+A내))
   Mu: number;         // 부재 소요휨 (N·mm)
   Vu: number;         // 웨브 소요전단 (N)
   MuxWeb: number;     // 웨브 편심모멘트 Vu·e (N·mm)
