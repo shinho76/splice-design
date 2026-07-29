@@ -50,6 +50,7 @@ export default function App() {
     return s ? s === 'dark' : true;          // 기본 다크, 이후 선택 기억
   });
   const [lang, setLang] = useState<Lang>(() => (localStorage.getItem('splice_lang') as Lang) || 'ko');
+  const [showHelp, setShowHelp] = useState(false);   // ? 사용 안내 팝오버
   const [autoFix, setAutoFix] = useState(true);   // AISC 전체 부재 최적화(철판 최소·DCR≤1) — 기본 ON
   const L = <K,>(ko: K, en: K): K => (lang === 'en' ? en : ko);   // 짧은 인라인 번역 헬퍼
 
@@ -59,6 +60,13 @@ export default function App() {
   }, [dark]);
   useEffect(() => { localStorage.setItem('splice_lang', lang); }, [lang]);
   useEffect(() => { persistProject(project); }, [project]);
+  // 도움말·확대·모달 열림 시 Esc로 닫기
+  useEffect(() => {
+    if (!showHelp) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowHelp(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showHelp]);
 
   // Custom 볼트직경 해석 : 해당 행 이상에서 가장 가까운 지정값(위 행을 따름)
   const diaAt = useCallback((i: number): number | undefined => {
@@ -92,8 +100,11 @@ export default function App() {
   const detailQ = useMemo(() => (selEff ? quantityOf(selEff, cond) : null), [selEff, cond]);
 
   const addToProject = (r: DesignResult) => setProject(p => [...p, newItem(r.section, cond)]);
-  const allRowsForDXF = () => catalogFor(cond.profile).map((s, i) => ({ s, i })).filter(({ s }) => !hidden.has(s.name))
-    .map(({ s, i }) => designConnection(cond, s, diaAt(i)));
+  const allRowsForDXF = () => {                                    // DXF는 테이블과 동일 형상(최적화 반영)으로 출력
+    const af = usesLimitState(cond.designStd) && autoFix;
+    return catalogFor(cond.profile).map((s, i) => ({ s, i })).filter(({ s }) => !hidden.has(s.name))
+      .map(({ s, i }) => { const r = designConnection(cond, s, diaAt(i)); return af ? aiscAutoCorrect(r, cond).result : r; });
+  };
   const exportAllDXF = () =>
     downloadFile(`splice_전체_${cond.member}_${cond.jointType}.dxf`, toDXFAll(allRowsForDXF(), cond), 'application/dxf');
   const exportAllDXF2 = () =>   // 사무소 표준 포맷(ExT/INT/W·볼트길이·주기)
@@ -121,6 +132,45 @@ export default function App() {
           <div className="cbrand">SPLICE<span className="accent">DESIGN</span></div>
           <div className="ctop-title">{L('고력볼트 표준접합 설계', 'H.S. Bolt Standard Connection Design')}</div>
           <span className="ctop-sp" />
+          <div className="help-wrap">
+            <div className="seg-theme" role="group" aria-label={L('사용 안내', 'Help')}>
+              <button type="button" className={showHelp ? 'on' : ''} onClick={() => setShowHelp(v => !v)}
+                aria-expanded={showHelp} aria-haspopup="dialog" title={L('사용 안내 · 이 서비스는?', 'Help · What is this?')}>?</button>
+            </div>
+            {showHelp && (
+              <>
+                <div className="help-back" onClick={() => setShowHelp(false)} />
+                <div className="help-pop" role="dialog" aria-label={L('사용 안내', 'Help')}>
+                  <div className="help-h">
+                    <b>{L('고력볼트 표준접합 설계', 'H.S. Bolt Standard Connection Design')}</b>
+                    <button className="help-x" title={L('닫기', 'Close')} onClick={() => setShowHelp(false)}>✕</button>
+                  </div>
+                  <p className="help-lead">{L(
+                    'H·W형강 보/기둥 이음부(플랜지·웨브)를 KBC-09 / KDS 14 31 25 / AISC 360-16 기준으로 전 단면 자동 설계하고, 볼트 배열·첨판 치수·물량·상세도면을 만들어 주는 도구입니다.',
+                    'Auto-designs flange/web splices of H/W-shape beams & columns per KBC-09 / KDS 14 31 25 / AISC 360-16, producing bolt layouts, plate sizes, quantities and shop drawings for the whole section catalog.')}</p>
+                  <div className="help-sec">{L('① 사용 순서', '① How to use')}</div>
+                  <ol className="help-ol">
+                    <li>{L('좌측 「설계 조건」에서 형강(H/W)·설계기준·부재(보/기둥)·접합(마찰/지압)·강종·볼트·강도비 α를 설정', 'Set profile, design standard, member, joint type, steel, bolt and ratio α in the left panel.')}</li>
+                    <li>{L('중앙 결과표에서 전 단면의 적합/부적합·DCR·볼트·첨판을 확인 (조건 변경 시 즉시 갱신)', 'Review pass/fail, DCR, bolts and plates for every section in the center table (updates instantly).')}</li>
+                    <li>{L('행을 클릭하면 우측에 볼트·첨판·접합상세도가 표시됩니다.', 'Click a row to see bolts, plates and the detail drawing on the right.')}</li>
+                    <li>{L('우측 버튼으로 계산서·DXF·3D·IFC 내보내기, 프로젝트 담기가 가능합니다.', 'Export calc sheet, DXF, 3D, IFC or add to project from the right-side buttons.')}</li>
+                  </ol>
+                  <div className="help-sec">{L('② 결과물', '② What you get')}</div>
+                  <ul className="help-ul">
+                    <li>{L('볼트 배열(열×행)·첨판 치수(두께×폭×길이)·게이지·피치·연단거리', 'Bolt array (col×row), plate sizes (t×w×L), gauge, pitch, edge distance')}</li>
+                    <li>{L('강도검토(DCR) — 항목별 검토값 팝업(DCR 배지 클릭)', 'Strength check (DCR) with a per-item popup (click the DCR badge)')}</li>
+                    <li>{L('물량 — 고력볼트 본수·중량, 강판 중량(좌측 ▦)', 'Quantities — bolt count/weight, plate weight (▦ on the left rail)')}</li>
+                    <li>{L('상세도면 DXF(개별/전체·사무소 표준 포맷 ⤓²)·3D·IFC·계산서', 'Detail DXF (single/all · office format ⤓²), 3D, IFC and calc sheets')}</li>
+                  </ul>
+                  <div className="help-sec">{L('③ 참고', '③ Tips')}</div>
+                  <ul className="help-ul">
+                    <li>{L('AISC/KDS 기준에서 「⚙ 최적화」가 켜져 있으면 철판 물량 최소로 DCR≤1.0을 맞춥니다(부재지배는 부분강도로 최대비율 표시).', 'With ⚙ Optimize on (AISC/KDS), plates are minimized to reach DCR≤1.0; member-governed cases show the partial-strength ratio.')}</li>
+                    <li>{L('각 버튼에 마우스를 올리면 기능 설명이 표시됩니다.', 'Hover any button to see what it does.')}</li>
+                  </ul>
+                </div>
+              </>
+            )}
+          </div>
           <div className="seg-theme" role="group" aria-label={L('언어 전환', 'Language')}>
             <button type="button" className={lang === 'ko' ? 'on' : ''} onClick={() => setLang('ko')} aria-pressed={lang === 'ko'} title="한국어">한</button>
             <button type="button" className={lang === 'en' ? 'on' : ''} onClick={() => setLang('en')} aria-pressed={lang === 'en'} title="English">EN</button>
@@ -175,12 +225,12 @@ export default function App() {
                   </>}
                 </div>
                 <div className="dact">
-                  <button className="db primary" onClick={() => setShowReport(true)}>{L('요약계산서', 'Summary')}</button>
-                  <button className="db" onClick={() => setShowDetail(true)}>{L('상세계산서', 'Detailed')}</button>
-                  <button className="db" onClick={() => exportOneDXF(selEff)}>DXF</button>
-                  <button className="db" onClick={() => setView3D(selEff)}>3D</button>
-                  <button className="db" onClick={() => exportOneIFC(selEff)}>IFC</button>
-                  <button className="db" onClick={() => addToProject(selEff)}>＋ {L('프로젝트', 'Project')}</button>
+                  <button className="db primary" title={L('소요강도·설계강도·판정을 요약한 계산서를 엽니다', 'Open a summary calc sheet: demand, capacity and check')} onClick={() => setShowReport(true)}>{L('요약계산서', 'Summary')}</button>
+                  <button className="db" title={L('수식·대입·근거조항까지 포함한 상세 계산서를 엽니다', 'Open the detailed calc sheet with formulas, substitutions and clauses')} onClick={() => setShowDetail(true)}>{L('상세계산서', 'Detailed')}</button>
+                  <button className="db" title={L('이 단면의 접합상세도를 DXF(CAD) 파일로 내보냅니다', 'Export this connection detail as a DXF (CAD) file')} onClick={() => exportOneDXF(selEff)}>DXF</button>
+                  <button className="db" title={L('접합부를 3D로 확인합니다', 'View the connection in 3D')} onClick={() => setView3D(selEff)}>3D</button>
+                  <button className="db" title={L('BIM 연동용 IFC 파일로 내보냅니다', 'Export an IFC file for BIM')} onClick={() => exportOneIFC(selEff)}>IFC</button>
+                  <button className="db" title={L('이 단면을 프로젝트 목록에 담습니다(집계·저장)', 'Add this section to the project list (aggregate & save)')} onClick={() => addToProject(selEff)}>＋ {L('프로젝트', 'Project')}</button>
                 </div>
                 <div className="dprev">
                   <button className="prev-zoom" title={L('크게 보기', 'Enlarge')} onClick={() => setZoomPrev(true)}>🔍</button>
@@ -222,7 +272,7 @@ export default function App() {
             <div className="prev-modal-hd">
               <span>{selEff.section} · {tMember(cond.member, lang)} {tJoint(cond.jointType, lang)}</span>
               <div className="prev-modal-act">
-                <button className="db" onClick={() => exportOneDXF(selEff)}>DXF</button>
+                <button className="db" title={L('이 접합상세도를 DXF(CAD) 파일로 내보냅니다', 'Export this detail as a DXF (CAD) file')} onClick={() => exportOneDXF(selEff)}>DXF</button>
                 <button className="prev-close" title={L('닫기', 'Close')} onClick={() => setZoomPrev(false)}>✕</button>
               </div>
             </div>

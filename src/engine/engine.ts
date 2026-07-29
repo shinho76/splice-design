@@ -15,6 +15,8 @@ const ceil = Math.ceil;
 const ceilHalf = (x: number) => Math.ceil(x * 2) / 2;
 const boltDiaOf = (b: string) => parseInt(b.slice(1), 10) as import('./types.ts').BoltDia;
 const boltNameOf = (d: number) => ('M' + d) as import('./types.ts').BoltName;
+// AISC 360-16 표 J3.4M 최소 연단거리(mm) — 외첨판 폭 캡 시 횡연단 하한 보장용
+const MIN_EDGE: Record<number, number> = { 16: 22, 18: 24, 20: 26, 22: 28, 24: 30, 27: 34, 30: 38 };
 
 /**
  * 웨브용 볼트 1개 설계강도 (kN) — 마찰=미끄럼, 지압=중간부 지압강도 φRn₂ (6.8).
@@ -131,7 +133,16 @@ function designColumn(cond: DesignCondition, sec: HSection, forceDia?: number): 
 
 // ─────────────────────────────── 플랜지 이음 (공용) ───────────────────────────────
 function designFlange(cond: DesignCondition, sec: HSection, std: ReturnType<typeof flangeStdFor>, fy: number, fu: number, pfy: number, pfu: number, Puf: number, bearing: boolean, steps: CalcStep[]): JointDesign {
-  const outerW = std.outerW;
+  // W형강: 표준 공칭폭(최근접 반올림)이 실 플랜지폭보다 클 수 있어 외첨판이 플랜지를 넘어감(오버행).
+  //   → W형강만 실 플랜지폭으로 캡. 단, 최외곽 볼트열 횡연단이 최소치(AISC J3.4M) 이상이 되도록 하한 보장.
+  //     (협폭 단면은 표준게이지 자체가 넓어, 최소연단 확보를 위해 소폭 오버행 잔존 — 연단 우선)
+  //   → H형강은 KS 공칭=실폭이라 불변(편람 골든 보존).
+  const dia0 = boltDiaOf(std.bolt), minE0 = MIN_EDGE[dia0] ?? 30;
+  const outerColOff = std.m === 2 ? std.g1 / 2 : std.g1 / 2 + (std.g2 ?? 0);  // 최외곽 볼트열 중심 오프셋
+  const minOuterW = Math.ceil(2 * (outerColOff + minE0));                     // 횡연단 최소 확보 하한
+  const outerW = cond.profile === 'W'
+    ? Math.min(std.outerW, Math.max(Math.floor(sec.B), minOuterW))
+    : std.outerW;
   // 내첨판 폭 = 플랜지끝(B/2)~필렛선단 거리에서 권장 여유 3mm 확보 후 이하 10mm 단위 (필렛 간섭 회피)
   // 필렛선단: W형강은 AISC 공표 k1(mm) 사용(기하근사 tw/2+r는 공표 대비 평균 8.5mm 과소평가 → 침범).
   //           H형강은 KS 실측 필렛이 정확하여 tw/2+r 폴백 유지(편람 골든 보존).

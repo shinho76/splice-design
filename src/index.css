@@ -390,6 +390,24 @@ body {
 .seg-theme button:not(.on):hover { color: var(--accent); }
 .seg-theme button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
+/* ? 사용 안내 팝오버 */
+.help-wrap { position: relative; display: inline-flex; flex-shrink: 0; }
+.help-wrap .seg-theme button { font-weight: 800; font-size: 13px; padding: 5px 12px; }
+.help-back { position: fixed; inset: 0; z-index: 60; background: transparent; }
+.help-pop { position: absolute; top: calc(100% + 8px); right: 0; z-index: 61; width: min(400px, 88vw);
+  background: var(--panel); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: var(--shadow);
+  padding: 14px 16px 16px; text-align: left; color: var(--fg); font-size: 12px; line-height: 1.55;
+  max-height: 78vh; overflow-y: auto; }
+.help-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.help-h b { font-size: 13px; letter-spacing: -.01em; }
+.help-x { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 13px; padding: 2px 4px; border-radius: 6px; }
+.help-x:hover { color: var(--ng); background: var(--panel2); }
+.help-lead { color: var(--muted); margin: 0 0 10px; }
+.help-sec { font-weight: 800; color: var(--accent); font-size: 11.5px; margin: 12px 0 5px; }
+.help-ol, .help-ul { margin: 0; padding-left: 18px; }
+.help-ol li, .help-ul li { margin: 3px 0; }
+.help-ol li::marker { color: var(--accent); font-weight: 700; }
+
 .kpi-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: var(--line); border-bottom: 1px solid var(--line); flex-shrink: 0; }
 .kpi { background: var(--bg2); padding: 9px 16px; }
 .kpi .k { font-size: 9.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); font-weight: 700; }

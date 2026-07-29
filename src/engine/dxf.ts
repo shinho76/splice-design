@@ -5,6 +5,7 @@ import type { DesignResult, DesignCondition, Plate } from './types.ts';
 import { parseName, sectionByName } from './sections.ts';
 import { BOLT_HOLE, boltNameByDia } from './bolts.ts';
 import { standardLength, gripFlange, gripWeb } from './bolt_spec.ts';
+import { Fy } from './materials.ts';
 
 const round = Math.round;
 const TH = 20;   // 도면 문자높이
@@ -198,7 +199,31 @@ export function layout(r: DesignResult, isCol: boolean) {
   };
 }
 
-export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox: number, oy: number, uni?: UniFrame, office = false) {
+// ── 사무소 종합도 셀 주기 : 좌상단 타이틀("BEAM SPLICE DETAIL"/"S=1/20"/"*.섹션") + 우측 콜아웃 블록 ──
+// 참조도면(BEAM-SPLICE.dwg) 규약. 테두리·표제란 없음. 값은 현 앱 계산(오버행 캡 반영) 그대로.
+function drawSheetCell(p: Pen, F: UniFrame, secLbl: string, outerLbl: string, innerLbl: string, webLbl: string, flBolt: string, wBolt: string) {
+  const TT = TH * 1.4;                                   // 타이틀 문자높이
+  const tx = F.frameL + 12;
+  let ty = F.frameTop - TT - 6;
+  p.text(tx, ty, TT, 'BEAM SPLICE DETAIL', 'FLG_PL', { align: 'l' });      // 녹색 타이틀
+  p.text(tx + 'BEAM SPLICE DETAIL'.length * TT * 0.62 + 40, ty + (TT - TH) / 2, TH, 'S=1/20', 'WEB_PL', { align: 'l' });  // 시안 축척
+  ty -= TT * 1.5;
+  p.text(tx, ty, TH * 1.05, '*. ' + secLbl, 'FLG_PL', { align: 'l' });      // 녹색 섹션라벨
+  // 우측 콜아웃 블록(FLANGE PLATE SIZE / ExT / INT / BOLT / WEB PLATE SIZE / W / BOLT)
+  const cox = F.frameRC + 40;
+  let cy = F.frameTop - TH - 24;
+  const put = (s: string, lay: string) => { p.text(cox, cy, TH, s, lay, { align: 'l' }); cy -= TH * 1.7; };
+  const bolt = (s: string) => { p.text(cox, cy, TH, 'BOLT', 'WEB_PL', { align: 'l' }); p.text(cox + TH * 3.4, cy, TH, s, 'MAIN', { align: 'l' }); cy -= TH * 1.9; };
+  put('FLANGE PLATE SIZE', 'WEB_PL');
+  put(outerLbl, 'MAIN');
+  if (innerLbl && innerLbl !== '-') put(innerLbl, 'MAIN');
+  bolt(flBolt);
+  put('WEB PLATE SIZE', 'WEB_PL');
+  put(webLbl, 'MAIN');
+  bolt(wBolt);
+}
+
+export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox: number, oy: number, uni?: UniFrame, office = false, sheet = false) {
   const isCol = cond.member === '기둥';
   const L = layout(r, isCol);
   // 통일 도곽(uni) 사용 시: 테두리·표제·단면도는 도곽(F) 좌표, 콘텐츠는 도곽 중앙에 오도록 cd만큼 이동.
@@ -229,6 +254,8 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   const webLbl = office ? plO(r.web.webPlate, 'W.2PL') : gpl(r.web.webPlate, 2);
   const flBoltLbl = office ? `${flCount}-M${dia}x${flLen}` : btb(flCount);
   const wBoltLbl = office ? `${wCount}-M${dia}x${wLen}` : btb(wCount);
+  // 사무소 종합도(sheet) 콜아웃용 플랜지 볼트 표기: {열수}x{한쪽플랜지 총본수}-M…  (참조도면 "2x32-M20x110" 문법)
+  const flBoltSheet = `${fB.m}x${fB.m * round(fB.n) * 2}-M${dia}x${flLen}`;
   // 정보표 영문화(exe 폰트 OpenSansCondensed엔 한글 글리프 없음 → CAD 깨짐 방지)
   const jointLbl = `${cond.member === '기둥' ? 'Column' : 'Beam'} ${cond.jointType === '지압' ? 'Bearing' : 'Friction'}`;
 
@@ -302,6 +329,8 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   }
 
   // ── 지시선(판·볼트) : 앵커는 로컬(오프셋 제외) 좌표 → pf(정립+오프셋)가 한 번만 적용 ──
+  // 사무소 종합도(sheet) 모드는 지시선 대신 우측 콜아웃 블록을 사용 → 지시선·표제란 스킵.
+  if (!sheet) {
   const tMl = mkXf(L.mOx, L.mOy, L.deg);
   const outerA = pt(tMl, -Lpf / 3, yW + H / 2 + oT), innerA = pt(tMl, -(inner?.L ?? Lpf) / 3, yW + H / 2 - tf - (inner?.t ?? 0) / 2);
   const webA = pt(tMl, -webWid / 2, yW), wbA = pt(tMl, -webWid / 4, yW - chum / 2 + 20), fbA = pt(tMl, -base, yF + g1 / 2);
@@ -363,6 +392,13 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
       { a: fbA, txt: flBoltLbl },
     ], rx);
   }
+  }   // ── end if(!sheet): 지시선 블록 ──
+
+  if (sheet) {
+    // ── 사무소 종합도 셀: 좌상단 타이틀 + 섹션라벨 + 우측 콜아웃 블록(테두리·표제란 없음) ──
+    drawSheetCell(pff, F, secLbl, outerLbl, innerLbl, webLbl, flBoltSheet, wBoltLbl);
+    return;
+  }
 
   // ── 외곽 테두리 + 도면 제목(상단 중앙) + 하단 표제란 (SECTION 뷰·NOTES 제거: 참고 도면 규약) ──
   pff.rect(F.frameL, F.frameBot, F.frameR - F.frameL, F.frameTop - F.frameBot, 'MINI_BOX');
@@ -395,7 +431,7 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   tx(bl2, 3, 'Joint'); tx(bl2 + Lw, 3, jointLbl); tx(midX, 3, 'Flg Bolt'); tx(midX + Lw, 3, btbT(flCount));
 }
 
-const LAYERS: [string, number][] = [['MAIN', 7], ['FLG_PL', 3], ['WEB_PL', 4], ['BOLT', 6], ['VER_BOLT', 1], ['DIM', 7], ['MINI_BOX', 7]];
+const LAYERS: [string, number][] = [['MAIN', 7], ['FLG_PL', 3], ['WEB_PL', 4], ['BOLT', 6], ['VER_BOLT', 1], ['DIM', 7], ['MINI_BOX', 7], ['NOTE', 2]];
 // _ARCHTICK 화살촉 블록(45° 단위 틱). INSERT scale로 크기 결정
 const ARCHTICK_BLOCK = ['0', 'BLOCK', '8', '0', '2', '_ARCHTICK', '70', '0', '10', '0', '20', '0', '30', '0', '3', '_ARCHTICK',
   '0', 'LINE', '8', '0', '10', '-0.5', '20', '-0.5', '30', '0', '11', '0.5', '21', '0.5', '31', '0',
@@ -469,8 +505,40 @@ export function toDXFAll(rows: DesignResult[], cond: DesignCondition, office = f
   });
   return wrap(doc);
 }
-/** 사무소 표준 포맷(ExT/INT/W-PL·볼트길이·주기) — 값은 현 앱 계산 그대로, 표기만 참조도면 규약. */
-export const toDXFAll2 = (rows: DesignResult[], cond: DesignCondition): string => toDXFAll(rows, cond, true);
+/**
+ * 사무소 종합도 포맷(참조: BEAM-SPLICE.dwg) — 여러 형강을 한 시트에 그리드 배치.
+ * 셀마다 "BEAM SPLICE DETAIL / S=1/20 / *.섹션" 타이틀 + 우측 콜아웃(ExT/INT/W-PL·볼트) 블록.
+ * 상단에 공통 주기(강종·볼트·Fy·축척). 치수·물량은 현 앱 계산값(W 오버행 캡 반영) 그대로.
+ */
+export function toDXFSheet(rows: DesignResult[], cond: DesignCondition): string {
+  const doc = newDoc();
+  const isCol = cond.member === '기둥';
+  const uni = uniformFrame(rows, isCol);
+  const fw = uni.frameR - uni.frameL, fh = uni.frameTop - uni.frameBot;
+  const CALLOUT_W = 420;                                  // 우측 콜아웃 블록 폭
+  const COLS = 4, GAP = 520;
+  const cellW = fw + CALLOUT_W + GAP, cellH = fh + GAP;
+  const nRows = Math.ceil(rows.length / COLS);
+  rows.forEach((r, i) => {
+    const col = i % COLS, row = Math.floor(i / COLS);
+    const ox = col * cellW + GAP / 2 - uni.frameL;
+    const oy = -row * cellH - GAP / 2 - uni.frameTop;
+    emitMember(doc, r, cond, ox, oy, uni, true, true);    // office + sheet
+  });
+  // ── 시트 상단 공통 주기 + 전체 외곽 테두리 ──
+  const sheetW = COLS * cellW, sheetTop = -GAP / 2 + 40, sheetBot = -nRows * cellH - GAP / 2 + (cellH - fh) / 2 - 60;
+  const p = pen(doc, mkXf(0, 0, 0));
+  const fy = Fy(cond.steel, 20);
+  const notes = [
+    '*. STEEL : ' + cond.steel + '  BOLT : ' + cond.bolt + ' H.T.B  SCALE : 1/20',
+    '*. 철골의 강도 (' + cond.steel + ')   Fy = ' + fy + ' N/mm^2',
+  ];
+  notes.forEach((s, i) => p.text(GAP / 2, sheetTop + 220 - i * TH * 1.8, TH * 1.2, s, i === 0 ? 'MAIN' : 'NOTE', { align: 'l' }));
+  p.rect(GAP / 4, sheetBot, sheetW - GAP / 2, sheetTop + 320 - sheetBot, 'MINI_BOX');
+  return wrap(doc);
+}
+/** 사무소 표준 포맷 별칭 — 앱 "전체 DXF 다운로드(사무소 표준 포맷)" 버튼. */
+export const toDXFAll2 = (rows: DesignResult[], cond: DesignCondition): string => toDXFSheet(rows, cond);
 export function downloadFile(filename: string, content: string | ArrayBuffer, mime: string) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
