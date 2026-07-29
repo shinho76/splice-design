@@ -210,6 +210,7 @@ function designWeb(cond: DesignCondition, sec: HSection, bolt: BoltName, fy: num
     }
     chum = Math.round(Math.min((mW-1)*(Pc ?? 60) + 80, chumCap));
   }
+  if (mW === 1) Pc = null;   // 춤방향 단일볼트 → 피치 무의미(표·도면 혼동 방지)
   const dpw = chum;
   const webP = Math.max(60, Math.ceil(2.667 * boltDiaOf(bolt) / 5) * 5);   // C안: 웨브 가로피치
   const wpw = 2*((nW-1)*webP + 2*40) + (cond.gap ?? 10) + (stagger?60:0);
