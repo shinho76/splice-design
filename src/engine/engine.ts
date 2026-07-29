@@ -213,7 +213,7 @@ function designWeb(cond: DesignCondition, sec: HSection, bolt: BoltName, fy: num
   if (mW === 1) Pc = null;   // 춤방향 단일볼트 → 피치 무의미(표·도면 혼동 방지)
   const dpw = chum;
   const webP = Math.max(60, Math.ceil(2.667 * boltDiaOf(bolt) / 5) * 5);   // C안: 웨브 가로피치
-  const wpw = 2*((nW-1)*webP + 2*40) + (cond.gap ?? 10) + (stagger?60:0);
+  const wpw = 2*((nW-1)*webP + 2*40) + (cond.gap ?? 10);   // 웨브볼트 이음부 연단 40(플랜지와 동일)
   // 보=전단(0.6Fy), 기둥=압축(Fy). 양면 첨판이 소요력의 절반씩 분담.
   const nomFactor = cond.member === '기둥' ? 1.0 : 0.6;
   const tpw = roundUpThickness(Math.max(0.5*(soryeok*1e3)/(0.9*nomFactor*pfy*dpw), 6), WEB_PLATE_T);   // 웨브첨판 강종(pfy)
