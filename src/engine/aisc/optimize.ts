@@ -205,12 +205,24 @@ export function aiscOptimize(r0: DesignResult, cond: DesignCondition, limits: Op
   function trimDown() {
     const passOK = () => aiscRun(r, cond, { flangeScale: fScale, webScale: wScale }).ok;
     if (!passOK()) return;
+    const eqT = !!cond.equalPlateT && !!r.flange.outerPlate && !!r.flange.innerPlate;   // 외·내첨판 동일두께 옵션
     for (let g2 = 0; g2 < 40; g2++) {
       let trimmed = false;
       for (const [pl, series] of [[r.flange.outerPlate, FT], [r.flange.innerPlate, FT], [r.web.webPlate, WT]] as const) {
         if (!pl) continue;
+        if (eqT && (pl === r.flange.outerPlate || pl === r.flange.innerPlate)) continue;   // 동일두께는 아래서 함께
         const t0 = pl.t, i = series.indexOf(t0);
         if (i > 0) { pl.t = series[i - 1]; if (passOK()) trimmed = true; else pl.t = t0; }
+      }
+      // 동일두께: 외·내를 두꺼운 쪽으로 통일 후, 둘 다 한 단계씩 낮춰 최소 동일두께 탐색.
+      if (eqT) {
+        const o = r.flange.outerPlate!, inn = r.flange.innerPlate!;
+        const tmax = Math.max(o.t, inn.t);
+        if (o.t !== tmax || inn.t !== tmax) { o.t = tmax; inn.t = tmax; trimmed = true; }
+        else {
+          const idx = FT.indexOf(tmax);
+          if (idx > 0) { o.t = FT[idx - 1]; inn.t = FT[idx - 1]; if (passOK()) trimmed = true; else { o.t = tmax; inn.t = tmax; } }
+        }
       }
       const b0 = r.flange.bolt;                      // 원본 보존(엇모 분수 n=2.5 등 라운딩 손상 방지)
       const n0 = Math.round(b0.n);
