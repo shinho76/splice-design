@@ -116,8 +116,8 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
                     title={L('부분강도접합 — 발현 가능한 최대 강도비율', 'Partial-strength splice — max developable ratio')}>
                     {Math.round(partial * 100)}%</span>}</td>
                 <td className={`dcr-cell${govDcr != null && govDcr > 1.0 ? ' ng' : ''}${govDcr != null ? ' dcr-click' : ''}`}
-                  title={govDcr == null ? undefined : L('검토항목별 DCR 보기', 'View DCR by limit state')}
-                  onClick={govDcr != null ? (e => { e.stopPropagation(); onDcrClick?.({ r: dr, fScale, wScale }); }) : undefined}>
+                  title={govDcr == null ? undefined : L('선택 + 검토항목별 DCR 보기', 'Select + view DCR by limit state')}
+                  onClick={govDcr != null ? (e => { e.stopPropagation(); onSelect(dr); onDcrClick?.({ r: dr, fScale, wScale }); }) : undefined}>
                   {govDcr != null ? govDcr.toFixed(2) : <span className="dash">—</span>}</td>
                 <td>{s.r}</td>
                 <td className="gcol">{fmtW(unitWeightOf(s))}</td>

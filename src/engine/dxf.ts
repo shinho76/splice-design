@@ -31,7 +31,7 @@ const TH = 20;   // 도면 문자높이
 const TB = 24;   // 정보표 문자높이(셀폭 150 내 라벨 수용 — 겹침 방지)
 const FONT = 'Cell Body';  // 라벨/주기 문자 스타일 — 참조도면 맑은고딕(malgun) TrueType, 한글 렌더. 치수문자는 STANDARD.
 const ARROW = 5.0;                        // exe DIMSTYLE dimasz(41) = _ARCHTICK INSERT scale
-const PW = 1.6;                           // 입면 첨판 선 폭(POLYLINE width) — 녹색/시안 얇게
+const PW = 0.6;                           // 첨판 선 폭(POLYLINE width) — 얇게(과다 굵기 방지)
 
 // ── 좌표 변환(회전+평행이동) : 보 deg=0, 기둥 deg=90 ──
 interface Xf { c: number; s: number; ox: number; oy: number; deg: number; }
@@ -184,32 +184,31 @@ function boltPlan(p: Pen, x: number, y: number, dia: number, hole: number) {
   const m = dia * 1.2;                                   // 센터 십자(빨강)
   p.line(x - m, y, x + m, y, 'DIM'); p.line(x, y - m, x, y + m, 'DIM');
 }
-// 볼트 측면(단면·입면): 축(2선) + 와셔 + 육각머리/너기(facet선) — 참조도면 HEAD/TAIL 재현.
+// 볼트 측면(단면·입면): 축(2선) + 와셔 + 챔퍼 육각머리/너트(facet선) — 참조도면 HEAD/TAIL 재현.
 // (cx,cy)=그립 중심, half=그립 반길이(체결 판두께합/2). vertical=true 수직(플랜지볼트)/false 수평(웨브볼트).
 function boltSide(p: Pen, cx: number, cy: number, half: number, vertical: boolean, dia: number) {
   const sh = dia * 0.35, hw = dia * 0.84, hf = dia * 0.5, hh = dia * 0.57, ww = dia, wt = dia * 0.27;   // 축·머리대각·facet·머리높이·와셔폭·와셔두께
+  const ch = hh * 0.28, hwt = hw * 0.78;                          // 챔퍼 높이·상단폭
+  // 챔퍼 육각머리(축과 수직인 base선에서 dir방향으로). vertical=true면 세로, false면 가로.
+  const head = (bx: number, by: number, dir: number, vert: boolean) => {
+    const L = (a: number, b: number, c: number, d: number) => vert ? p.line(bx + a, by + dir * b, bx + c, by + dir * d, 'BOLT')
+      : p.line(bx + dir * b, by + a, bx + dir * d, by + c, 'BOLT');
+    L(-hw, 0, hw, 0);                                             // base(와셔쪽)
+    L(-hw, 0, -hw, hh - ch); L(hw, 0, hw, hh - ch);              // 측면 수직
+    L(-hw, hh - ch, -hwt, hh); L(hw, hh - ch, hwt, hh);         // 챔퍼
+    L(-hwt, hh, hwt, hh);                                        // 상단
+    L(-hf, 0, -hf, hh - ch); L(hf, 0, hf, hh - ch);            // facet
+  };
   if (vertical) {
-    p.line(cx - sh, cy - half, cx - sh, cy + half, 'BOLT');       // 축
-    p.line(cx + sh, cy - half, cx + sh, cy + half, 'BOLT');
-    p.rect(cx - ww, cy + half, 2 * ww, wt, 'BOLT');               // 와셔(상)
-    p.rect(cx - hw, cy + half + wt, 2 * hw, hh, 'BOLT');          // 머리(상)
-    p.line(cx - hf, cy + half + wt, cx - hf, cy + half + wt + hh, 'BOLT');   // facet
-    p.line(cx + hf, cy + half + wt, cx + hf, cy + half + wt + hh, 'BOLT');
-    p.rect(cx - ww, cy - half - wt, 2 * ww, wt, 'BOLT');          // 와셔(하)
-    p.rect(cx - hw, cy - half - wt - hh, 2 * hw, hh, 'BOLT');     // 너트(하)
-    p.line(cx - hf, cy - half - wt - hh, cx - hf, cy - half - wt, 'BOLT');
-    p.line(cx + hf, cy - half - wt - hh, cx + hf, cy - half - wt, 'BOLT');
+    p.line(cx - sh, cy - half, cx - sh, cy + half, 'BOLT'); p.line(cx + sh, cy - half, cx + sh, cy + half, 'BOLT');   // 축
+    p.rect(cx - ww, cy + half, 2 * ww, wt, 'BOLT'); p.rect(cx - ww, cy - half - wt, 2 * ww, wt, 'BOLT');              // 와셔 상·하
+    head(cx, cy + half + wt, 1, true);                           // 머리(상)
+    head(cx, cy - half - wt, -1, true);                          // 너트(하)
   } else {
-    p.line(cx - half, cy - sh, cx + half, cy - sh, 'BOLT');
-    p.line(cx - half, cy + sh, cx + half, cy + sh, 'BOLT');
-    p.rect(cx + half, cy - ww, wt, 2 * ww, 'BOLT');               // 와셔(우)
-    p.rect(cx + half + wt, cy - hw, hh, 2 * hw, 'BOLT');          // 머리(우)
-    p.line(cx + half + wt, cy - hf, cx + half + wt + hh, cy - hf, 'BOLT');
-    p.line(cx + half + wt, cy + hf, cx + half + wt + hh, cy + hf, 'BOLT');
-    p.rect(cx - half - wt, cy - ww, wt, 2 * ww, 'BOLT');          // 와셔(좌)
-    p.rect(cx - half - wt - hh, cy - hw, hh, 2 * hw, 'BOLT');     // 너트(좌)
-    p.line(cx - half - wt - hh, cy - hf, cx - half - wt, cy - hf, 'BOLT');
-    p.line(cx - half - wt - hh, cy + hf, cx - half - wt, cy + hf, 'BOLT');
+    p.line(cx - half, cy - sh, cx + half, cy - sh, 'BOLT'); p.line(cx - half, cy + sh, cx + half, cy + sh, 'BOLT');
+    p.rect(cx + half, cy - ww, wt, 2 * ww, 'BOLT'); p.rect(cx - half - wt, cy - ww, wt, 2 * ww, 'BOLT');              // 와셔 우·좌
+    head(cx + half + wt, cy, 1, false);                          // 머리(우)
+    head(cx - half - wt, cy, -1, false);                         // 너트(좌)
   }
 }
 // H형강 단면 프로파일(웨브-플랜지 필렛 반경 fr 반영). layer=외곽선.
