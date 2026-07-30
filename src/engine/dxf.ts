@@ -169,30 +169,65 @@ function breakV(p: Pen, x: number, cy: number, half: number) {
   p.line(x, cy - half, x, cy - 10, 'MAIN'); p.line(x, cy + 10, x, cy + half, 'MAIN');
   p.line(x - z, cy, x, cy - 10, 'MAIN'); p.line(x, cy + 10, x + z, cy, 'MAIN'); p.line(x - z, cy, x + z, cy, 'MAIN');
 }
-// 볼트 입면(⊕): 구멍 원 + 관통 크로스헤어(원 밖으로 약간 연장) — 참고 도면 규약
-function boltPlan(p: Pen, x: number, y: number, rad: number) {
-  p.circle(x, y, rad, 'BOLT');
-  const m = rad * 1.45;                                   // 크로스헤어 팔(원보다 확장)
-  p.line(x - m, y, x + m, y, 'BOLT'); p.line(x, y - m, x, y + m, 'BOLT');
+// 정육각형(꼭지 상단) 폴리곤 — 반경 R(대각). 볼트 머리 평면 표기.
+function hexPoly(p: Pen, x: number, y: number, R: number, lay: string) {
+  const v: [number, number][] = [];
+  for (let k = 0; k < 6; k++) { const a = (90 + k * 60) * Math.PI / 180; v.push([x + R * Math.cos(a), y + R * Math.sin(a)]); }
+  for (let k = 0; k < 6; k++) p.line(v[k][0], v[k][1], v[(k + 1) % 6][0], v[(k + 1) % 6][1], lay);
 }
-// 볼트 측면(단면·입면): 축(2선) + 머리(head)·너트(nut) 사각 — 참조도면 육각볼트 표기.
+// 볼트 평면(⊕) — 참조도면 HEADED_HT_BOLT-PLAN 재현: 축원(dia/2) + 육각머리(0.84d) + 외접원(d,회색) + 나사 3아크 + 센터십자.
+function boltPlan(p: Pen, x: number, y: number, dia: number, hole: number) {
+  p.circle(x, y, dia, 'BOLTG');                          // 외접원(회색)
+  hexPoly(p, x, y, dia * 0.84, 'BOLT');                  // 육각 머리
+  p.circle(x, y, hole / 2, 'BOLT');                      // 구멍/축
+  [75, 195, 315].forEach(a0 => p.arc(x, y, dia * 0.67, a0, a0 + 30, 'BOLT'));   // 나사 표시 3아크
+  const m = dia * 1.2;                                   // 센터 십자(빨강)
+  p.line(x - m, y, x + m, y, 'DIM'); p.line(x, y - m, x, y + m, 'DIM');
+}
+// 볼트 측면(단면·입면): 축(2선) + 와셔 + 육각머리/너기(facet선) — 참조도면 HEAD/TAIL 재현.
 // (cx,cy)=그립 중심, half=그립 반길이(체결 판두께합/2). vertical=true 수직(플랜지볼트)/false 수평(웨브볼트).
 function boltSide(p: Pen, cx: number, cy: number, half: number, vertical: boolean, dia: number) {
-  const sh = dia * 0.42, hh = dia * 0.62, hl = dia * 0.50;   // 축반폭·머리반폭·머리길이
+  const sh = dia * 0.35, hw = dia * 0.84, hf = dia * 0.5, hh = dia * 0.57, ww = dia, wt = dia * 0.27;   // 축·머리대각·facet·머리높이·와셔폭·와셔두께
   if (vertical) {
-    p.line(cx - sh, cy - half, cx - sh, cy + half, 'BOLT');
+    p.line(cx - sh, cy - half, cx - sh, cy + half, 'BOLT');       // 축
     p.line(cx + sh, cy - half, cx + sh, cy + half, 'BOLT');
-    p.rect(cx - hh, cy + half, 2 * hh, hl, 'BOLT');          // 머리(상)
-    p.rect(cx - hh, cy - half - hl, 2 * hh, hl, 'BOLT');     // 너트(하)
-    p.line(cx - hh, cy + half + hl / 2, cx + hh, cy + half + hl / 2, 'BOLT');   // 육각 표시선
-    p.line(cx - hh, cy - half - hl / 2, cx + hh, cy - half - hl / 2, 'BOLT');
+    p.rect(cx - ww, cy + half, 2 * ww, wt, 'BOLT');               // 와셔(상)
+    p.rect(cx - hw, cy + half + wt, 2 * hw, hh, 'BOLT');          // 머리(상)
+    p.line(cx - hf, cy + half + wt, cx - hf, cy + half + wt + hh, 'BOLT');   // facet
+    p.line(cx + hf, cy + half + wt, cx + hf, cy + half + wt + hh, 'BOLT');
+    p.rect(cx - ww, cy - half - wt, 2 * ww, wt, 'BOLT');          // 와셔(하)
+    p.rect(cx - hw, cy - half - wt - hh, 2 * hw, hh, 'BOLT');     // 너트(하)
+    p.line(cx - hf, cy - half - wt - hh, cx - hf, cy - half - wt, 'BOLT');
+    p.line(cx + hf, cy - half - wt - hh, cx + hf, cy - half - wt, 'BOLT');
   } else {
     p.line(cx - half, cy - sh, cx + half, cy - sh, 'BOLT');
     p.line(cx - half, cy + sh, cx + half, cy + sh, 'BOLT');
-    p.rect(cx + half, cy - hh, hl, 2 * hh, 'BOLT');          // 머리(우)
-    p.rect(cx - half - hl, cy - hh, hl, 2 * hh, 'BOLT');     // 너트(좌)
-    p.line(cx + half + hl / 2, cy - hh, cx + half + hl / 2, cy + hh, 'BOLT');
-    p.line(cx - half - hl / 2, cy - hh, cx - half - hl / 2, cy + hh, 'BOLT');
+    p.rect(cx + half, cy - ww, wt, 2 * ww, 'BOLT');               // 와셔(우)
+    p.rect(cx + half + wt, cy - hw, hh, 2 * hw, 'BOLT');          // 머리(우)
+    p.line(cx + half + wt, cy - hf, cx + half + wt + hh, cy - hf, 'BOLT');
+    p.line(cx + half + wt, cy + hf, cx + half + wt + hh, cy + hf, 'BOLT');
+    p.rect(cx - half - wt, cy - ww, wt, 2 * ww, 'BOLT');          // 와셔(좌)
+    p.rect(cx - half - wt - hh, cy - hw, hh, 2 * hw, 'BOLT');     // 너트(좌)
+    p.line(cx - half - wt - hh, cy - hf, cx - half - wt, cy - hf, 'BOLT');
+    p.line(cx - half - wt - hh, cy + hf, cx - half - wt, cy + hf, 'BOLT');
+  }
+}
+// H형강 단면 프로파일(웨브-플랜지 필렛 반경 fr 반영). layer=외곽선.
+function drawHProfile(p: Pen, cx: number, cy: number, H: number, B: number, tw: number, tf: number, fr: number, lay: string) {
+  const yi = H / 2 - tf, wt2 = tw / 2, r = Math.max(0, Math.min(fr, yi - 1, B / 2 - wt2 - 1));
+  ([1, -1] as const).forEach(sy => {                               // 상·하 플랜지
+    const yo = cy + sy * H / 2, yin = cy + sy * yi;
+    p.line(cx - B / 2, yo, cx + B / 2, yo, lay);                   // 외면
+    p.line(cx - B / 2, yo, cx - B / 2, yin, lay); p.line(cx + B / 2, yo, cx + B / 2, yin, lay);   // 측면
+    p.line(cx - B / 2, yin, cx - (wt2 + r), yin, lay); p.line(cx + (wt2 + r), yin, cx + B / 2, yin, lay);   // 안쪽면(필렛 접점까지)
+  });
+  p.line(cx - wt2, cy - (yi - r), cx - wt2, cy + (yi - r), lay);   // 웨브 수직(필렛만큼 짧게)
+  p.line(cx + wt2, cy - (yi - r), cx + wt2, cy + (yi - r), lay);
+  if (r > 0) {                                                     // 필렛 아크 4개(오목)
+    p.arc(cx + wt2 + r, cy + yi - r, r, 90, 180, lay);
+    p.arc(cx - wt2 - r, cy + yi - r, r, 0, 90, lay);
+    p.arc(cx + wt2 + r, cy - yi + r, r, 180, 270, lay);
+    p.arc(cx - wt2 - r, cy - yi + r, r, 270, 360, lay);
   }
 }
 // ── 단면(斷面) 뷰 : H형강 단면 + 외/내첨판 + 웨브첨판 + 볼트 측면. 부재 우측에 배치(참조도면 우하). ──
@@ -204,10 +239,8 @@ function drawSection(doc: Doc, t: Xf, cx: number, cy: number, r: DesignResult, d
   const p = pen(doc, t);
   const { H, B, tw, tf, oT, outerW, chum, colY, webRowY, innerCxAbs, dia, inner } = d;
   const tpw = r.web.webPlate?.t ?? 9, iT = inner?.t ?? 0, iw = inner?.w ?? 0;
-  // 부재 단면(플랜지 2 + 웨브)
-  p.rect(cx - B / 2, cy + H / 2 - tf, B, tf, 'MAIN');
-  p.rect(cx - B / 2, cy - H / 2, B, tf, 'MAIN');
-  p.rect(cx - tw / 2, cy - H / 2 + tf, tw, H - 2 * tf, 'MAIN');
+  // 부재 단면(플랜지 2 + 웨브 + 웨브-플랜지 필렛 r)
+  drawHProfile(p, cx, cy, H, B, tw, tf, sectionByName(r.section)?.r ?? 0, 'MAIN');
   // 외첨판(상·하)
   p.prect(cx - outerW / 2, cy + H / 2, outerW, oT, 'FLG_PL', PW);
   p.prect(cx - outerW / 2, cy - H / 2 - oT, outerW, oT, 'FLG_PL', PW);
@@ -361,7 +394,7 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   const g1 = r.flange.gauge?.g1 ?? 90, g2 = r.flange.gauge?.g2 ?? 0;
   const stag = r.flange.staggered ?? false;
   const inner = r.flange.innerPlate;
-  const hole = BOLT_HOLE[boltNameByDia[dia]].hole, rad = hole / 2;
+  const hole = BOLT_HOLE[boltNameByDia[dia]].hole;
   const btb = (n: number) => `${n}-M${dia} H.T.B`;           // 지시선 볼트 콜아웃(기본)
   const flCount = fB.m * round(fB.n) * 4, wCount = wB.m * wB.n * 2;
   const B = parseName(r.section).B;
@@ -421,7 +454,7 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
     boltSide(p, x, yW + H / 2 + (oT - tf - iTe) / 2, fHalfE, true, dia);
     boltSide(p, x, yW - H / 2 - (oT - tf - iTe) / 2, fHalfE, true, dia);
   });
-  ([1, -1] as const).forEach(s => webPosX.forEach(wx => webRowY.forEach(wy => boltPlan(p, s * wx, yW + wy, rad))));
+  ([1, -1] as const).forEach(s => webPosX.forEach(wx => webRowY.forEach(wy => boltPlan(p, s * wx, yW + wy, dia, hole))));
   p.line(0, yW - H / 2 - 20, 0, yW + H / 2 + 20, 'MAIN');
   const webYs = [yW + H / 2, yW + chum / 2, ...webRowY.slice().sort((a, b) => b - a).map(y => yW + y), yW - chum / 2, yW - H / 2];
   const DS = isCol ? 1 : -1;   // 세로 치수 배치측: 기둥=우(+) / 보=좌(−) — 지시선(우측)과 좌우 역할 분리
@@ -445,8 +478,8 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   const innerCy = [colY.filter(c => c < 0), colY.filter(c => c > 0)].map(a => a.reduce((x, y) => x + y, 0) / a.length);
   if (inner) innerCy.forEach(cy => p.drect(-inner.L / 2, yF + cy - inner.w / 2, inner.L, inner.w, 'FLG_PL'));
   ([1, -1] as const).forEach(s => colY.forEach((cy) => {
-    if (!stag) for (let i = 0; i < nHi; i++) boltPlan(p, s * (base + i * fp), yF + cy, rad);
-    else { const { off, rows } = stagOf(cy); for (let j = 0; j < rows; j++) boltPlan(p, s * (base + off + j * 90), yF + cy, rad); }
+    if (!stag) for (let i = 0; i < nHi; i++) boltPlan(p, s * (base + i * fp), yF + cy, dia, hole);
+    else { const { off, rows } = stagOf(cy); for (let j = 0; j < rows; j++) boltPlan(p, s * (base + off + j * 90), yF + cy, dia, hole); }
   }));
   const flYs = [outerW / 2, ...[...colY].sort((a, b) => b - a), -outerW / 2].map(y => yF + y);
   dimChainV(doc, tM, [...new Set(flYs)].sort((a, b) => b - a), DS * Lpf / 2, DS * (Lpf / 2 + 46), DS * (Lpf / 2 + 120));
@@ -579,7 +612,7 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
 const LAYERS: [string, number, string][] = [
   ['Steel', 2, 'CONTINUOUS'], ['Steel-Hidden', 2, 'DASHED0'],
   ['Plate', 3, 'CONTINUOUS'], ['Plate-Hidden', 3, 'DASHED0'],
-  ['Bolt', 2, 'CONTINUOUS'], ['Bolt-Center', 16, 'DASHDOTDOT0'],   // 볼트=색2(황) — 참조도면 규약
+  ['Bolt', 2, 'CONTINUOUS'], ['Bolt-Center', 16, 'DASHDOTDOT0'], ['Bolt-Head', 8, 'CONTINUOUS'],   // 볼트=색2(황), 외접원=색8(회) — 참조도면 규약
   ['Dimension', 1, 'CONTINUOUS'], ['Dimension(Section)', 16, 'CONTINUOUS'],
   ['Table(Main)', 2, 'CONTINUOUS'], ['Table(Sub)', 7, 'CONTINUOUS'], ['Table(Etc)', 8, 'CONTINUOUS'],
   ['TableText(Head)', 6, 'CONTINUOUS'], ['TableText(RowHead)', 9, 'CONTINUOUS'],
@@ -587,7 +620,7 @@ const LAYERS: [string, number, string][] = [
 // 내부 단축명 → 참조도면 레이어명(단일지점 변환: wrap()에서 전 엔티티 적용).
 const LMAP: Record<string, string> = {
   MAIN: 'Steel', HIDDEN: 'Steel-Hidden', FLG_PL: 'Plate', WEB_PL: 'Plate',
-  BOLT: 'Bolt', VER_BOLT: 'Bolt', DIM: 'Dimension', SECTION: 'Dimension(Section)',
+  BOLT: 'Bolt', VER_BOLT: 'Bolt', BOLTG: 'Bolt-Head', DIM: 'Dimension', SECTION: 'Dimension(Section)',
   MINI_BOX: 'Table(Main)', NOTE: 'Table(Etc)', TEXT: 'TableText(RowHead)', MINI_HEAD: 'TableText(Head)',
 };
 const LY = (k: string): string => LMAP[k] ?? k;
