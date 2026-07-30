@@ -227,10 +227,20 @@ function drawSection(doc: Doc, t: Xf, cx: number, cy: number, r: DesignResult, d
   // 웨브볼트(수평) — 행 y=webRowY, 웨브+양면 웨브첨판 관통
   const wHalf = (tw + 2 * tpw) / 2;
   webRowY.forEach(yw => boltSide(p, cx, cy + yw, wHalf, false, dia));
-  // 주요 치수: 폭 B(상단), 춤 H(우측) + 뷰 라벨
+  // 주요 치수: 게이지(상단 내측) + 폭 B(상단) · 웨브피치(우측 내측) + 춤 H(우측 외측) · 뷰 라벨
   const fyTop = cy + H / 2 + oT, exR = cx + Math.max(B, outerW) / 2;
-  emitDim(doc, t, [cx - B / 2, fyTop], [cx + B / 2, fyTop], [cx, fyTop + 55], `${round(B)}`, false);
-  emitDim(doc, t, [exR, fyTop], [exR, cy - H / 2 - oT], [exR + 55, 0], `${round(H)}`, true);
+  // 플랜지 볼트 게이지(열간 간격) — 최상단 플랜지 위
+  const gxs = [...colY].sort((a, b) => a - b);
+  for (let i = 0; i < gxs.length - 1; i++)
+    emitDim(doc, t, [cx + gxs[i], fyTop], [cx + gxs[i + 1], fyTop], [cx + (gxs[i] + gxs[i + 1]) / 2, fyTop + 34], `${round(gxs[i + 1] - gxs[i])}`, false);
+  emitDim(doc, t, [cx - B / 2, fyTop], [cx + B / 2, fyTop], [cx, fyTop + 96], `${round(B)}`, false);   // 폭 B(게이지 위)
+  // 웨브 볼트 피치(우측 내측) — 2행 이상일 때. 지시선 라벨이 있는 좌측을 피해 우측에 배치.
+  if (webRowY.length > 1) {
+    const wys = [...webRowY].map(y => cy + y).sort((a, b) => b - a);
+    for (let i = 0; i < wys.length - 1; i++)
+      emitDim(doc, t, [exR, wys[i]], [exR, wys[i + 1]], [exR + 48, (wys[i] + wys[i + 1]) / 2], `${round(Math.abs(wys[i] - wys[i + 1]))}`, true);
+  }
+  emitDim(doc, t, [exR, fyTop], [exR, cy - H / 2 - oT], [exR + 108, 0], `${round(H)}`, true);            // 춤 H(우측 외측)
   p.text(cx, cy - H / 2 - oT - 80, TH * 1.05, 'SECTION', 'DIM', { align: 'c' });
 }
 const gpl = (pl: Plate | undefined, n: number) => pl ? `G.PL. ${pl.t}x${pl.w}x${pl.L}x${n}EA` : '-';
@@ -246,7 +256,9 @@ export function layout(r: DesignResult, isCol: boolean) {
   const webL = Math.max(webWid, 2 * (base + (wB.n - 1) * 60) + 40) + 40;
   const contentHalf = Math.max(Lpf, webL) / 2;
   const hf = outerW / 2, hw = H / 2 + oT;
-  const yF = 0, yW = yF + hf + 120 + 90 + hw;
+  const SEP = hf + hw + 210;                       // 두 뷰 중심 간격
+  // 보: 평면(상)·입면(하) 배치(참조도면 규약). 기둥: 기존(평면·입면 90°회전) 유지.
+  const yF = isCol ? 0 : SEP, yW = isCol ? SEP : 0;
   const ext = Math.max(H, 300), memHalf = Lpf / 2 + ext;
   // 부재(로컬) 대략 범위
   const locYmax = yW + hw + 30, locYmin = yF - hf - 120;
@@ -254,14 +266,14 @@ export function layout(r: DesignResult, isCol: boolean) {
   const halfView = (locYmax - locYmin) / 2;     // 두 뷰 스프레드 반
   const boxRow = 54;
   if (!isCol) {
-    // 보: 가로부재, 뷰 상하 스택(평면 yF·입면 yW) + 단면 뷰(우측). display = local.
-    const boxTop = yF - hf - 210, boxBot = boxTop - boxRow * 4;
+    // 보: 가로부재. 평면(상단 yF)·입면(하단 yW)·단면(하단 우측 secCx,yW) — 참조도면 배치. display=local.
+    const boxTop = yW - hw - 210, boxBot = boxTop - boxRow * 4;   // 표제란은 입면(하단) 아래
     const boxHalf = Math.max(memHalf, 500) + 20;
     const secB = Math.max(B, outerW);
     const labelW = 340;                                    // 우측 지시선 라벨 영역 폭
     const secCx = boxHalf + 40 + labelW + 90 + secB / 2;   // 라벨영역 오른쪽에 단면 뷰 배치(겹침 방지)
     const frameRC = secCx + secB / 2 + 150;                // 단면 폭·치수 포함 우측 경계
-    const frameTop = yW + hw + 130, frameBot = boxBot - 16;
+    const frameTop = yF + hf + 130, frameBot = boxBot - 16; // 상단은 평면 위
     return {
       H, B, tw, tf, oT, Lpf, outerW, webWid, contentHalf, hf, hw, gap, base, yF, yW, memHalf, boxRow, secCx,
       mOx: 0, mOy: 0, deg: 0,
@@ -399,8 +411,8 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   const innerCy = [colY.filter(c => c < 0), colY.filter(c => c > 0)].map(a => a.reduce((x, y) => x + y, 0) / a.length);
   if (inner) innerCy.forEach(cy => p.drect(-inner.L / 2, yF + cy - inner.w / 2, inner.L, inner.w, 'FLG_PL'));
   ([1, -1] as const).forEach(s => colY.forEach((cy) => {
-    if (!stag) for (let i = 0; i < nHi; i++) boltPlan(p, s * (base + i * fp), cy, rad);
-    else { const { off, rows } = stagOf(cy); for (let j = 0; j < rows; j++) boltPlan(p, s * (base + off + j * 90), cy, rad); }
+    if (!stag) for (let i = 0; i < nHi; i++) boltPlan(p, s * (base + i * fp), yF + cy, rad);
+    else { const { off, rows } = stagOf(cy); for (let j = 0; j < rows; j++) boltPlan(p, s * (base + off + j * 90), yF + cy, rad); }
   }));
   const flYs = [outerW / 2, ...[...colY].sort((a, b) => b - a), -outerW / 2].map(y => yF + y);
   dimChainV(doc, tM, [...new Set(flYs)].sort((a, b) => b - a), DS * Lpf / 2, DS * (Lpf / 2 + 46), DS * (Lpf / 2 + 120));
@@ -459,15 +471,15 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
     }
   };
   if (!isCol) {                                   // 보: 지시선 우측(치수 좌측) · 라벨 더 분산
-    // H형강 부재 콜아웃 → 좌상단, 좌측정렬 L자 지시선
+    // H형강 부재 콜아웃 → 좌상단, 평면(상단) 위쪽에 L자 지시선
     const hty = F.frameTop - 52 - cdy;
-    const hA = pt(tMl, -memHalf * 0.5, yW + H / 2 + oT);
+    const hA = pt(tMl, -memHalf * 0.5, yF + outerW / 2);
     pfc.dot(hA[0], hA[1], 'DIM');
     pfc.line(hA[0], hA[1], lx, hA[1], 'DIM'); pfc.line(lx, hA[1], lx, hty, 'DIM');
     pfc.text(lx, hty - TH / 2, TH, secLbl, 'DIM', { align: 'l' });
-    // 판·볼트 라벨 → 우측 여백(대칭 우측 앵커), 앵커 높이 정렬(외첨판↑ … 플랜지볼트↓)
+    // 판·볼트 라벨 → 입면(하단) 우측 여백, 앵커 높이 정렬(외첨판↑ … 플랜지볼트↓·하부플랜지)
     const oR = pt(tMl, Lpf / 3, yW + H / 2 + oT), iR = pt(tMl, (inner?.L ?? Lpf) / 3, yW + H / 2 - tf - (inner?.t ?? 0) / 2);
-    const wR = pt(tMl, webWid / 2, yW), wbR = pt(tMl, webWid / 4, yW - chum / 2 + 20), fbR = pt(tMl, base, yF + g1 / 2);
+    const wR = pt(tMl, webWid / 2, yW), wbR = pt(tMl, webWid / 4, yW - chum / 2 + 20), fbR = pt(tMl, base, yW - H / 2 - oT);
     stackRight([
       { a: oR, txt: outerLbl },
       ...(inner ? [{ a: iR, txt: innerLbl }] : []),
@@ -529,7 +541,7 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
 const LAYERS: [string, number, string][] = [
   ['Steel', 2, 'CONTINUOUS'], ['Steel-Hidden', 2, 'DASHED0'],
   ['Plate', 3, 'CONTINUOUS'], ['Plate-Hidden', 3, 'DASHED0'],
-  ['Bolt', 6, 'CONTINUOUS'], ['Bolt-Center', 16, 'DASHDOTDOT0'],
+  ['Bolt', 2, 'CONTINUOUS'], ['Bolt-Center', 16, 'DASHDOTDOT0'],   // 볼트=색2(황) — 참조도면 규약
   ['Dimension', 1, 'CONTINUOUS'], ['Dimension(Section)', 16, 'CONTINUOUS'],
   ['Table(Main)', 2, 'CONTINUOUS'], ['Table(Sub)', 7, 'CONTINUOUS'], ['Table(Etc)', 8, 'CONTINUOUS'],
   ['TableText(Head)', 6, 'CONTINUOUS'], ['TableText(RowHead)', 9, 'CONTINUOUS'],
