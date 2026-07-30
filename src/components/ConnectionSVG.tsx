@@ -37,8 +37,8 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
   const webWid = r.web.webPlate?.L ?? 170, wT = r.web.webPlate?.t;
   const flOff = Math.round((H - chum) / 2);
   const webRowY = Array.from({ length: mW }, (_, i) => (i - (mW - 1) / 2) * Pc);
-  const webOff = (r.web.staggered ?? false) ? 30 : 0;   // 웨브볼트 절반피치 엇갈림(체결 간섭 회피)
-  const webPosX = Array.from({ length: nW }, (_, i) => base + webOff + i * wp);
+  // 웨브볼트는 정렬(엇갈림 없음) — DXF와 동일. (과거 +30 엇갈림은 첨판폭 미보정으로 연단 40→10mm 파괴 + DXF 불일치 유발)
+  const webPosX = Array.from({ length: nW }, (_, i) => base + i * wp);
 
   // ── 치수체인: 실제 좌표·판치수에서 도출 ──
   const round = (x: number) => Math.round(x);
