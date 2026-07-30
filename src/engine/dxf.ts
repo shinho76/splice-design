@@ -500,16 +500,17 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
     if (!stag) for (let i = 0; i < nHi; i++) boltPlan(p, s * (base + i * fp), yF + cy, dia, hole);
     else { const { off, rows } = stagOf(cy); for (let j = 0; j < rows; j++) boltPlan(p, s * (base + off + j * 90), yF + cy, dia, hole); }
   }));
-  const flYs = [outerW / 2, ...[...colY].sort((a, b) => b - a), -outerW / 2].map(y => yF + y);
-  dimChainV(doc, tM, [...new Set(flYs)].sort((a, b) => b - a), DS * Lpf / 2, DS * (Lpf / 2 + 46), DS * (Lpf / 2 + 120));
+  // ── 웨브 이음판·웨브볼트(플랜지판 아래 은선) — 점선(hidden) 표기 ──
+  const wpe = tw / 2 + (r.web.webPlate?.t ?? 9);            // 웨브첨판 외면(웨브중심~첨판바깥)
+  p.dline(-webWid / 2, yF - wpe, webWid / 2, yF - wpe, 'WEB_PL'); p.dline(-webWid / 2, yF + wpe, webWid / 2, yF + wpe, 'WEB_PL');   // 웨브첨판 양면 외곽(점선)
+  p.dline(-webWid / 2, yF - wpe, -webWid / 2, yF + wpe, 'WEB_PL'); p.dline(webWid / 2, yF - wpe, webWid / 2, yF + wpe, 'WEB_PL');   // 첨판 단부(점선)
+  webPosX.flatMap(x => [x, -x]).forEach(wx => { const m = dia * 0.55; p.dline(wx - m, yF, wx + m, yF, 'BOLT'); p.dline(wx, yF - wpe, wx, yF + wpe, 'BOLT'); });   // 웨브볼트 점선 십자(중심선상 열별)
+  // ── 폭방향 게이지 치수 — 좌·우 대칭(양측 동일 적용) ──
+  const flYs = [...new Set([outerW / 2, ...[...colY].sort((a, b) => b - a), -outerW / 2].map(y => yF + y))].sort((a, b) => b - a);
+  dimChainV(doc, tM, flYs, DS * Lpf / 2, DS * (Lpf / 2 + 46), DS * (Lpf / 2 + 120));         // 좌
+  dimChainV(doc, tM, flYs, -DS * Lpf / 2, -DS * (Lpf / 2 + 46), -DS * (Lpf / 2 + 120));      // 우(대칭)
   const flXs = [-Lpf / 2, ...fPosX.map(x => -x).sort((a, b) => a - b), ...fPosX, Lpf / 2];
   dimChainH(doc, tM, [...new Set(flXs)].sort((a, b) => a - b), yF - outerW / 2, yF - outerW / 2 - 46, yF - outerW / 2 - 104);
-  // 내첨판 폭 치수선 — 게이지 치수 체인과 반대측(−DS)에 배치해 중복 회피
-  if (inner) {
-    const cyT = innerCy[1];
-    const ix = -DS * Lpf / 2;
-    emitDim(doc, tM, [ix, yF + cyT - inner.w / 2], [ix, yF + cyT + inner.w / 2], [-DS * (Lpf / 2 + 46), 0], `${round(inner.w)}`, true);
-  }
 
   // ── 단면(斷面) 뷰 (보 전용, 입면 우측 상단) ──
   if (!isCol) {
