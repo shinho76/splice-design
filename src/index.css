@@ -579,11 +579,36 @@ body {
 .cstat .sdot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
 .cstat .sright { margin-left: auto; color: var(--faint); font-family: var(--mono); }
 
+/* ===== 반응형: 태블릿·모바일 (핸드폰/태블릿 사용) ===== */
 @media (max-width: 900px) {
-  .cbody { grid-template-columns: 1fr; }
-  .cdetail { border-top: 1px solid var(--line); }
+  /* 고정 100vh 콘솔 → 페이지 흐름 스크롤로 전환 */
+  .console { grid-template-columns: 1fr; height: auto; min-height: 100dvh; overflow: visible; }
+  .rail { position: sticky; top: 0; z-index: 30; flex-direction: row; width: 100%; gap: 6px;
+    padding: 6px 10px; border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
+  .rail .rspace { display: none; }
+  .rlogo { flex-shrink: 0; }
+  .cmain { overflow: visible; }
+  .cbody { display: flex; flex-direction: column; grid-template-columns: 1fr; min-height: 0; }
+  .cfilters { border-right: 0; border-bottom: 1px solid var(--line); overflow: visible; }
+  .ccenter { overflow: visible; }
+  .cgrid { overflow: visible; }
+  .tablewrap { max-height: 62vh; }        /* 표는 내부 스크롤(가로·세로), 나머지는 페이지 스크롤 */
+  .cdetail { border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
   .kpi-strip { grid-template-columns: repeat(3, 1fr); }
-  .ctop { flex-wrap: wrap; }
+  .ctop { flex-wrap: wrap; row-gap: 4px; }
+}
+@media (max-width: 560px) {
+  .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+  .kpi { padding: 6px 9px; }
+  .kpi .v { font-size: 15px; }
+  .cbrand { font-size: 12px; }
+  .ctop-title { display: none; }               /* 좁은 폭에서 부제 숨김 */
+  .cfilters .fld > label { width: 46px; font-size: 9px; }
+  .dact { flex-wrap: wrap; }
+  .dact .db { flex: 1 1 46%; }                 /* 상세 액션 버튼 2열 줄바꿈 */
+  .prev-modal, .report-card { width: 96vw; max-width: 96vw; }
+  .tablewrap { max-height: 56vh; }
+  .help-pop { width: min(340px, 92vw); }
 }
 
 /* ── AISC 상세계산서(영문 서술형) ── */
