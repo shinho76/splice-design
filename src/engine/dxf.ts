@@ -41,6 +41,8 @@ const Tx = (t: Xf, x: number, y: number) => x * t.c - y * t.s + t.ox;
 const Ty = (t: Xf, x: number, y: number) => x * t.s + y * t.c + t.oy;
 const pt = (t: Xf, x: number, y: number): [number, number] => [Tx(t, x, y), Ty(t, x, y)];
 const ff = (n: number) => n.toFixed(2);
+// 비ASCII(한글 등) → DXF 유니코드 이스케이프 \U+XXXX. R12(AC1009) 코드페이지 무관하게 AutoCAD·FastView·ezdxf 모두 디코딩.
+const enc = (s: string) => s.replace(/[^\x00-\x7F]/g, ch => '\\U+' + ch.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0'));
 
 export interface Doc { e: string[]; blk: string[]; n: number; }
 export const newDoc = (): Doc => ({ e: [], blk: [], n: 0 });
@@ -98,7 +100,7 @@ function pen(doc: Doc, t: Xf) {
     arc: (cx: number, cy: number, rad: number, a0: number, a1: number, lay: string) =>
       doc.e.push('0', 'ARC', '8', lay, '10', PX(cx, cy), '20', PY(cx, cy), '30', '0', '40', ff(rad), '50', ff(a0 + t.deg), '51', ff(a1 + t.deg)),
     text: (x: number, y: number, h: number, s: string, lay: string, opt: { rot?: number; align?: 'l' | 'c' | 'r' } = {}) => {
-      const tags = ['0', 'TEXT', '8', lay, '7', FONT, '10', PX(x, y), '20', PY(x, y), '30', '0', '40', ff(h), '1', s];
+      const tags = ['0', 'TEXT', '8', lay, '7', FONT, '10', PX(x, y), '20', PY(x, y), '30', '0', '40', ff(h), '1', enc(s)];
       const rot = (opt.rot ?? 0) + t.deg;
       if (rot) tags.push('50', ff(rot));
       if (opt.align === 'c') tags.push('72', '1', '11', PX(x, y), '21', PY(x, y), '31', '0');
@@ -120,7 +122,7 @@ function bl(t: Xf, a: number, b: number, c: number, d: number): string[] {
 }
 function btext(t: Xf, x: number, y: number, s: string, rot: number): string[] {
   const r = rot + t.deg;
-  const base = ['0', 'TEXT', '8', 'DIM', '7', 'STANDARD', '10', ff(Tx(t, x, y)), '20', ff(Ty(t, x, y)), '30', '0', '40', String(TH), '1', s];
+  const base = ['0', 'TEXT', '8', 'DIM', '7', 'STANDARD', '10', ff(Tx(t, x, y)), '20', ff(Ty(t, x, y)), '30', '0', '40', String(TH), '1', enc(s)];
   if (r) base.push('50', ff(r));
   base.push('72', '1', '11', ff(Tx(t, x, y)), '21', ff(Ty(t, x, y)), '31', '0');
   return base;
