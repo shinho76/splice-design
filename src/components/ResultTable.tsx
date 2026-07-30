@@ -108,7 +108,7 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
                     title={L('삭제 선택', 'Mark for deletion')} onClick={e => e.stopPropagation()}
                     onChange={e => { e.stopPropagation(); toggleCheck(s.name); }} />
                   <span className={`st-dot${ng ? ' ng' : ''}`} title={ng ? '재검토' : '적합'} />
-                  <button className="cn-txt" title={s.label ? `${s.label} · ${r.section}` : L('3D 형상 보기', 'View 3D shape')} onClick={e => { e.stopPropagation(); onView3D(dr); }}>
+                  <button className="cn-txt" title={s.label ? `${s.label} · ${r.section}` : L('선택 + 3D 형상 보기', 'Select + view 3D shape')} onClick={e => { e.stopPropagation(); onSelect(dr); onView3D(dr); }}>
                     {s.label
                       ? <span className="cn-two"><span className="cn-nom">{s.label}</span><span className="cn-mm">{r.section}</span></span>
                       : r.section}</button>
