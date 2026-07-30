@@ -234,15 +234,15 @@ function drawSection(doc: Doc, t: Xf, cx: number, cy: number, r: DesignResult, d
   // 플랜지 볼트 게이지(열간 간격) — 최상단 플랜지 위
   const gxs = [...colY].sort((a, b) => a - b);
   for (let i = 0; i < gxs.length - 1; i++)
-    emitDim(doc, t, [cx + gxs[i], fyTop], [cx + gxs[i + 1], fyTop], [cx + (gxs[i] + gxs[i + 1]) / 2, fyTop + 34], `${round(gxs[i + 1] - gxs[i])}`, false);
-  emitDim(doc, t, [cx - B / 2, fyTop], [cx + B / 2, fyTop], [cx, fyTop + 96], `${round(B)}`, false);   // 폭 B(게이지 위)
+    emitDim(doc, t, [cx + gxs[i], fyTop], [cx + gxs[i + 1], fyTop], [cx + (gxs[i] + gxs[i + 1]) / 2, fyTop + 42], `${round(gxs[i + 1] - gxs[i])}`, false);
+  emitDim(doc, t, [cx - B / 2, fyTop], [cx + B / 2, fyTop], [cx, fyTop + 122], `${round(B)}`, false);   // 폭 B(게이지 위 — 간격 확대)
   // 웨브 볼트 피치(우측 내측) — 2행 이상일 때. 지시선 라벨이 있는 좌측을 피해 우측에 배치.
   if (webRowY.length > 1) {
     const wys = [...webRowY].map(y => cy + y).sort((a, b) => b - a);
     for (let i = 0; i < wys.length - 1; i++)
-      emitDim(doc, t, [exR, wys[i]], [exR, wys[i + 1]], [exR + 48, (wys[i] + wys[i + 1]) / 2], `${round(Math.abs(wys[i] - wys[i + 1]))}`, true);
+      emitDim(doc, t, [exR, wys[i]], [exR, wys[i + 1]], [exR + 55, (wys[i] + wys[i + 1]) / 2], `${round(Math.abs(wys[i] - wys[i + 1]))}`, true);
   }
-  emitDim(doc, t, [exR, fyTop], [exR, cy - H / 2 - oT], [exR + 108, 0], `${round(H)}`, true);            // 춤 H(우측 외측)
+  emitDim(doc, t, [exR, fyTop], [exR, cy - H / 2 - oT], [exR + 140, 0], `${round(H)}`, true);            // 춤 H(우측 외측 — 피치와 간격 확대)
   p.text(cx, cy - H / 2 - oT - 80, TH * 1.05, 'SECTION', 'DIM', { align: 'c' });
 }
 const gpl = (pl: Plate | undefined, n: number) => pl ? `G.PL. ${pl.t}x${pl.w}x${pl.L}x${n}EA` : '-';
@@ -260,19 +260,19 @@ export function layout(r: DesignResult, isCol: boolean) {
   const hf = outerW / 2, hw = H / 2 + oT;
   const ext = Math.max(H, 300), memHalf = Lpf / 2 + ext;
   const boxRow = 54;
-  const yF = 0;                                   // 평면(하단·기둥은 좌) 기준
   if (!isCol) {
-    // 보: 평면(하단) → 규격표(중단) → 입면+단면(상단). 참조도면 [나의아저씨] 3밴드 배치.
+    // 보: 평면(상단) → 입면+단면(중단) → 규격표(하단). 참조도면 [나의아저씨] BOLT CONNECTION DETAIL 배치.
     const rowH = 125, nRows = 4;                  // 표: 제목 + WEB + FLG(EXT.) + FLG(INT.)
     const boxHalf = Math.max(memHalf, 500) + 20;
     const secB = Math.max(B, outerW);
-    const tableBot = yF + hf + 40;                // 표 하단(평면 위 여백)
-    const tableTop = tableBot + rowH * nRows;
-    const yW = tableTop + 80 + hw;                // 입면 중심(표 위)
+    const yW = 0;                                 // 입면(중단) 중심
+    const yF = yW + hw + 190 + hf;                // 평면(상단) 중심 — 사이에 평면 하단치수
+    const tableTop = yW - hw - 165;               // 규격표(하단) 상단 — 사이에 입면 하단치수
+    const tableBot = tableTop - rowH * nRows;
     const secCx = boxHalf + 40 + secB / 2 + 60;   // 입면 우측 단면
-    const frameRC = secCx + secB / 2 + 150;
-    const frameTop = yW + hw + 170;               // 입면 상단 치수 여백
-    const frameBot = yF - hf - 150;               // 평면 하단 치수 여백
+    const frameRC = secCx + secB / 2 + 180;       // 단면 우측 치수(춤 H) 여백
+    const frameTop = yF + hf + 130;               // 평면 위
+    const frameBot = tableBot - 40;               // 표 아래
     return {
       H, B, tw, tf, oT, Lpf, outerW, webWid, contentHalf, hf, hw, gap, base, yF, yW, memHalf, boxRow, secCx,
       rowH, nRows, tableBot, tableTop,
@@ -283,6 +283,7 @@ export function layout(r: DesignResult, isCol: boolean) {
     };
   }
   // 기둥: 세로부재(90° 회전). 기존 배치 유지.
+  const yF = 0;
   const yW = hf + 120 + 90 + hw;
   const locYmax = yW + hw + 30, locYmin = yF - hf - 120;
   const halfLen = memHalf + 20;
@@ -425,10 +426,9 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   const webYs = [yW + H / 2, yW + chum / 2, ...webRowY.slice().sort((a, b) => b - a).map(y => yW + y), yW - chum / 2, yW - H / 2];
   const DS = isCol ? 1 : -1;   // 세로 치수 배치측: 기둥=우(+) / 보=좌(−) — 지시선(우측)과 좌우 역할 분리
   dimChainV(doc, tM, [...new Set(webYs)].sort((a, b) => b - a), DS * contentHalf, DS * (contentHalf + 46), DS * (contentHalf + 120));
-  const webXs = [-webWid / 2, ...webPosX.map(x => -x).sort((a, b) => a - b), -gap / 2, gap / 2, ...webPosX, webWid / 2];
-  // 보: 입면 수평치수는 상단(표와 겹침 방지) / 기둥: 기존 하단
-  if (isCol) dimChainH(doc, tM, [...new Set(webXs)].sort((a, b) => a - b), yW - H / 2 - oT, yW - H / 2 - oT - 46, yW - H / 2 - oT - 100);
-  else dimChainH(doc, tM, [...new Set(webXs)].sort((a, b) => a - b), yW + H / 2 + oT, yW + H / 2 + oT + 46, yW + H / 2 + oT + 100);
+  // 조인트 갭 스테이션(±gap/2) 제외 → 중앙부 좁은구간 '40 10 40' 문자 겹침 제거, 단일 중앙치수로 표기
+  const webXs = [-webWid / 2, ...webPosX.map(x => -x).sort((a, b) => a - b), ...webPosX, webWid / 2];
+  dimChainH(doc, tM, [...new Set(webXs)].sort((a, b) => a - b), yW - H / 2 - oT, yW - H / 2 - oT - 46, yW - H / 2 - oT - 104);
 
   // ── 플랜지 평면도 (yF) : 부재 연장 + 파단선 ──
   ([1, -1] as const).forEach(s => {
@@ -450,8 +450,8 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   }));
   const flYs = [outerW / 2, ...[...colY].sort((a, b) => b - a), -outerW / 2].map(y => yF + y);
   dimChainV(doc, tM, [...new Set(flYs)].sort((a, b) => b - a), DS * Lpf / 2, DS * (Lpf / 2 + 46), DS * (Lpf / 2 + 120));
-  const flXs = [-Lpf / 2, ...fPosX.map(x => -x).sort((a, b) => a - b), -gap / 2, gap / 2, ...fPosX, Lpf / 2];
-  dimChainH(doc, tM, [...new Set(flXs)].sort((a, b) => a - b), yF - outerW / 2, yF - outerW / 2 - 46, yF - outerW / 2 - 100);
+  const flXs = [-Lpf / 2, ...fPosX.map(x => -x).sort((a, b) => a - b), ...fPosX, Lpf / 2];
+  dimChainH(doc, tM, [...new Set(flXs)].sort((a, b) => a - b), yF - outerW / 2, yF - outerW / 2 - 46, yF - outerW / 2 - 104);
   // 내첨판 폭 치수선 — 게이지 치수 체인과 반대측(−DS)에 배치해 중복 회피
   if (inner) {
     const cyT = innerCy[1];
