@@ -258,8 +258,9 @@ export function layout(r: DesignResult, isCol: boolean) {
     const boxTop = yF - hf - 210, boxBot = boxTop - boxRow * 4;
     const boxHalf = Math.max(memHalf, 500) + 20;
     const secB = Math.max(B, outerW);
-    const secCx = boxHalf + 90 + secB / 2;                 // 단면 뷰 중심(부재 우측 여백 후)
-    const frameRC = secCx + secB / 2 + 140;                // 단면 폭·치수 포함 우측 경계
+    const labelW = 340;                                    // 우측 지시선 라벨 영역 폭
+    const secCx = boxHalf + 40 + labelW + 90 + secB / 2;   // 라벨영역 오른쪽에 단면 뷰 배치(겹침 방지)
+    const frameRC = secCx + secB / 2 + 150;                // 단면 폭·치수 포함 우측 경계
     const frameTop = yW + hw + 130, frameBot = boxBot - 16;
     return {
       H, B, tw, tf, oT, Lpf, outerW, webWid, contentHalf, hf, hw, gap, base, yF, yW, memHalf, boxRow, secCx,
@@ -426,7 +427,9 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   const outerA = pt(tMl, -Lpf / 3, yW + H / 2 + oT), innerA = pt(tMl, -(inner?.L ?? Lpf) / 3, yW + H / 2 - tf - (inner?.t ?? 0) / 2);
   const webA = pt(tMl, -webWid / 2, yW), wbA = pt(tMl, -webWid / 4, yW - chum / 2 + 20), fbA = pt(tMl, -base, yF + g1 / 2);
   // 지시선 텍스트는 도곽 여백에 두되, 콘텐츠 앵커펜(pfc) 기준 로컬로 환산(−cd)해 앵커와 좌표계 일치
-  const lx = F.frameL + 70 - cdx, rx = F.frameRC - 70 - cdx;
+  // 지시선 라벨 우측 기준: 보는 단면 뷰 왼쪽(라벨영역)에, 기둥은 도곽 우측에.
+  const lx = F.frameL + 70 - cdx;
+  const rx = isCol ? (F.frameRC - 70 - cdx) : (L.secCx - Math.max(L.B, L.outerW) / 2 - 60);
   type Lab = { a: [number, number]; txt: string };
   const GAPL = 46;
   // 라벨을 앵커 높이에 맞춰 좌/우 여백에 수직 배치 → 지시선이 거의 수평이 되어 교차·겹침 방지.
