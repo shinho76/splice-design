@@ -262,21 +262,28 @@ function drawSection(doc: Doc, t: Xf, cx: number, cy: number, r: DesignResult, d
   // 웨브볼트(수평) — 행 y=webRowY, 웨브+양면 웨브첨판 관통
   const wHalf = (tw + 2 * tpw) / 2;
   webRowY.forEach(yw => boltSide(p, cx, cy + yw, wHalf, false, dia));
-  // 주요 치수: 게이지(상단 내측) + 폭 B(상단) · 웨브피치(우측 내측) + 춤 H(우측 외측) · 뷰 라벨
-  const fyTop = cy + H / 2 + oT, exR = cx + Math.max(B, outerW) / 2;
-  // 플랜지 볼트 게이지(열간 간격) — 최상단 플랜지 위
+  // 치수(참조도면 캡처4): 게이지+폭B+외첨판폭(상단 3단) · 웨브피치+웨브스팬+춤H(우측 3단) · 판/부재 두께(좌·하)
+  const fyTop = cy + H / 2 + oT, exR = cx + Math.max(B, outerW) / 2, exL = cx - Math.max(B, outerW) / 2;
+  // ── 상단: 플랜지 볼트 게이지 → 부재 폭 B → 외첨판 폭(이중치수) ──
   const gxs = [...colY].sort((a, b) => a - b);
   for (let i = 0; i < gxs.length - 1; i++)
     emitDim(doc, t, [cx + gxs[i], fyTop], [cx + gxs[i + 1], fyTop], [cx + (gxs[i] + gxs[i + 1]) / 2, fyTop + 42], `${round(gxs[i + 1] - gxs[i])}`, false);
-  emitDim(doc, t, [cx - B / 2, fyTop], [cx + B / 2, fyTop], [cx, fyTop + 122], `${round(B)}`, false);   // 폭 B(게이지 위 — 간격 확대)
-  // 웨브 볼트 피치(우측 내측) — 2행 이상일 때. 지시선 라벨이 있는 좌측을 피해 우측에 배치.
+  emitDim(doc, t, [cx - B / 2, fyTop], [cx + B / 2, fyTop], [cx, fyTop + 104], `${round(B)}`, false);            // 부재 폭 B
+  emitDim(doc, t, [cx - outerW / 2, fyTop], [cx + outerW / 2, fyTop], [cx, fyTop + 164], `${round(outerW)}`, false);  // 외첨판 폭
+  // ── 우측: 웨브 볼트 피치 → 웨브볼트 스팬 → 춤 H(삼중치수) ──
   if (webRowY.length > 1) {
     const wys = [...webRowY].map(y => cy + y).sort((a, b) => b - a);
     for (let i = 0; i < wys.length - 1; i++)
-      emitDim(doc, t, [exR, wys[i]], [exR, wys[i + 1]], [exR + 55, (wys[i] + wys[i + 1]) / 2], `${round(Math.abs(wys[i] - wys[i + 1]))}`, true);
+      emitDim(doc, t, [exR, wys[i]], [exR, wys[i + 1]], [exR + 52, (wys[i] + wys[i + 1]) / 2], `${round(Math.abs(wys[i] - wys[i + 1]))}`, true);
+    emitDim(doc, t, [exR, wys[0]], [exR, wys[wys.length - 1]], [exR + 108, 0], `${round(Math.abs(wys[0] - wys[wys.length - 1]))}`, true);  // 웨브볼트 스팬
   }
-  emitDim(doc, t, [exR, fyTop], [exR, cy - H / 2 - oT], [exR + 140, 0], `${round(H)}`, true);            // 춤 H(우측 외측 — 피치와 간격 확대)
-  p.text(cx, cy - H / 2 - oT - 80, TH * 1.05, 'SECTION', 'DIM', { align: 'c' });
+  emitDim(doc, t, [exR, fyTop], [exR, cy - H / 2 - oT], [exR + 168, 0], `${round(H)}`, true);                    // 춤 H(외측)
+  // ── 좌·하: 판/부재 두께(외첨판 oT·내첨판 iT·플랜지 tf·웨브 tw) ──
+  emitDim(doc, t, [exL, cy + H / 2 + oT], [exL, cy + H / 2], [exL - 34, 0], `${oT}`, true);                       // 외첨판 두께
+  if (inner) emitDim(doc, t, [exL, cy + H / 2 - tf], [exL, cy + H / 2 - tf - iT], [exL - 34, 0], `${iT}`, true);  // 내첨판 두께
+  emitDim(doc, t, [exL, cy - H / 2 + tf], [exL, cy - H / 2], [exL - 34, 0], `${tf}`, true);                       // 플랜지 두께
+  emitDim(doc, t, [cx - tw / 2, cy - H / 2 - oT], [cx + tw / 2, cy - H / 2 - oT], [cx, cy - H / 2 - oT - 44], `${tw}`, false);   // 웨브 두께
+  p.text(cx, cy - H / 2 - oT - 100, TH * 1.05, 'SECTION', 'DIM', { align: 'c' });
 }
 const gpl = (pl: Plate | undefined, n: number) => pl ? `G.PL. ${pl.t}x${pl.w}x${pl.L}x${n}EA` : '-';
 
