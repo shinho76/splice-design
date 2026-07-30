@@ -6,6 +6,25 @@ import { parseName, sectionByName } from './sections.ts';
 import { BOLT_HOLE, boltNameByDia } from './bolts.ts';
 import { standardLength, gripFlange, gripWeb } from './bolt_spec.ts';
 import { Fy } from './materials.ts';
+import { nominalOf } from './hbeam_catalog.ts';
+
+/** 시리즈 키 — W형강: 호칭 접두(W12 등) / H형강: 공칭치수(400×300 등). 전체도면 그룹핑용. */
+function seriesKey(r: DesignResult): string {
+  const sec = sectionByName(r.section);
+  if (sec?.label) { const m = sec.label.match(/^W\d+/i); return m ? m[0].toUpperCase() : sec.label; }
+  const { H, B } = parseName(r.section);
+  return nominalOf(H, B);
+}
+/** 카탈로그 순서를 유지하며 시리즈별로 묶기(연속 동일키 그룹). */
+function groupBySeries(rows: DesignResult[]): { key: string; items: DesignResult[] }[] {
+  const groups: { key: string; items: DesignResult[] }[] = [];
+  for (const r of rows) {
+    const key = seriesKey(r);
+    const g = groups[groups.length - 1];
+    if (g && g.key === key) g.items.push(r); else groups.push({ key, items: [r] });
+  }
+  return groups;
+}
 
 const round = Math.round;
 const TH = 20;   // 도면 문자높이
@@ -593,12 +612,23 @@ export function toDXFAll(rows: DesignResult[], cond: DesignCondition, office = f
   const uni = uniformFrame(rows, isCol);                          // 가장 큰 형강 기준 통일 도곽
   const fw = uni.frameR - uni.frameL, fh = uni.frameTop - uni.frameBot;
   const COLS = 3, GAP = 400, cellW = fw + GAP, cellH = fh + GAP;
-  rows.forEach((r, i) => {
-    const col = i % COLS, row = Math.floor(i / COLS);
-    const ox = col * cellW + GAP / 2 - uni.frameL;                // 통일 도곽을 셀에 정렬 배치
-    const oy = -row * cellH - GAP / 2 - uni.frameTop;
-    emitMember(doc, r, cond, ox, oy, uni, office);               // 각 상세를 통일 도곽 중앙에
-  });
+  const HHDR = 90;                                                // 시리즈 헤더 높이
+  const p = pen(doc, mkXf(0, 0, 0));
+  let row = 0;                                                    // 전역 그리드 행(시리즈마다 새 행)
+  for (const g of groupBySeries(rows)) {                          // 시리즈별로 나눠 행 분리
+    const firstRow = row;
+    g.items.forEach((r, j) => {
+      if (j > 0 && j % COLS === 0) row++;                         // 그룹 내 줄바꿈
+      const col = j % COLS;
+      const ox = col * cellW + GAP / 2 - uni.frameL;
+      const oy = -row * cellH - GAP / 2 - uni.frameTop - HHDR;    // 헤더 아래로 내림
+      emitMember(doc, r, cond, ox, oy, uni, office);
+    });
+    // 시리즈 헤더(그룹 첫 행 상단 좌측)
+    const hy = -firstRow * cellH - GAP / 2 - uni.frameTop - HHDR + fh + 34;
+    p.text(GAP / 2, hy, TH * 1.8, `[ ${g.key} SERIES ]`, 'MINI_HEAD', { align: 'l' });
+    row++;                                                        // 다음 시리즈는 새 행
+  }
   return wrap(doc);
 }
 /**
@@ -612,18 +642,26 @@ export function toDXFSheet(rows: DesignResult[], cond: DesignCondition): string 
   const uni = uniformFrame(rows, isCol);
   const fw = uni.frameR - uni.frameL, fh = uni.frameTop - uni.frameBot;
   const CALLOUT_W = 420;                                  // 우측 콜아웃 블록 폭
-  const COLS = 4, GAP = 520;
+  const COLS = 4, GAP = 520, HHDR = 100;
   const cellW = fw + CALLOUT_W + GAP, cellH = fh + GAP;
-  const nRows = Math.ceil(rows.length / COLS);
-  rows.forEach((r, i) => {
-    const col = i % COLS, row = Math.floor(i / COLS);
-    const ox = col * cellW + GAP / 2 - uni.frameL;
-    const oy = -row * cellH - GAP / 2 - uni.frameTop;
-    emitMember(doc, r, cond, ox, oy, uni, true, true);    // office + sheet
-  });
+  const p = pen(doc, mkXf(0, 0, 0));
+  let row = 0;
+  for (const g of groupBySeries(rows)) {                  // 시리즈별로 행 분리 + 헤더
+    const firstRow = row;
+    g.items.forEach((r, j) => {
+      if (j > 0 && j % COLS === 0) row++;
+      const col = j % COLS;
+      const ox = col * cellW + GAP / 2 - uni.frameL;
+      const oy = -row * cellH - GAP / 2 - uni.frameTop - HHDR;
+      emitMember(doc, r, cond, ox, oy, uni, true, true);  // office + sheet
+    });
+    const hy = -firstRow * cellH - GAP / 2 - uni.frameTop - HHDR + fh + 44;
+    p.text(GAP / 2, hy, TH * 2.0, `[ ${g.key} SERIES ]`, 'MINI_HEAD', { align: 'l' });
+    row++;
+  }
+  const nRows = row;
   // ── 시트 상단 공통 주기 + 전체 외곽 테두리 ──
   const sheetW = COLS * cellW, sheetTop = -GAP / 2 + 40, sheetBot = -nRows * cellH - GAP / 2 + (cellH - fh) / 2 - 60;
-  const p = pen(doc, mkXf(0, 0, 0));
   const fy = Fy(cond.steel, 20);
   const notes = [
     '*. STEEL : ' + cond.steel + '  BOLT : ' + cond.bolt + ' H.T.B  SCALE : 1/20',
