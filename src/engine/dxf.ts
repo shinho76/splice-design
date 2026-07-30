@@ -10,7 +10,7 @@ import { Fy } from './materials.ts';
 const round = Math.round;
 const TH = 20;   // 도면 문자높이
 const TB = 24;   // 정보표 문자높이(셀폭 150 내 라벨 수용 — 겹침 방지)
-const FONT = 'STANDARD';  // 표준 텍스트 스타일(txt.shx 기반) — 특정 폰트 미설치 PC에서도 열리도록 이식성 확보
+const FONT = 'Cell Body';  // 라벨/주기 문자 스타일 — 참조도면 맑은고딕(malgun) TrueType, 한글 렌더. 치수문자는 STANDARD.
 const ARROW = 5.0;                        // exe DIMSTYLE dimasz(41) = _ARCHTICK INSERT scale
 const PW = 1.6;                           // 입면 첨판 선 폭(POLYLINE width) — 녹색/시안 얇게
 
@@ -431,15 +431,34 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   tx(bl2, 3, 'Joint'); tx(bl2 + Lw, 3, jointLbl); tx(midX, 3, 'Flg Bolt'); tx(midX + Lw, 3, btbT(flCount));
 }
 
-const LAYERS: [string, number][] = [['MAIN', 7], ['FLG_PL', 3], ['WEB_PL', 4], ['BOLT', 6], ['VER_BOLT', 1], ['DIM', 7], ['MINI_BOX', 7], ['NOTE', 2]];
+// 레이어 표준 — 첨부 참조도면(BEAM-SPLICE) 포맷 준수: 이름·색·선종. [name, aci색, 선종].
+const LAYERS: [string, number, string][] = [
+  ['Steel', 2, 'CONTINUOUS'], ['Steel-Hidden', 2, 'DASHED0'],
+  ['Plate', 3, 'CONTINUOUS'], ['Plate-Hidden', 3, 'DASHED0'],
+  ['Bolt', 6, 'CONTINUOUS'], ['Bolt-Center', 16, 'DASHDOTDOT0'],
+  ['Dimension', 1, 'CONTINUOUS'], ['Dimension(Section)', 16, 'CONTINUOUS'],
+  ['Table(Main)', 2, 'CONTINUOUS'], ['Table(Sub)', 7, 'CONTINUOUS'], ['Table(Etc)', 8, 'CONTINUOUS'],
+  ['TableText(Head)', 6, 'CONTINUOUS'], ['TableText(RowHead)', 9, 'CONTINUOUS'],
+];
+// 내부 단축명 → 참조도면 레이어명(단일지점 변환: wrap()에서 전 엔티티 적용).
+const LMAP: Record<string, string> = {
+  MAIN: 'Steel', HIDDEN: 'Steel-Hidden', FLG_PL: 'Plate', WEB_PL: 'Plate',
+  BOLT: 'Bolt', VER_BOLT: 'Bolt', DIM: 'Dimension', SECTION: 'Dimension(Section)',
+  MINI_BOX: 'Table(Main)', NOTE: 'Table(Etc)', TEXT: 'TableText(RowHead)', MINI_HEAD: 'TableText(Head)',
+};
+const LY = (k: string): string => LMAP[k] ?? k;
+// 문자 스타일(참조도면): 한글 malgun TrueType — 라벨/주기 한글 렌더. 치수문자는 STANDARD 유지.
+const TEXT_STYLE = 'Cell Body';
 // _ARCHTICK 화살촉 블록(45° 단위 틱). INSERT scale로 크기 결정
 const ARCHTICK_BLOCK = ['0', 'BLOCK', '8', '0', '2', '_ARCHTICK', '70', '0', '10', '0', '20', '0', '30', '0', '3', '_ARCHTICK',
   '0', 'LINE', '8', '0', '10', '-0.5', '20', '-0.5', '30', '0', '11', '0.5', '21', '0.5', '31', '0',
   '0', 'ENDBLK', '8', '0'];
 function wrap(doc: Doc): string {
-  // STYLE: 단일 STANDARD 스타일(SHX 'romans' — AutoCAD/호환 CAD 표준 내장 로만 심플렉스).
-  const styleT = ['0', 'TABLE', '2', 'STYLE', '70', '1',
-    '0', 'STYLE', '2', 'STANDARD', '70', '0', '40', '0.0', '41', '1.0', '50', '0.0', '71', '0', '42', '2.5', '3', 'romans', '4', ''];
+  // STYLE(참조도면): STANDARD(micross)·Table Head(맑은고딕 Bold)·Cell Body(맑은고딕) — 한글 렌더.
+  const styleT = ['0', 'TABLE', '2', 'STYLE', '70', '3',
+    '0', 'STYLE', '2', 'STANDARD', '70', '0', '40', '0.0', '41', '1.0', '50', '0.0', '71', '0', '42', '2.5', '3', 'romans', '4', '',
+    '0', 'STYLE', '2', 'Table Head', '70', '0', '40', '0.0', '41', '1.0', '50', '0.0', '71', '0', '42', '2.5', '3', 'malgunbd.ttf', '4', '',
+    '0', 'STYLE', '2', 'Cell Body', '70', '0', '40', '0.0', '41', '1.0', '50', '0.0', '71', '0', '42', '2.5', '3', 'malgun.ttf', '4', ''];
   // VPORT: *ACTIVE 뷰포트(R12 필수 테이블) — 누락 시 엄격한 리더가 파일 거부
   const vportT = ['0', 'TABLE', '2', 'VPORT', '70', '1',
     '0', 'VPORT', '2', '*ACTIVE', '70', '0',
@@ -449,12 +468,17 @@ function wrap(doc: Doc): string {
     '16', '0.0', '26', '0.0', '36', '1.0', '17', '0.0', '27', '0.0', '37', '0.0',
     '40', '1000.0', '41', '1.5', '42', '50.0', '43', '0.0', '44', '0.0',
     '50', '0.0', '51', '0.0', '71', '0', '72', '100', '73', '1', '74', '3', '75', '0', '76', '0', '77', '0', '78', '0'];
-  const ltT = ['0', 'TABLE', '2', 'LTYPE', '70', '2',
+  const ltT = ['0', 'TABLE', '2', 'LTYPE', '70', '4',
     '0', 'LTYPE', '2', 'CONTINUOUS', '70', '0', '3', 'Solid line', '72', '65', '73', '0', '40', '0',
-    '0', 'LTYPE', '2', 'HIDDEN', '70', '0', '3', '__ __ __', '72', '65', '73', '2', '40', '30.0', '49', '20.0', '49', '-10.0'];
+    '0', 'LTYPE', '2', 'HIDDEN', '70', '0', '3', '__ __ __', '72', '65', '73', '2', '40', '30.0', '49', '20.0', '49', '-10.0',
+    '0', 'LTYPE', '2', 'DASHED0', '70', '0', '3', '__ __ __', '72', '65', '73', '2', '40', '15.0', '49', '10.0', '49', '-5.0',
+    '0', 'LTYPE', '2', 'DASHDOTDOT0', '70', '0', '3', '__ . . __', '72', '65', '73', '4', '40', '20.0', '49', '12.0', '49', '-3.0', '49', '0.0', '49', '-3.0'];
   const layT: string[] = ['0', 'TABLE', '2', 'LAYER', '70', String(LAYERS.length)];
-  LAYERS.forEach(([n, c]) => layT.push('0', 'LAYER', '2', n, '70', '0', '62', String(c), '6', 'CONTINUOUS'));
+  LAYERS.forEach(([n, c, lt]) => layT.push('0', 'LAYER', '2', n, '70', '0', '62', String(c), '6', lt));
   // DIMSTYLE·DIMENSION 미사용(분해치수) → 해당 테이블 제거로 엄격파서 폐기 원천 차단.
+  // 내부 단축 레이어명 → 참조도면 표준 레이어명(단일지점 변환). 엔티티는 code/value 쌍이라 짝수 index=그룹코드.
+  const relayer = (arr: string[]) => { for (let i = 0; i + 1 < arr.length; i += 2) if (arr[i] === '8') arr[i + 1] = LY(arr[i + 1]); };
+  relayer(doc.e); relayer(doc.blk);
   return ['0', 'SECTION', '2', 'HEADER', '9', '$ACADVER', '1', 'AC1009', '9', '$INSUNITS', '70', '4', '9', '$TEXTSTYLE', '7', 'STANDARD', '0', 'ENDSEC',
     '0', 'SECTION', '2', 'TABLES', ...vportT, '0', 'ENDTAB', ...ltT, '0', 'ENDTAB', ...layT, '0', 'ENDTAB', ...styleT, '0', 'ENDTAB', '0', 'ENDSEC',
     '0', 'SECTION', '2', 'BLOCKS', ...ARCHTICK_BLOCK, ...doc.blk, '0', 'ENDSEC',
