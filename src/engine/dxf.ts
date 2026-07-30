@@ -184,32 +184,42 @@ function boltPlan(p: Pen, x: number, y: number, dia: number, hole: number) {
   const m = dia * 1.2;                                   // 센터 십자(빨강)
   p.line(x - m, y, x + m, y, 'DIM'); p.line(x, y - m, x, y + m, 'DIM');
 }
-// 볼트 측면(단면·입면): 축(2선) + 와셔 + 챔퍼 육각머리/너트(facet선) — 참조도면 HEAD/TAIL 재현.
-// (cx,cy)=그립 중심, half=그립 반길이(체결 판두께합/2). vertical=true 수직(플랜지볼트)/false 수평(웨브볼트).
-function boltSide(p: Pen, cx: number, cy: number, half: number, vertical: boolean, dia: number) {
-  const sh = dia * 0.35, hw = dia * 0.84, hf = dia * 0.5, hh = dia * 0.57, ww = dia, wt = dia * 0.27;   // 축·머리대각·facet·머리높이·와셔폭·와셔두께
-  const ch = hh * 0.28, hwt = hw * 0.78;                          // 챔퍼 높이·상단폭
-  // 챔퍼 육각머리(축과 수직인 base선에서 dir방향으로). vertical=true면 세로, false면 가로.
-  const head = (bx: number, by: number, dir: number, vert: boolean) => {
-    const L = (a: number, b: number, c: number, d: number) => vert ? p.line(bx + a, by + dir * b, bx + c, by + dir * d, 'BOLT')
-      : p.line(bx + dir * b, by + a, bx + dir * d, by + c, 'BOLT');
-    L(-hw, 0, hw, 0);                                             // base(와셔쪽)
-    L(-hw, 0, -hw, hh - ch); L(hw, 0, hw, hh - ch);              // 측면 수직
-    L(-hw, hh - ch, -hwt, hh); L(hw, hh - ch, hwt, hh);         // 챔퍼
-    L(-hwt, hh, hwt, hh);                                        // 상단
-    L(-hf, 0, -hf, hh - ch); L(hf, 0, hf, hh - ch);            // facet
+// 실 볼트 치수(KS B 1010 볼트 / 1012 너트 / 1326 와셔, mm): s=대변, hk=머리높이, nm=너트높이, wo=와셔외경, wt=와셔두께, pj=나사여장.
+// pj(여장)=부가길이(ADD_LEN=너트+와셔2매+여장) − nm − 2·wt 와 정합.
+const BOLT_GEOM: Record<number, { s: number; hk: number; nm: number; wo: number; wt: number; pj: number }> = {
+  16: { s: 27, hk: 10, nm: 14, wo: 34, wt: 3.2, pj: 5 },
+  18: { s: 30, hk: 12, nm: 16, wo: 36, wt: 3.2, pj: 6 },
+  20: { s: 32, hk: 13, nm: 17, wo: 39, wt: 3.2, pj: 7 },
+  22: { s: 36, hk: 14, nm: 19, wo: 44, wt: 4.5, pj: 8 },
+  24: { s: 41, hk: 15, nm: 22, wo: 50, wt: 4.5, pj: 9 },
+  27: { s: 46, hk: 17, nm: 25, wo: 56, wt: 4.5, pj: 11 },
+  30: { s: 50, hk: 19, nm: 27, wo: 60, wt: 4.5, pj: 14 },
+};
+// 볼트 측면(단면·입면) — 실사이즈: 축 + 와셔 + 챔퍼 육각머리 / (와셔+너트+나사여장). 직경별 실치수 반영.
+// (cx,cy)=그립 중심, half=그립 반(체결 판두께합/2). vertical=true 수직(플랜지)/false 수평(웨브).
+// hd=머리방향(+1: +u쪽 머리 / −1: −u쪽 머리). 상부플랜지 hd=+1, 하부플랜지 hd=−1(머리는 항상 바깥).
+function boltSide(p: Pen, cx: number, cy: number, half: number, vertical: boolean, dia: number, hd = 1) {
+  const g = BOLT_GEOM[dia] ?? { s: dia * 1.6, hk: dia * 0.65, nm: dia * 0.85, wo: dia * 1.9, wt: dia * 0.2, pj: dia * 0.4 };
+  const ac = g.s * 1.1547, hw = ac / 2, hf = ac * 0.30, ww = g.wo / 2, sh = dia * 0.42, pjw = dia * 0.5;   // 대각·머리반폭·facet·와셔반폭·축반폭·여장반폭
+  // 볼트축 u(+=머리쪽), 폭 v. vertical=세로(u=y,v=x) / 수평(u=x,v=y).
+  const L = (u1: number, v1: number, u2: number, v2: number) => vertical
+    ? p.line(cx + v1, cy + u1, cx + v2, cy + u2, 'BOLT')
+    : p.line(cx + u1, cy + v1, cx + u2, cy + v2, 'BOLT');
+  L(-half, -sh, half, -sh); L(-half, sh, half, sh);                // 축(그립 구간 2선)
+  const washer = (u0: number, dir: number) => { const u1 = u0 + dir * g.wt; L(u0, -ww, u0, ww); L(u1, -ww, u1, ww); L(u0, -ww, u1, -ww); L(u0, ww, u1, ww); };
+  const hexH = (u0: number, dir: number, h: number) => {          // 챔퍼 육각(머리·너트)
+    const uc = u0 + dir * (h - Math.min(h * 0.3, hw * 0.32)), ut = u0 + dir * h, hwt = hw * 0.8;
+    L(u0, -hw, u0, hw); L(u0, -hw, uc, -hw); L(u0, hw, uc, hw);
+    L(uc, -hw, ut, -hwt); L(uc, hw, ut, hwt); L(ut, -hwt, ut, hwt);
+    L(u0, -hf, uc, -hf); L(u0, hf, uc, hf);                        // facet 2선
   };
-  if (vertical) {
-    p.line(cx - sh, cy - half, cx - sh, cy + half, 'BOLT'); p.line(cx + sh, cy - half, cx + sh, cy + half, 'BOLT');   // 축
-    p.rect(cx - ww, cy + half, 2 * ww, wt, 'BOLT'); p.rect(cx - ww, cy - half - wt, 2 * ww, wt, 'BOLT');              // 와셔 상·하
-    head(cx, cy + half + wt, 1, true);                           // 머리(상)
-    head(cx, cy - half - wt, -1, true);                          // 너트(하)
-  } else {
-    p.line(cx - half, cy - sh, cx + half, cy - sh, 'BOLT'); p.line(cx - half, cy + sh, cx + half, cy + sh, 'BOLT');
-    p.rect(cx + half, cy - ww, wt, 2 * ww, 'BOLT'); p.rect(cx - half - wt, cy - ww, wt, 2 * ww, 'BOLT');              // 와셔 우·좌
-    head(cx + half + wt, cy, 1, false);                          // 머리(우)
-    head(cx - half - wt, cy, -1, false);                         // 너트(좌)
-  }
+  const proj = (u0: number, dir: number) => {                     // 나사 여장(너트 밖으로 돌출) + 끝 챔퍼
+    const uc = u0 + dir * (g.pj - Math.min(g.pj * 0.3, pjw * 0.5)), ue = u0 + dir * g.pj;
+    L(u0, -pjw, uc, -pjw); L(u0, pjw, uc, pjw);
+    L(uc, -pjw, ue, -pjw * 0.7); L(uc, pjw, ue, pjw * 0.7); L(ue, -pjw * 0.7, ue, pjw * 0.7);
+  };
+  washer(hd * half, hd); hexH(hd * (half + g.wt), hd, g.hk);       // 머리쪽(hd): 와셔 + 머리
+  washer(-hd * half, -hd); hexH(-hd * (half + g.wt), -hd, g.nm); proj(-hd * (half + g.wt + g.nm), -hd);   // 너트쪽: 와셔 + 너트 + 여장
 }
 // H형강 단면 프로파일(웨브-플랜지 필렛 반경 fr 반영). layer=외곽선.
 function drawHProfile(p: Pen, cx: number, cy: number, H: number, B: number, tw: number, tf: number, fr: number, lay: string) {
@@ -256,7 +266,7 @@ function drawSection(doc: Doc, t: Xf, cx: number, cy: number, r: DesignResult, d
   const fHalf = (oT + tf + iT) / 2;
   colY.forEach(xw => ([1, -1] as const).forEach(sy => {
     const fc = cy + sy * (H / 2 + (oT - tf - iT) / 2);
-    boltSide(p, cx + xw, fc, fHalf, true, dia);
+    boltSide(p, cx + xw, fc, fHalf, true, dia, sy);   // 머리는 바깥(상부 +1 / 하부 −1)
   }));
   // 웨브볼트(수평) — 행 y=webRowY, 웨브+양면 웨브첨판 관통
   const wHalf = (tw + 2 * tpw) / 2;
@@ -457,8 +467,8 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   // 플랜지 볼트 입면 = 측면 육각볼트(머리·너트) — 참조도면 표기
   const iTe = inner?.t ?? 0, fHalfE = (oT + tf + iTe) / 2;
   fPosX.flatMap(x => [x, -x]).forEach(x => {
-    boltSide(p, x, yW + H / 2 + (oT - tf - iTe) / 2, fHalfE, true, dia);
-    boltSide(p, x, yW - H / 2 - (oT - tf - iTe) / 2, fHalfE, true, dia);
+    boltSide(p, x, yW + H / 2 + (oT - tf - iTe) / 2, fHalfE, true, dia, 1);    // 상부: 머리 위
+    boltSide(p, x, yW - H / 2 - (oT - tf - iTe) / 2, fHalfE, true, dia, -1);   // 하부: 머리 아래
   });
   ([1, -1] as const).forEach(s => webPosX.forEach(wx => webRowY.forEach(wy => boltPlan(p, s * wx, yW + wy, dia, hole))));
   p.line(0, yW - H / 2 - 20, 0, yW + H / 2 + 20, 'MAIN');
