@@ -24,7 +24,7 @@ import { quantityOf } from './engine/quantity.ts';
 
 const DEFAULT: DesignCondition = {
   member: '보', jointType: '마찰', steel: 'SN355', plateSteel: 'SM355', bolt: 'F10T', strengthRatio: 0.85, sectionType: '압연',
-  designStd: 'AISC', noStagger: true, equalPlateT: true,
+  designStd: 'AISC', noStagger: false, equalPlateT: true,
 };
 const nf = (v?: number) => v == null ? '—' : v.toLocaleString('en-US');
 const plate = (p?: { t: number; w: number; L: number }) => p ? `${p.t}×${p.w}×${p.L}` : '—';

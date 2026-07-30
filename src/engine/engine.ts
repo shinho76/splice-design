@@ -137,9 +137,20 @@ function designFlange(cond: DesignCondition, sec: HSection, std: ReturnType<type
   //   → W형강만 실 플랜지폭으로 캡. 단, 최외곽 볼트열 횡연단이 최소치(AISC J3.4M) 이상이 되도록 하한 보장.
   //     (협폭 단면은 표준게이지 자체가 넓어, 최소연단 확보를 위해 소폭 오버행 잔존 — 연단 우선)
   //   → H형강은 KS 공칭=실폭이라 불변(편람 골든 보존).
+  // ── 배치 결정: 표준 '엇모' 폭(공칭300)을 정렬 요청 시 대체배치로 전환 ──
+  // 공칭300 표준은 4열 엇모(g2=50). 정렬하면 짝지은 열 간격 50<58.7(2⅔·M22)로 AISC J3.3 위반 →
+  // 사용자 '엇모 제외' 또는 기둥 지압(밀착)일 때는 4열 대신 '2열 @ g1=180'(간격180·횡연단60) 대체배치 사용.
+  const wantAligned = !!cond.noStagger || (cond.member === '기둥' && cond.jointType === '지압');
+  const alt300 = std.layout === '엇모' && wantAligned;
+  const m = alt300 ? 2 : std.m;                         // 유효 볼트 열수
+  const g1 = alt300 ? 180 : std.g1;                     // 유효 게이지(2열: 열간격=180)
+  const g2 = alt300 ? null : std.g2;
+  const staggered = std.layout === '엇모' && !wantAligned;   // 엇모 표준은 정렬요청 없으면 엇모 유지
+
+  // W형강: 표준 공칭폭이 실 플랜지폭보다 클 수 있어 외첨판 오버행 → W만 실폭으로 캡(횡연단 하한 보장).
   const dia0 = boltDiaOf(std.bolt), minE0 = MIN_EDGE[dia0] ?? 30;
-  const outerColOff = std.m === 2 ? std.g1 / 2 : std.g1 / 2 + (std.g2 ?? 0);  // 최외곽 볼트열 중심 오프셋
-  const minOuterW = Math.ceil(2 * (outerColOff + minE0));                     // 횡연단 최소 확보 하한
+  const outerColOff = m === 2 ? g1 / 2 : g1 / 2 + (g2 ?? 0);  // 최외곽 볼트열 중심 오프셋(유효 배치)
+  const minOuterW = Math.ceil(2 * (outerColOff + minE0));     // 횡연단 최소 확보 하한
   const outerW = cond.profile === 'W'
     ? Math.min(std.outerW, Math.max(Math.floor(sec.B), minOuterW))
     : std.outerW;
@@ -165,9 +176,6 @@ function designFlange(cond: DesignCondition, sec: HSection, std: ReturnType<type
   );
 
   const Ns = innerW ? 2 : 1;
-  const m = std.m;
-  // 기둥 지압(밀착접합)은 엇모 대신 정렬 배치 — 부록 기둥 지압 공칭300 세칙
-  const staggered = std.layout === '엇모' && !cond.noStagger && !(cond.member === '기둥' && cond.jointType === '지압');
   // C안: 정렬 피치를 직경별 최소간격(2.667d, 5mm 올림) 이상으로 — 표준(≤M22)은 60 불변, M24만 상향
   const alignP = Math.max(PITCH_ALIGNED, Math.ceil(2.667 * boltDiaOf(std.bolt) / 5) * 5);
   const pitchEff = staggered ? 90 : alignP;   // 중간부 순간격 기준(엇모=동일선상 2×45=90)
@@ -188,7 +196,7 @@ function designFlange(cond: DesignCondition, sec: HSection, std: ReturnType<type
   steps.push({ group:'라) 플랜지 첨판 길이', label:'첨판 길이', formula: staggered?`2[(2n−1)·45+80]+${gap}`:`2[(n−1)·${alignP}+80]+${gap}`, value:Lpf, unit:'mm', ref:'5.5.2' });
 
   return {
-    bolt:{ m, n, count:m*n }, gauge:{ g1:std.g1, g2:std.g2 ?? undefined },
+    bolt:{ m, n, count:m*n }, gauge:{ g1, g2: g2 ?? undefined },
     outerPlate:{ t:tOuter, w:outerW, L:Lpf },
     innerPlate: innerW ? { t:tInner, w:innerW, L:Lpf } : undefined,
     staggered, gap, pitch: pitchEff, edge: 40,   // 도면 배치용
