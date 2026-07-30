@@ -256,41 +256,45 @@ export function layout(r: DesignResult, isCol: boolean) {
   const webL = Math.max(webWid, 2 * (base + (wB.n - 1) * 60) + 40) + 40;
   const contentHalf = Math.max(Lpf, webL) / 2;
   const hf = outerW / 2, hw = H / 2 + oT;
-  const SEP = hf + hw + 210;                       // 두 뷰 중심 간격
-  // 보: 평면(상)·입면(하) 배치(참조도면 규약). 기둥: 기존(평면·입면 90°회전) 유지.
-  const yF = isCol ? 0 : SEP, yW = isCol ? SEP : 0;
   const ext = Math.max(H, 300), memHalf = Lpf / 2 + ext;
-  // 부재(로컬) 대략 범위
-  const locYmax = yW + hw + 30, locYmin = yF - hf - 120;
-  const halfLen = memHalf + 20;                 // 부재 길이 반(display 세로/가로)
-  const halfView = (locYmax - locYmin) / 2;     // 두 뷰 스프레드 반
   const boxRow = 54;
+  const yF = 0;                                   // 평면(하단·기둥은 좌) 기준
   if (!isCol) {
-    // 보: 가로부재. 평면(상단 yF)·입면(하단 yW)·단면(하단 우측 secCx,yW) — 참조도면 배치. display=local.
-    const boxTop = yW - hw - 210, boxBot = boxTop - boxRow * 4;   // 표제란은 입면(하단) 아래
+    // 보: 평면(하단) → 규격표(중단) → 입면+단면(상단). 참조도면 [나의아저씨] 3밴드 배치.
+    const rowH = 125, nRows = 4;                  // 표: 제목 + WEB + FLG(EXT.) + FLG(INT.)
     const boxHalf = Math.max(memHalf, 500) + 20;
     const secB = Math.max(B, outerW);
-    const labelW = 340;                                    // 우측 지시선 라벨 영역 폭
-    const secCx = boxHalf + 40 + labelW + 90 + secB / 2;   // 라벨영역 오른쪽에 단면 뷰 배치(겹침 방지)
-    const frameRC = secCx + secB / 2 + 150;                // 단면 폭·치수 포함 우측 경계
-    const frameTop = yF + hf + 130, frameBot = boxBot - 16; // 상단은 평면 위
+    const tableBot = yF + hf + 40;                // 표 하단(평면 위 여백)
+    const tableTop = tableBot + rowH * nRows;
+    const yW = tableTop + 80 + hw;                // 입면 중심(표 위)
+    const secCx = boxHalf + 40 + secB / 2 + 60;   // 입면 우측 단면
+    const frameRC = secCx + secB / 2 + 150;
+    const frameTop = yW + hw + 170;               // 입면 상단 치수 여백
+    const frameBot = yF - hf - 150;               // 평면 하단 치수 여백
     return {
       H, B, tw, tf, oT, Lpf, outerW, webWid, contentHalf, hf, hw, gap, base, yF, yW, memHalf, boxRow, secCx,
+      rowH, nRows, tableBot, tableTop,
       mOx: 0, mOy: 0, deg: 0,
-      boxTop, boxBot, frameL: -boxHalf - 10, frameRC, frameR: frameRC + csStrip, frameTop, frameBot,
-      csCx: frameRC + csStrip / 2, csCy: (frameTop + frameBot) / 2,
+      boxTop: frameBot, boxBot: frameBot,
+      frameL: -boxHalf - 10, frameRC, frameR: frameRC, frameTop, frameBot,
+      csCx: frameRC, csCy: (frameTop + frameBot) / 2,
     };
   }
-  // 기둥: 세로부재. display x = -localY + mOx(뷰 좌우), display y = localX(부재 세로).
+  // 기둥: 세로부재(90° 회전). 기존 배치 유지.
+  const yW = hf + 120 + 90 + hw;
+  const locYmax = yW + hw + 30, locYmin = yF - hf - 120;
+  const halfLen = memHalf + 20;
+  const halfView = (locYmax - locYmin) / 2;
   const mOx = (locYmax + locYmin) / 2;
-  const dispHW = halfView + 40;                 // 프레임 가로 반
+  const dispHW = halfView + 40;
   const boxTop = -halfLen - 40, boxBot = boxTop - boxRow * 4;
   const frameRC = dispHW + 10, frameTop = halfLen + 40, frameBot = boxBot - 16;
   return {
     H, B, tw, tf, oT, Lpf, outerW, webWid, contentHalf, hf, hw, gap, base, yF, yW, memHalf, boxRow, secCx: 0,
+    rowH: 0, nRows: 0, tableBot: 0, tableTop: 0,
     mOx, mOy: 0, deg: 90,
-    boxTop, boxBot, frameL: -dispHW - 10, frameRC, frameR: frameRC + csStrip, frameTop, frameBot,
-    csCx: frameRC + csStrip / 2, csCy: (frameTop + frameBot) / 2,
+    boxTop, boxBot, frameL: -dispHW - 10, frameRC, frameR: frameRC, frameTop, frameBot,
+    csCx: frameRC, csCy: (frameTop + frameBot) / 2,
   };
 }
 
@@ -318,6 +322,25 @@ function drawSheetCell(p: Pen, F: UniFrame, secLbl: string, outerLbl: string, in
   bolt(wBolt);
 }
 
+// ── 규격표(중단 밴드) : 참조도면 [나의아저씨] 셀. 제목행(전폭) + WEB/FLG(EXT.)/FLG(INT.) 3행(라벨|값). ──
+function drawSpecTable(p: Pen, x0: number, x1: number, tableBot: number, rowH: number,
+  title: string, webS: string, flgExtS: string, flgIntS: string) {
+  const TT = 50;                                         // 표 문자높이(참조도면 Cell Head=50)
+  const rows = [0, 1, 2, 3, 4].map(i => tableBot + i * rowH);   // 하→상, rows[4]=상단
+  p.rect(x0, tableBot, x1 - x0, rowH * 4, 'MINI_BOX');
+  for (let i = 1; i < 4; i++) p.line(x0, rows[i], x1, rows[i], 'MINI_BOX');   // 행 구분선
+  const lw = Math.min(360, (x1 - x0) * 0.2);             // 라벨열 폭
+  p.line(x0 + lw, rows[0], x0 + lw, rows[3], 'MINI_BOX'); // 라벨|값 구분(하위 3행)
+  const midY = (i: number) => (rows[i] + rows[i + 1]) / 2 - TT / 2;
+  p.text((x0 + x1) / 2, midY(3), TT, title, 'MINI_HEAD', { align: 'c' });     // 제목(최상단 전폭)
+  const labels = ['FLG(INT.)', 'FLG(EXT.)', 'WEB'];      // rows 0·1·2 (하→상)
+  const vals = [flgIntS, flgExtS, webS];
+  for (let i = 0; i < 3; i++) {
+    p.text(x0 + lw / 2, midY(i), TT, labels[i], 'TEXT', { align: 'c' });
+    p.text(x0 + lw + 40, midY(i), TT, vals[i], 'TEXT', { align: 'l' });
+  }
+}
+
 export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox: number, oy: number, uni?: UniFrame, office = false, sheet = false) {
   const isCol = cond.member === '기둥';
   const L = layout(r, isCol);
@@ -340,6 +363,13 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   const flCount = fB.m * round(fB.n) * 4, wCount = wB.m * wB.n * 2;
   const B = parseName(r.section).B;
   const secLbl = `H-${H}x${B}x${tw}x${tf}`;
+  // ── 참조도면 [나의아저씨] 규격표 문자열 : "{n}-M{d}(등급) / {L}x{w}x{t}t(재질, nEA)" (값은 현 앱 계산) ──
+  const mat = cond.plateSteel ?? cond.steel;
+  const plRef = (pl: Plate | undefined) => pl ? `${pl.L}x${pl.w}x${pl.t}t` : '';
+  const titleS = `보-H ${H}x${B}x${tw}/${tf} (GIRDER SPLICE)`;
+  const webS = r.web.webPlate ? `${wCount}-M${dia}(${cond.bolt}) / ${plRef(r.web.webPlate)}(${mat}, 2EA)` : '-';
+  const flgExtS = r.flange.outerPlate ? `${flCount}-M${dia}(${cond.bolt}) / ${plRef(r.flange.outerPlate)}(${mat}, 2EA)` : '-';
+  const flgIntS = r.flange.innerPlate ? `${plRef(r.flange.innerPlate)}(${mat}, 4EA)` : '-';
   // ── 사무소 포맷(office) 라벨: ExT/INT/W-PL + 볼트길이. 값은 현 앱 계산 그대로 ──
   const bName = boltNameByDia[dia];
   const flLen = standardLength(gripFlange(r), bName), wLen = standardLength(gripWeb(r), bName);
@@ -394,7 +424,9 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   const DS = isCol ? 1 : -1;   // 세로 치수 배치측: 기둥=우(+) / 보=좌(−) — 지시선(우측)과 좌우 역할 분리
   dimChainV(doc, tM, [...new Set(webYs)].sort((a, b) => b - a), DS * contentHalf, DS * (contentHalf + 46), DS * (contentHalf + 120));
   const webXs = [-webWid / 2, ...webPosX.map(x => -x).sort((a, b) => a - b), -gap / 2, gap / 2, ...webPosX, webWid / 2];
-  dimChainH(doc, tM, [...new Set(webXs)].sort((a, b) => a - b), yW - H / 2 - oT, yW - H / 2 - oT - 46, yW - H / 2 - oT - 100);
+  // 보: 입면 수평치수는 상단(표와 겹침 방지) / 기둥: 기존 하단
+  if (isCol) dimChainH(doc, tM, [...new Set(webXs)].sort((a, b) => a - b), yW - H / 2 - oT, yW - H / 2 - oT - 46, yW - H / 2 - oT - 100);
+  else dimChainH(doc, tM, [...new Set(webXs)].sort((a, b) => a - b), yW + H / 2 + oT, yW + H / 2 + oT + 46, yW + H / 2 + oT + 100);
 
   // ── 플랜지 평면도 (yF) : 부재 연장 + 파단선 ──
   ([1, -1] as const).forEach(s => {
@@ -425,11 +457,15 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
     emitDim(doc, tM, [ix, yF + cyT - inner.w / 2], [ix, yF + cyT + inner.w / 2], [-DS * (Lpf / 2 + 46), 0], `${round(inner.w)}`, true);
   }
 
-  // ── 단면(斷面) 뷰 (보 전용, 부재 우측) — 참조도면 우하 배치 ──
+  // ── 단면(斷面) 뷰 (보 전용, 입면 우측 상단) ──
   if (!isCol) {
     const posCy = colY.filter(c => c > 0);
     const innerCxAbs = inner && posCy.length ? Math.abs(posCy.reduce((a, b) => a + b, 0) / posCy.length) : 0;
     drawSection(doc, tM, L.secCx, yW, r, { H, B, tw, tf, oT, outerW, chum, colY, webRowY, innerCxAbs, dia, inner });
+    // ── 규격표(중단) + 외곽 테두리 : 참조도면 [나의아저씨] 셀. 지시선·상단제목·하단표 없음. ──
+    drawSpecTable(pff, F.frameL, F.frameRC, L.tableBot + cdy, L.rowH, titleS, webS, flgExtS, flgIntS);
+    pff.rect(F.frameL, F.frameBot, F.frameRC - F.frameL, F.frameTop - F.frameBot, 'MINI_BOX');
+    return;
   }
 
   // ── 지시선(판·볼트) : 앵커는 로컬(오프셋 제외) 좌표 → pf(정립+오프셋)가 한 번만 적용 ──
@@ -621,28 +657,60 @@ export function uniformFrame(rows: DesignResult[], isCol: boolean): UniFrame {
   return { frameL, frameRC, frameR: frameRC + csStrip, frameTop, frameBot };
 }
 
+/** H형강 깊이(공칭 춤) 시리즈 키 — "H-250" 등. 참조도면 [나의아저씨] 전부재도 열 구분용. */
+function seriesDepthKey(r: DesignResult): string {
+  const sec = sectionByName(r.section);
+  if (sec?.label) { const m = sec.label.match(/^W\d+/i); return m ? m[0].toUpperCase() : sec.label; }
+  const { H, B } = parseName(r.section);
+  return `H-${nominalOf(H, B).split(/[x×]/)[0]}`;
+}
+/** 깊이 시리즈별 그룹(등장순 유지, 비연속 안전). */
+function groupByDepth(rows: DesignResult[]): { key: string; items: DesignResult[] }[] {
+  const order: string[] = [], map = new Map<string, DesignResult[]>();
+  for (const r of rows) { const k = seriesDepthKey(r); if (!map.has(k)) { map.set(k, []); order.push(k); } map.get(k)!.push(r); }
+  return order.map(k => ({ key: k, items: map.get(k)! }));
+}
+
 export function toDXFAll(rows: DesignResult[], cond: DesignCondition, office = false): string {
   const doc = newDoc();
   const isCol = cond.member === '기둥';
-  const uni = uniformFrame(rows, isCol);                          // 가장 큰 형강 기준 통일 도곽
-  const fw = uni.frameR - uni.frameL, fh = uni.frameTop - uni.frameBot;
-  const COLS = 3, GAP = 400, cellW = fw + GAP, cellH = fh + GAP;
-  const HHDR = 90;                                                // 시리즈 헤더 높이
   const p = pen(doc, mkXf(0, 0, 0));
-  let row = 0;                                                    // 전역 그리드 행(시리즈마다 새 행)
-  for (const g of groupBySeries(rows)) {                          // 시리즈별로 나눠 행 분리
-    const firstRow = row;
-    g.items.forEach((r, j) => {
-      if (j > 0 && j % COLS === 0) row++;                         // 그룹 내 줄바꿈
-      const col = j % COLS;
-      const ox = col * cellW + GAP / 2 - uni.frameL;
-      const oy = -row * cellH - GAP / 2 - uni.frameTop - HHDR;    // 헤더 아래로 내림
-      emitMember(doc, r, cond, ox, oy, uni, office);
-    });
-    // 시리즈 헤더(그룹 첫 행 상단 좌측)
-    const hy = -firstRow * cellH - GAP / 2 - uni.frameTop - HHDR + fh + 34;
-    p.text(GAP / 2, hy, TH * 1.8, `[ ${g.key} SERIES ]`, 'MINI_HEAD', { align: 'l' });
-    row++;                                                        // 다음 시리즈는 새 행
+  if (isCol) {
+    // 기둥: 기존 시리즈-행 그리드 유지
+    const uni = uniformFrame(rows, isCol);
+    const fw = uni.frameR - uni.frameL, fh = uni.frameTop - uni.frameBot;
+    const COLS = 3, GAP = 400, cellW = fw + GAP, cellH = fh + GAP, HHDR = 90;
+    let row = 0;
+    for (const g of groupBySeries(rows)) {
+      const firstRow = row;
+      g.items.forEach((r, j) => {
+        if (j > 0 && j % COLS === 0) row++;
+        const col = j % COLS;
+        const ox = col * cellW + GAP / 2 - uni.frameL;
+        const oy = -row * cellH - GAP / 2 - uni.frameTop - HHDR;
+        emitMember(doc, r, cond, ox, oy, uni, office);
+      });
+      const hy = -firstRow * cellH - GAP / 2 - uni.frameTop - HHDR + fh + 34;
+      p.text(GAP / 2, hy, TH * 1.8, `[ ${g.key} SERIES ]`, 'MINI_HEAD', { align: 'l' });
+      row++;
+    }
+    return wrap(doc);
+  }
+  // 보: 참조도면 [나의아저씨] — 시리즈(H-춤)별 세로 열, 좌→우 배치. 각 열 상단 헤더 박스.
+  const COLGAP = 500, ROWGAP = 340, HHDR = 260;
+  let xCur = 0;
+  for (const g of groupByDepth(rows)) {
+    const uni = uniformFrame(g.items, false);
+    const fw = uni.frameR - uni.frameL, fh = uni.frameTop - uni.frameBot;
+    const hTop = -20, hBot = -HHDR + 60;                          // 헤더 박스(열 상단)
+    p.rect(xCur, hBot, fw, hTop - hBot, 'MINI_BOX');
+    p.text(xCur + fw / 2, (hTop + hBot) / 2 - 80, 160, g.key, 'MINI_HEAD', { align: 'c' });
+    let yTop = -HHDR;                                             // 첫 셀 frameTop 위치
+    for (const r of g.items) {
+      emitMember(doc, r, cond, xCur - uni.frameL, yTop - uni.frameTop, uni, office);
+      yTop -= fh + ROWGAP;
+    }
+    xCur += fw + COLGAP;
   }
   return wrap(doc);
 }
@@ -686,8 +754,9 @@ export function toDXFSheet(rows: DesignResult[], cond: DesignCondition): string 
   p.rect(GAP / 4, sheetBot, sheetW - GAP / 2, sheetTop + 320 - sheetBot, 'MINI_BOX');
   return wrap(doc);
 }
-/** 사무소 표준 포맷 별칭 — 앱 "전체 DXF 다운로드(사무소 표준 포맷)" 버튼. */
-export const toDXFAll2 = (rows: DesignResult[], cond: DesignCondition): string => toDXFSheet(rows, cond);
+/** 사무소 표준 포맷 별칭 — 앱 "전체 DXF 다운로드(사무소 표준 포맷)" 버튼.
+ *  보: 참조도면 [나의아저씨] 시리즈-열 전부재도(toDXFAll)와 동일. */
+export const toDXFAll2 = (rows: DesignResult[], cond: DesignCondition): string => toDXFAll(rows, cond);
 export function downloadFile(filename: string, content: string | ArrayBuffer, mime: string) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
