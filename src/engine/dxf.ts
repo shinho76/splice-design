@@ -135,13 +135,16 @@ function emitDim(doc: Doc, t: Xf, p1: [number, number], p2: [number, number], dl
     geo.push(...bl(t, dlx, y1, dlx, y2));                                   // 치수선
     geo.push(...bl(t, x1 + dir * 2, y1, dlx + dir * 5, y1), ...bl(t, x2 + dir * 2, y2, dlx + dir * 5, y2)); // 치수보조선
     geo.push(...archtick(t, dlx, y1, 90), ...archtick(t, dlx, y2, 90));     // 틱
-    geo.push(...btext(t, dlx + dir * (TH * 0.62), (y1 + y2) / 2, txt, 90)); // 치수문자
+    // 문자는 치수선 바깥쪽(물체 반대편)에 완전히 떨어뜨림(선 위 겹침 방지). 90°회전 문자는 baseline 좌측으로 자간 확장.
+    const tx = dir > 0 ? dlx + TH + 4 : dlx - 4;
+    geo.push(...btext(t, tx, (y1 + y2) / 2, txt, 90));                      // 치수문자
   } else {
     const dir = Math.sign(dly - y1) || -1;
     geo.push(...bl(t, x1, dly, x2, dly));
     geo.push(...bl(t, x1, y1 + dir * 2, x1, dly + dir * 5), ...bl(t, x2, y2 + dir * 2, x2, dly + dir * 5));
     geo.push(...archtick(t, x1, dly, 0), ...archtick(t, x2, dly, 0));
-    geo.push(...btext(t, (x1 + x2) / 2, dly - dir * (TH * 0.62), txt, 0));
+    const ty = dir > 0 ? dly + 4 : dly - TH - 4;                           // 문자는 치수선 바깥쪽에 완전히 이격
+    geo.push(...btext(t, (x1 + x2) / 2, ty, txt, 0));
   }
   doc.e.push(...geo);   // 엔티티로 직접 출력(블록·DIMENSION 미사용)
 }
@@ -277,22 +280,22 @@ function drawSection(doc: Doc, t: Xf, cx: number, cy: number, r: DesignResult, d
   const gxs = [...colY].sort((a, b) => a - b);
   for (let i = 0; i < gxs.length - 1; i++)
     emitDim(doc, t, [cx + gxs[i], fyTop], [cx + gxs[i + 1], fyTop], [cx + (gxs[i] + gxs[i + 1]) / 2, fyTop + 42], `${round(gxs[i + 1] - gxs[i])}`, false);
-  emitDim(doc, t, [cx - B / 2, fyTop], [cx + B / 2, fyTop], [cx, fyTop + 104], `${round(B)}`, false);            // 부재 폭 B
-  emitDim(doc, t, [cx - outerW / 2, fyTop], [cx + outerW / 2, fyTop], [cx, fyTop + 164], `${round(outerW)}`, false);  // 외첨판 폭
+  emitDim(doc, t, [cx - B / 2, fyTop], [cx + B / 2, fyTop], [cx, fyTop + 112], `${round(B)}`, false);            // 부재 폭 B
+  emitDim(doc, t, [cx - outerW / 2, fyTop], [cx + outerW / 2, fyTop], [cx, fyTop + 182], `${round(outerW)}`, false);  // 외첨판 폭
   // ── 우측: 웨브 볼트 피치 → 웨브볼트 스팬 → 춤 H(삼중치수) ──
   if (webRowY.length > 1) {
     const wys = [...webRowY].map(y => cy + y).sort((a, b) => b - a);
     for (let i = 0; i < wys.length - 1; i++)
-      emitDim(doc, t, [exR, wys[i]], [exR, wys[i + 1]], [exR + 52, (wys[i] + wys[i + 1]) / 2], `${round(Math.abs(wys[i] - wys[i + 1]))}`, true);
-    emitDim(doc, t, [exR, wys[0]], [exR, wys[wys.length - 1]], [exR + 108, 0], `${round(Math.abs(wys[0] - wys[wys.length - 1]))}`, true);  // 웨브볼트 스팬
+      emitDim(doc, t, [exR, wys[i]], [exR, wys[i + 1]], [exR + 55, (wys[i] + wys[i + 1]) / 2], `${round(Math.abs(wys[i] - wys[i + 1]))}`, true);
+    emitDim(doc, t, [exR, wys[0]], [exR, wys[wys.length - 1]], [exR + 124, 0], `${round(Math.abs(wys[0] - wys[wys.length - 1]))}`, true);  // 웨브볼트 스팬
   }
-  emitDim(doc, t, [exR, fyTop], [exR, cy - H / 2 - oT], [exR + 168, 0], `${round(H)}`, true);                    // 춤 H(외측)
+  emitDim(doc, t, [exR, fyTop], [exR, cy - H / 2 - oT], [exR + 193, 0], `${round(H)}`, true);                    // 춤 H(외측)
   // ── 좌·하: 판/부재 두께(외첨판 oT·내첨판 iT·플랜지 tf·웨브 tw) ──
-  emitDim(doc, t, [exL, cy + H / 2 + oT], [exL, cy + H / 2], [exL - 34, 0], `${oT}`, true);                       // 외첨판 두께
-  if (inner) emitDim(doc, t, [exL, cy + H / 2 - tf], [exL, cy + H / 2 - tf - iT], [exL - 34, 0], `${iT}`, true);  // 내첨판 두께
-  emitDim(doc, t, [exL, cy - H / 2 + tf], [exL, cy - H / 2], [exL - 34, 0], `${tf}`, true);                       // 플랜지 두께
-  emitDim(doc, t, [cx - tw / 2, cy - H / 2 - oT], [cx + tw / 2, cy - H / 2 - oT], [cx, cy - H / 2 - oT - 44], `${tw}`, false);   // 웨브 두께
-  p.text(cx, cy - H / 2 - oT - 100, TH * 1.05, 'SECTION', 'DIM', { align: 'c' });
+  emitDim(doc, t, [exL, cy + H / 2 + oT], [exL, cy + H / 2], [exL - 38, 0], `${oT}`, true);                       // 외첨판 두께
+  if (inner) emitDim(doc, t, [exL, cy + H / 2 - tf], [exL, cy + H / 2 - tf - iT], [exL - 38, 0], `${iT}`, true);  // 내첨판 두께
+  emitDim(doc, t, [exL, cy - H / 2 + tf], [exL, cy - H / 2], [exL - 38, 0], `${tf}`, true);                       // 플랜지 두께
+  emitDim(doc, t, [cx - tw / 2, cy - H / 2 - oT], [cx + tw / 2, cy - H / 2 - oT], [cx, cy - H / 2 - oT - 48], `${tw}`, false);   // 웨브 두께
+  p.text(cx, cy - H / 2 - oT - 108, TH * 1.05, 'SECTION', 'DIM', { align: 'c' });
 }
 const gpl = (pl: Plate | undefined, n: number) => pl ? `G.PL. ${pl.t}x${pl.w}x${pl.L}x${n}EA` : '-';
 
@@ -319,7 +322,7 @@ export function layout(r: DesignResult, isCol: boolean) {
     const tableTop = yW - hw - 165;               // 규격표(하단) 상단 — 사이에 입면 하단치수
     const tableBot = tableTop - rowH * nRows;
     const secCx = boxHalf + 40 + secB / 2 + 60;   // 입면 우측 단면
-    const frameRC = secCx + secB / 2 + 180;       // 단면 우측 치수(춤 H) 여백
+    const frameRC = secCx + secB / 2 + 235;       // 단면 우측 치수(춤 H·문자) 여백
     const frameTop = yF + hf + 130;               // 평면 위
     const frameBot = tableBot - 40;               // 표 아래
     return {
