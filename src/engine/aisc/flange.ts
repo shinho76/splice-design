@@ -10,7 +10,7 @@ import { parseName, sectionByName } from '../sections.ts';
 import { Fy as FySteel, Fu as FuSteel, BOLT_MAT } from '../materials.ts';
 import { Ab, To_kN } from '../bolts.ts';
 import { PHI, FNV_FACTOR, SLIP, holeDia, netDeductPerHole, kN, kNm } from './constants.ts';
-import { grossArea, netArea, bearing, buckling, blockShearGovern, flangeColumns } from './geometry.ts';
+import { grossArea, netArea, netAreaStag, colOffsets, bearing, buckling, blockShearGovern, flangeColumns } from './geometry.ts';
 import type { AiscCheck, AiscStep, BlockCase, DemandSet } from './types.ts';
 
 /** step 팩토리 */
@@ -57,6 +57,9 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
   const Lv = edge + (nrow - 1) * pitch;               // 블록전단 전단선 길이
   const unbraced = gap + 2 * edge;                    // 압축 좌굴 비지지 길이
   const cols = flangeColumns(m, g1, g2);
+  const stagF = r.flange.staggered ?? false;              // 엇모 여부 → B4.3b 순단면
+  const colsOff = colOffsets(cols, stagF);                // 전 열 {x, off}
+  const innerColsOff = colsOff.filter(c => c.x > 0);      // 내첨판 1매(웨브 한쪽) 열들
 
   const oT = r.flange.outerPlate?.t ?? 9, oW = r.flange.outerPlate?.w ?? B;
   const inner = r.flange.innerPlate, iT = inner?.t ?? 0, iW = inner?.w ?? 0;
@@ -97,7 +100,7 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
   // ── FP. 외첨판 PL (half) ──
   {
     const g = `B. 외첨판 PL-${oT}×${oW}`;
-    const Ag = grossArea(oW, oT), An = netArea(oW, oT, m, d), Ae = Math.min(An, 0.85 * Ag);
+    const ns = netAreaStag(oW, oT, colsOff, ndp), An = ns.area, Ag = grossArea(oW, oT), Ae = Math.min(An, 0.85 * Ag);
     checks.push(finalize({
       id: 'FP1', region: 'outer', group: g, label: '인장 항복', clause: 'J4.1',
       detail: `φFyAg = 0.90·${pFy}·${Ag.toFixed(0)}`, phiRn: kN(PHI.Y * pFy * Ag), demand: kN(halfOut), unit: 'kN',
@@ -111,7 +114,7 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
       detail: `φFuAe, Ae=min(An,0.85Ag)=${Ae.toFixed(0)}`, phiRn: kN(PHI.V * pFu * Ae), demand: kN(halfOut), unit: 'kN',
       steps: [
         S('Gross area Ag', 'width × thickness', `${oW}·${oT}`, +Ag.toFixed(0), 'mm²'),
-        S('Net area An (deduct m holes)', '(w − m·(dₕ+2mm))·t', `(${oW} − ${m}·${ndp})·${oT}`, +An.toFixed(0), 'mm²', 'B4.3b'),
+        S('Net area An (deduct m holes)', stagF ? '(w − m·(dₕ+2) + Σs²/4g)·t' : '(w − m·(dₕ+2mm))·t', stagF ? `(${oW} − ${m}·${ndp} + ${ns.gain.toFixed(1)})·${oT}` : `(${oW} − ${m}·${ndp})·${oT}`, +An.toFixed(0), 'mm²', 'B4.3b'),
         S('Effective area Ae', 'min(An, 0.85·Ag)', `min(${An.toFixed(0)}, ${(0.85 * Ag).toFixed(0)})`, +Ae.toFixed(0), 'mm²'),
         S('Design rupture φRn', 'φ·Fu·Ae', `0.75·${pFu}·${Ae.toFixed(0)}`, kN(PHI.V * pFu * Ae), 'kN', 'J4.2'),
       ],
@@ -147,7 +150,8 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
   if (inner) {
     const g = `C. 내첨판 PL-${iT}×${iW}×2`;
     const nHalf = Math.ceil(m / 2);                 // 내판 1매당 열수
-    const Ag = 2 * grossArea(iW, iT), An = 2 * netArea(iW, iT, nHalf, d), Ae = Math.min(An, 0.85 * Ag);
+    const nsI = netAreaStag(iW, iT, innerColsOff, ndp);   // 내판 1매 B4.3b 순단면
+    const Ag = 2 * grossArea(iW, iT), An = 2 * nsI.area, Ae = Math.min(An, 0.85 * Ag);
     checks.push(finalize({
       id: 'FI1', region: 'inner', group: g, label: '인장 항복', clause: 'J4.1',
       detail: `φFy·2Ag = 0.90·${pFy}·${Ag.toFixed(0)}`, phiRn: kN(PHI.Y * pFy * Ag), demand: kN(halfIn), unit: 'kN',
@@ -161,7 +165,7 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
       detail: `φFu·Ae, Ae=${Ae.toFixed(0)}`, phiRn: kN(PHI.V * pFu * Ae), demand: kN(halfIn), unit: 'kN',
       steps: [
         S('Gross area (2 plates) Ag', '2·w·t', `2·${iW}·${iT}`, +Ag.toFixed(0), 'mm²'),
-        S('Net area An (deduct holes/plate)', '2·(w − nHalf·(dₕ+2))·t', `2·(${iW} − ${nHalf}·${ndp})·${iT}`, +An.toFixed(0), 'mm²', 'B4.3b'),
+        S('Net area An (deduct holes/plate)', stagF ? '2·(w − nHalf·(dₕ+2) + Σs²/4g)·t' : '2·(w − nHalf·(dₕ+2))·t', stagF ? `2·(${iW} − ${nHalf}·${ndp} + ${nsI.gain.toFixed(1)})·${iT}` : `2·(${iW} − ${nHalf}·${ndp})·${iT}`, +An.toFixed(0), 'mm²', 'B4.3b'),
         S('Effective area Ae', 'min(An, 0.85·Ag)', `min(${An.toFixed(0)}, ${(0.85 * Ag).toFixed(0)})`, +Ae.toFixed(0), 'mm²'),
         S('Design rupture φRn', 'φ·Fu·Ae', `0.75·${pFu}·${Ae.toFixed(0)}`, kN(PHI.V * pFu * Ae), 'kN', 'J4.2'),
       ],
@@ -211,7 +215,8 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
       ],
     }));
     // F13.1 인장플랜지 휨파단
-    const Afg = B * tf, Afn = netArea(B, tf, m, d), Yt = mFy / mFu <= 0.8 ? 1.0 : 1.1;
+    const nsF = netAreaStag(B, tf, colsOff, ndp), Afn = nsF.area;   // 플랜지 순단면 B4.3b(엇모 s²/4g)
+    const Afg = B * tf, Yt = mFy / mFu <= 0.8 ? 1.0 : 1.1;
     const noRed = mFu * Afn >= Yt * mFy * Afg;
     const Mn = noRed ? mFy * Zx : (mFu * Afn / Afg) * Sx;
     checks.push(finalize({
@@ -220,7 +225,7 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
       phiRn: kNm(PHI.F * Mn), demand: kNm(Mu), unit: 'kN·m',
       steps: [
         S('Gross flange area Afg', 'B·tf', `${B}·${tf}`, +Afg.toFixed(0), 'mm²'),
-        S('Net flange area Afn', '(B − m·(dₕ+2))·tf', `(${B} − ${m}·${ndp})·${tf}`, +Afn.toFixed(0), 'mm²', 'B4.3b'),
+        S('Net flange area Afn', stagF ? '(B − m·(dₕ+2) + Σs²/4g)·tf' : '(B − m·(dₕ+2))·tf', stagF ? `(${B} − ${m}·${ndp} + ${nsF.gain.toFixed(1)})·${tf}` : `(${B} − ${m}·${ndp})·${tf}`, +Afn.toFixed(0), 'mm²', 'B4.3b'),
         S('Hole-reduction test', 'Fu·Afn vs Yt·Fy·Afg', `${kN(mFu * Afn)} vs ${kN(Yt * mFy * Afg)} (Yt=${Yt})`, undefined, 'kN', 'F13.1'),
         S('Nominal moment Mn', noRed ? 'Fy·Zx (no reduction)' : '(Fu·Afn/Afg)·Sx', noRed ? `${mFy}·${Zx}` : `(${mFu}·${Afn.toFixed(0)}/${Afg.toFixed(0)})·${Sx}`, kNm(Mn), 'kN·m'),
         S('Design φMn', 'φ·Mn', `0.90·${kNm(Mn)}`, kNm(PHI.F * Mn), 'kN·m'),

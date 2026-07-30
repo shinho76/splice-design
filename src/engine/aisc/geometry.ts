@@ -15,6 +15,34 @@ export const netArea = (width: number, t: number, nHoles: number, d: number): nu
   Math.max(0, width - nHoles * netDeductPerHole(d)) * t;
 
 /**
+ * 엇모(staggered) 순단면적 (mm²) — AISC 360-16 B4.3b.
+ *   순폭 = 총폭 − Σdₕ,eff + Σ(s²/4g)   (s=인접열 길이방향 엇갈림, g=열간 폭방향 게이지)
+ * 지배(최소) 순단면 = 전 열을 관통하는 지그재그 경로. 정렬(off 동일)이면 s=0 → (w − n·dd)와 동일.
+ * cols: 각 볼트열의 { x: 폭방향 좌표, off: 길이방향 오프셋 }. dd = 1구멍 공제폭.
+ * 반환: {area, gain}(gain=Σs²/4g, 계산서 표기용).
+ */
+export function netAreaStag(width: number, t: number, cols: { x: number; off: number }[], dd: number): { area: number; gain: number } {
+  if (cols.length === 0) return { area: width * t, gain: 0 };
+  const xs = cols.slice().sort((a, b) => a.x - b.x);
+  let gain = 0;
+  for (let i = 0; i < xs.length - 1; i++) {
+    const g = xs[i + 1].x - xs[i].x, s = Math.abs(xs[i + 1].off - xs[i].off);
+    if (g > 0 && s > 0) gain += (s * s) / (4 * g);
+  }
+  const zig = width - xs.length * dd + gain;                 // 전열 지그재그(통상 지배)
+  const perLine = new Map<number, number>();                 // 방어적: 한 종선상 최다열 직선경로
+  for (const c of xs) perLine.set(c.off, (perLine.get(c.off) ?? 0) + 1);
+  const straight = width - Math.max(...perLine.values()) * dd;
+  return { area: Math.max(0, Math.min(zig, straight)) * t, gain: zig <= straight ? gain : 0 };
+}
+
+/** 열 x좌표 → 길이방향 오프셋(엇모: 최외곽열=0, 내측열=45mm 엇갈림). 정렬이면 전부 0. */
+export function colOffsets(cols: number[], staggered: boolean): { x: number; off: number }[] {
+  const maxAbs = Math.max(...cols.map(v => Math.abs(v)));
+  return cols.map(x => ({ x, off: staggered && Math.abs(x) < maxAbs - 0.5 ? 45 : 0 }));
+}
+
+/**
  * 플랜지 볼트열 x좌표(폭방향, CL=0 대칭). 앱 게이지 규칙:
  *   m=2 → ±g1/2,  m=4 → ±g1/2, ±(g1/2+g2)
  */
