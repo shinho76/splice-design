@@ -650,6 +650,18 @@ const TEXT_STYLE = 'Cell Body';
 const ARCHTICK_BLOCK = ['0', 'BLOCK', '8', '0', '2', '_ARCHTICK', '70', '0', '10', '0', '20', '0', '30', '0', '3', '_ARCHTICK',
   '0', 'LINE', '8', '0', '10', '-0.5', '20', '-0.5', '30', '0', '11', '0.5', '21', '0.5', '31', '0',
   '0', 'ENDBLK', '8', '0'];
+// R12 필수 모델·용지공간 블록(누락 시 AutoCAD가 도곽을 거부). ezdxf R12 출력과 동일.
+const SPACE_BLOCKS = [
+  '0', 'BLOCK', '8', '0', '2', '$MODEL_SPACE', '70', '0', '10', '0.0', '20', '0.0', '30', '0.0', '3', '$MODEL_SPACE', '1', '', '0', 'ENDBLK', '8', '0',
+  '0', 'BLOCK', '8', '0', '2', '$PAPER_SPACE', '70', '0', '10', '0.0', '20', '0.0', '30', '0.0', '3', '$PAPER_SPACE', '1', '', '0', 'ENDBLK', '8', '0'];
+// DIMSTYLE STANDARD(전 변수 완비) — AutoCAD 2026이 요구. ezdxf R12 표준값 이식(핸들 제외).
+// 이전엔 이 테이블을 제거해 FastView 오류는 막았으나, AutoCAD는 반대로 '치수(Dimension) 스타일 없음'으로 거부 → 완전판으로 재도입.
+const DIMSTYLE_TABLE = ['0', 'TABLE', '2', 'DIMSTYLE', '70', '1',
+  '0', 'DIMSTYLE', '2', 'STANDARD', '70', '0', '3', '', '4', '', '5', '', '6', '', '7', '',
+  '40', '1.0', '41', '2.5', '42', '0.625', '43', '3.75', '44', '1.25', '45', '0.0', '46', '0.0', '47', '0.0', '48', '0.0',
+  '140', '2.5', '141', '2.5', '142', '0.0', '143', '0.03937007874', '144', '1.0', '145', '0.0', '146', '1.0', '147', '0.625',
+  '71', '0', '72', '0', '73', '0', '74', '0', '75', '0', '76', '0', '77', '1', '78', '8',
+  '170', '0', '171', '3', '172', '1', '173', '0', '174', '0', '175', '0', '176', '0', '177', '0', '178', '0'];
 function wrap(doc: Doc): string {
   // STYLE(참조도면): STANDARD(micross)·Table Head(맑은고딕 Bold)·Cell Body(맑은고딕) — 한글 렌더.
   const styleT = ['0', 'TABLE', '2', 'STYLE', '70', '3',
@@ -672,13 +684,14 @@ function wrap(doc: Doc): string {
     '0', 'LTYPE', '2', 'DASHDOTDOT0', '70', '0', '3', '__ . . __', '72', '65', '73', '4', '40', '20.0', '49', '12.0', '49', '-3.0', '49', '0.0', '49', '-3.0'];
   const layT: string[] = ['0', 'TABLE', '2', 'LAYER', '70', String(LAYERS.length)];
   LAYERS.forEach(([n, c, lt]) => layT.push('0', 'LAYER', '2', n, '70', '0', '62', String(c), '6', lt));
-  // DIMSTYLE·DIMENSION 미사용(분해치수) → 해당 테이블 제거로 엄격파서 폐기 원천 차단.
+  // 분해치수(DIMENSION 엔티티 미사용) 유지. 단, DIMSTYLE '테이블'은 AutoCAD 요구로 완전판 재도입(위 DIMSTYLE_TABLE).
   // 내부 단축 레이어명 → 참조도면 표준 레이어명(단일지점 변환). 엔티티는 code/value 쌍이라 짝수 index=그룹코드.
   const relayer = (arr: string[]) => { for (let i = 0; i + 1 < arr.length; i += 2) if (arr[i] === '8') arr[i + 1] = LY(arr[i + 1]); };
   relayer(doc.e); relayer(doc.blk);
-  return ['0', 'SECTION', '2', 'HEADER', '9', '$ACADVER', '1', 'AC1009', '9', '$INSUNITS', '70', '4', '9', '$TEXTSTYLE', '7', 'STANDARD', '0', 'ENDSEC',
-    '0', 'SECTION', '2', 'TABLES', ...vportT, '0', 'ENDTAB', ...ltT, '0', 'ENDTAB', ...layT, '0', 'ENDTAB', ...styleT, '0', 'ENDTAB', '0', 'ENDSEC',
-    '0', 'SECTION', '2', 'BLOCKS', ...ARCHTICK_BLOCK, ...doc.blk, '0', 'ENDSEC',
+  // 헤더: $INSUNITS(R12 비표준) 제거, $DIMSTYLE=STANDARD 추가(치수스타일 참조 명시).
+  return ['0', 'SECTION', '2', 'HEADER', '9', '$ACADVER', '1', 'AC1009', '9', '$TEXTSTYLE', '7', 'STANDARD', '9', '$DIMSTYLE', '2', 'STANDARD', '0', 'ENDSEC',
+    '0', 'SECTION', '2', 'TABLES', ...vportT, '0', 'ENDTAB', ...ltT, '0', 'ENDTAB', ...layT, '0', 'ENDTAB', ...styleT, '0', 'ENDTAB', ...DIMSTYLE_TABLE, '0', 'ENDTAB', '0', 'ENDSEC',
+    '0', 'SECTION', '2', 'BLOCKS', ...SPACE_BLOCKS, ...ARCHTICK_BLOCK, ...doc.blk, '0', 'ENDSEC',
     '0', 'SECTION', '2', 'ENTITIES', ...doc.e, '0', 'ENDSEC', '0', 'EOF'].join('\r\n');   // CRLF: DXF 관례(엄격 파서 호환)
 }
 
