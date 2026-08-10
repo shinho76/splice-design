@@ -164,7 +164,7 @@ export default function App() {
                   </ul>
                   <div className="help-sec">{L('③ 참고', '③ Tips')}</div>
                   <ul className="help-ul">
-                    <li>{L('AISC/KDS 기준에서 「⚙ KBC-09 검토」가 켜져 있으면 철판 물량 최소로 DCR≤1.0을 맞춥니다(부재지배는 부분강도로 최대비율 표시).', 'With ⚙ KBC-09 Check on (AISC/KDS), plates are minimized to reach DCR≤1.0; member-governed cases show the partial-strength ratio.')}</li>
+                    <li>{L('AISC/KDS 기준에서 「⚙ 최적화」가 켜져 있으면 철판 물량 최소로 DCR≤1.0을 맞춥니다(부재지배는 부분강도로 최대비율 표시).', 'With ⚙ Optimize on (AISC/KDS), plates are minimized to reach DCR≤1.0; member-governed cases show the partial-strength ratio.')}</li>
                     <li>{L('각 버튼에 마우스를 올리면 기능 설명이 표시됩니다.', 'Hover any button to see what it does.')}</li>
                   </ul>
                 </div>
@@ -187,7 +187,7 @@ export default function App() {
             <FilterBar cond={cond} onChange={setCond} boltMode={boltMode} onBoltMode={setBoltMode} />
             {usesLimitState(cond.designStd) && (
               <div className="cf-autofix">
-                <button type="button" className={autoFix ? 'on' : ''} onClick={() => setAutoFix(v => !v)} aria-pressed={autoFix} title={L('전체 부재 KBC-09 검토 — 철판 물량 최소로 DCR≤1.0 달성(부재지배는 부분강도)', 'KBC-09 check for all members — minimum plate to reach DCR≤1.0 (member-governed → partial strength)')}>⚙ {L('KBC-09 검토', 'KBC-09 Check')}</button>
+                <button type="button" className={autoFix ? 'on' : ''} onClick={() => setAutoFix(v => !v)} aria-pressed={autoFix} title={L('전체 부재 AISC 최적화 — 철판 물량 최소로 DCR≤1.0 달성(부재지배는 부분강도)', 'Optimize all members — minimum plate to reach DCR≤1.0 (member-governed → partial strength)')}>⚙ {L('최적화', 'Optimize')}</button>
               </div>
             )}
             <div className="cfilters-hint">▸ {L('조건을 바꾸면 결과표가 즉시 갱신됩니다.', 'Changing conditions updates the table instantly.')}</div>
@@ -209,7 +209,7 @@ export default function App() {
               <>
                 <div className="dh">{sectionByName(selEff.section)?.label ?? selEff.section}
                   {sectionByName(selEff.section)?.label && <span className="dh-mm">{selEff.section}</span>}
-                  <span className="dbadge">{autoFix && usesLimitState(cond.designStd) ? L('KBC-09 검토', 'KBC-09 Check') : L('선택됨', 'Selected')}</span></div>
+                  <span className="dbadge">{autoFix && usesLimitState(cond.designStd) ? L('최적화', 'Optimized') : L('선택됨', 'Selected')}</span></div>
                 <div className="dsub">{tMember(cond.member, lang)} · {tJoint(cond.jointType, lang)} · {cond.steel} · {cond.bolt}</div>
                 <div className="dspecs">
                   <div><span>{isCol ? L('압축강도', 'Compression') : L('휨모멘트', 'Moment')}</span><b>{nf(isCol ? selEff.Puf_kN : selEff.Mu_kNm)} kN{isCol ? '' : '·m'}</b></div>
