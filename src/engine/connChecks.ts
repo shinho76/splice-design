@@ -1,4 +1,4 @@
-// 접합부 계측·간섭 검토 — 3D 뷰어용. 볼트간격·연단거리·플레이트길이·내첨판/필렛 간섭·AISC 설치여유.
+// 접합부 계측·간섭 검토 — 3D 뷰어용. 볼트간격·연단거리·플레이트길이·내부 이음판/필렛 간섭·AISC 설치여유.
 // 좌표계는 connParts와 동일(X=폭, Y=높이, Z=축). 값은 최종 확정 수치에서 산출.
 import type { DesignResult } from './types.ts';
 import { parseName, sectionByName } from './sections.ts';
@@ -29,22 +29,22 @@ export function connChecks(r: DesignResult): ConnChecks {
   const webY = Array.from({ length: wB.m }, (_, i) => (i - (wB.m - 1) / 2) * Pc);
   const outer = r.flange.outerPlate, inner = r.flange.innerPlate, web = r.web.webPlate;
   const oL = outer?.L ?? 260, oW = outer?.w ?? H;
-  const yTop = H / 2 + (outer?.t ?? 9);              // 외첨판 윗면(라벨 배치)
+  const yTop = H / 2 + (outer?.t ?? 9);              // 외부 이음판 윗면(라벨 배치)
   const filletToe = tw / 2 + fr;                     // 필렛 끝단 X
 
   const rnd = (n: number) => Math.round(n);
   const EP = 3;                                                     // 면에서 살짝 띄움(붙임)
   const gMax = Math.max(...colY.map(v => Math.abs(v)));             // 최외곽 게이지
   const pos = colY.filter(c => c > 0); const inCxPos = pos.reduce((a, b) => a + b, 0) / pos.length;
-  const inInnerX = inCxPos - (inner?.w ?? 0) / 2;                   // 내첨판 안쪽 X
+  const inInnerX = inCxPos - (inner?.w ?? 0) / 2;                   // 내부 이음판 안쪽 X
   const webT = web?.t ?? 6, webL = web?.L ?? 170, webW = web?.w ?? 200;
   const webZ = Array.from({ length: wB.n }, (_, i) => base + i * (r.web.pitch ?? 60));
   const zc = Math.max(...webZ), yr = webY.length ? Math.max(...webY.map(v => Math.abs(v))) : 0;
   // 각 plate 면 좌표(붙일 기준면)
-  const yT = yTop + EP;                                            // 상부 외첨판 윗면
-  const yIF = -(H / 2 - tf) + EP;                                  // 하부 플랜지 안쪽면(내첨판끝~필렛)
-  const yIB = -(H / 2 - tf) + (inner?.t ?? 0) + EP;                // 하부 내첨판 안쪽면
-  const xW = tw / 2 + webT + EP;                                   // 웨브 첨판 근접면
+  const yT = yTop + EP;                                            // 상부 외부 이음판 윗면
+  const yIF = -(H / 2 - tf) + EP;                                  // 하부 플랜지 안쪽면(내부 이음판끝~필렛)
+  const yIB = -(H / 2 - tf) + (inner?.t ?? 0) + EP;                // 하부 내부 이음판 안쪽면
+  const xW = tw / 2 + webT + EP;                                   // 웨브 이음판 근접면
 
   const dims: DimAnno[] = [];
   const F = (o: Omit<DimAnno, 'region'>): DimAnno => ({ ...o, region: 'flange' });
@@ -52,25 +52,25 @@ export function connChecks(r: DesignResult): ConnChecks {
   const OUT = 15;                         // 외곽 치수선 이격
   const oT = outer?.t ?? 9, gp = r.flange.gap ?? 10;
 
-  // ── 플랜지(상부 외첨판) : 길이=+X변, 폭/게이지=Z끝, 두께/갭=−X변 ──
+  // ── 플랜지(상부 외부 이음판) : 길이=+X변, 폭/게이지=Z끝, 두께/갭=−X변 ──
   const xE = oW / 2 + OUT, zEn = -oL / 2 - OUT, zEp = oL / 2 + OUT;
-  dims.push(F({ label: `외첨판 L=${oL}`, a: [xE, yT, -oL / 2], b: [xE, yT, oL / 2] }));
+  dims.push(F({ label: `외부 이음판 L=${oL}`, a: [xE, yT, -oL / 2], b: [xE, yT, oL / 2] }));
   if (nHi > 1) dims.push(F({ label: `피치 ${pitchF}${stag ? '(엇모)' : ''}`, a: [0, yT, flangeZ[0]], b: [0, yT, flangeZ[1]] }));
   dims.push(F({ label: `연단 ${rnd(oL / 2 - zEnd)}`, a: [0, yT, zEnd], b: [0, yT, oL / 2] }));
-  dims.push(F({ label: `외첨판폭 ${oW}`, a: [-oW / 2, yT, zEn], b: [oW / 2, yT, zEn] }));
+  dims.push(F({ label: `외부 이음판폭 ${oW}`, a: [-oW / 2, yT, zEn], b: [oW / 2, yT, zEn] }));
   dims.push(F({ label: `g₁=${g1}`, a: [-g1 / 2, yT, zEp], b: [g1 / 2, yT, zEp] }));
   if (g2) dims.push(F({ label: `g₂=${g2}`, a: [g1 / 2, yT, zEp], b: [g1 / 2 + g2, yT, zEp] }));
   dims.push(F({ label: `연단(직각) ${rnd(oW / 2 - gMax)}`, a: [gMax, yT, zEp], b: [oW / 2, yT, zEp] }));
-  dims.push(F({ label: `외첨판t ${oT}`, a: [-oW / 2 - OUT, H / 2, zEn], b: [-oW / 2 - OUT, H / 2 + oT, zEn] }));
+  dims.push(F({ label: `외부 이음판t ${oT}`, a: [-oW / 2 - OUT, H / 2, zEn], b: [-oW / 2 - OUT, H / 2 + oT, zEn] }));
   dims.push(F({ label: `갭 ${gp}`, a: [-oW / 2 - OUT, yT, -gp / 2], b: [-oW / 2 - OUT, yT, gp / 2] }));
-  // ── 플랜지(하부 내첨판) ──
+  // ── 플랜지(하부 내부 이음판) ──
   if (inner) {
-    dims.push(F({ label: `내첨판끝~필렛 ${(inInnerX - filletToe).toFixed(1)}`, a: [filletToe, yIF, 0], b: [inInnerX, yIF, 0] }));
-    dims.push(F({ label: `내첨판폭 ${inner.w}`, a: [inCxPos - inner.w / 2, yIB, -inner.L / 2 - OUT], b: [inCxPos + inner.w / 2, yIB, -inner.L / 2 - OUT] }));
-    dims.push(F({ label: `내첨판t ${inner.t}`, a: [inCxPos + inner.w / 2 + OUT, -(H / 2 - tf), inner.L / 2], b: [inCxPos + inner.w / 2 + OUT, -(H / 2 - tf) + inner.t, inner.L / 2] }));
+    dims.push(F({ label: `내부 이음판끝~필렛 ${(inInnerX - filletToe).toFixed(1)}`, a: [filletToe, yIF, 0], b: [inInnerX, yIF, 0] }));
+    dims.push(F({ label: `내부 이음판폭 ${inner.w}`, a: [inCxPos - inner.w / 2, yIB, -inner.L / 2 - OUT], b: [inCxPos + inner.w / 2, yIB, -inner.L / 2 - OUT] }));
+    dims.push(F({ label: `내부 이음판t ${inner.t}`, a: [inCxPos + inner.w / 2 + OUT, -(H / 2 - tf), inner.L / 2], b: [inCxPos + inner.w / 2 + OUT, -(H / 2 - tf) + inner.t, inner.L / 2] }));
   }
 
-  // ── 웨브 첨판 : 세로=Z끝변, 가로=Y끝변, 두께=모서리 ──
+  // ── 웨브 이음판 : 세로=Z끝변, 가로=Y끝변, 두께=모서리 ──
   const zWr = webL / 2 + OUT, zWl = -webL / 2 - OUT, yWb = -webW / 2 - OUT, yWt = webW / 2 + OUT;
   dims.push(Wd({ label: `웨브 H=${webW}`, a: [xW, -webW / 2, zWr], b: [xW, webW / 2, zWr] }));
   if (webY.length > 1) dims.push(Wd({ label: `Pc=${Pc}`, a: [xW, webY[0], zWl], b: [xW, webY[1], zWl] }));
@@ -83,20 +83,20 @@ export function connChecks(r: DesignResult): ConnChecks {
   if (webZ.length > 1) dims.push(Wd({ label: `가로피치 ${webZ[1] - webZ[0]}`, a: [xW, yWb, webZ[0]], b: [xW, yWb, webZ[1]] }));
   dims.push(Wd({ label: `웨브판t ${webT}`, a: [tw / 2, yWb, zWl], b: [tw / 2 + webT, yWb, zWl] }));
   dims.push(Wd({ label: `갭 ${gp}`, a: [xW, yr + 18, -gp / 2], b: [xW, yr + 18, gp / 2] }));
-  // 하부 내첨판 윗면 ~ 최하단 웨브볼트 중심(연직)
+  // 하부 내부 이음판 윗면 ~ 최하단 웨브볼트 중심(연직)
   if (inner && webY.length) {
     const inTop = -(H / 2 - tf) + inner.t, lowWb = Math.min(...webY);
-    dims.push(Wd({ label: `내첨판~웨브볼트 ${rnd(lowWb - inTop)}`, a: [xW, inTop, -webZ[0]], b: [xW, lowWb, -webZ[0]] }));
+    dims.push(Wd({ label: `내부 이음판~웨브볼트 ${rnd(lowWb - inTop)}`, a: [xW, inTop, -webZ[0]], b: [xW, lowWb, -webZ[0]] }));
   }
 
   const checks: CheckItem[] = [];
   const yn = (ok: boolean) => ok;
-  // 1) 내첨판 안쪽 ↔ 필렛 끝단 간섭
+  // 1) 내부 이음판 안쪽 ↔ 필렛 끝단 간섭
   if (inner) {
     const pos = colY.filter(c => c > 0); const cx = pos.reduce((a, b) => a + b, 0) / pos.length;
     const innerInner = cx - inner.w / 2;
     const clr = innerInner - filletToe;
-    checks.push({ label: '내첨판 안쪽 ↔ 필렛 끝단', value: `틈 ${clr.toFixed(1)}mm`, limit: '≥ 0 (여유권장 ≥3)', ok: yn(clr >= 0), note: clr < 0 ? '필렛과 간섭 — 내첨판 폭/게이지 조정 필요' : clr < 3 ? '여유 부족' : '' });
+    checks.push({ label: '내부 이음판 안쪽 ↔ 필렛 끝단', value: `틈 ${clr.toFixed(1)}mm`, limit: '≥ 0 (여유권장 ≥3)', ok: yn(clr >= 0), note: clr < 0 ? '필렛과 간섭 — 내부 이음판 폭/게이지 조정 필요' : clr < 3 ? '여유 부족' : '' });
   }
   // 2) 볼트 피치 ≥ AISC 최소(2.667·db)
   const pitch = flangeZ.length > 1 ? flangeZ[1] - flangeZ[0] : 0;

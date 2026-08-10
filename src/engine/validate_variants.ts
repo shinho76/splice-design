@@ -64,7 +64,7 @@ function run(label: string, rows: VRow[], cond: DesignCondition) {
   }
   const N=rows.length;
   console.log(`\n=== ${label} (n=${N}) ===`);
-  console.log(`Mu:${mu}/${N}  외첨판:${fo}/${N}  웨브:${w}/${N}  ⇒ 전항목 ${all}/${N}`);
+  console.log(`Mu:${mu}/${N}  외부 이음판:${fo}/${N}  웨브:${w}/${N}  ⇒ 전항목 ${all}/${N}`);
   fails.forEach(f=>console.log(f));
 }
 run('보 85% SHN490 F10T 마찰', BEAM85_F10T, { member:'보', jointType:'마찰', steel:'SHN490', bolt:'F10T', strengthRatio:0.85, sectionType:'압연' });

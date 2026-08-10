@@ -1,9 +1,9 @@
 // ────────────────────────────────────────────────────────────────────────────
 // 웨브 이음 검토 (AISC 360-16, SI) — 앱 KBC 경로엔 없던 신규 검토군
-//   WB 볼트 · WR 지압 · WP 첨판 블록전단 · WI 항복/파단 상호작용 · WM 부재웨브
-//   전제: 양면 첨판(이중전단 Ns=2). 볼트는 동심(C=n, 편심은 첨판이 휨으로 흡수).
+//   WB 볼트 · WR 지압 · WP 이음판 블록전단 · WI 항복/파단 상호작용 · WM 부재웨브
+//   전제: 양면 이음판(이중전단 Ns=2). 볼트는 동심(C=n, 편심은 이음판이 휨으로 흡수).
 //   기하: web.bolt.m=춤(수직)열, web.bolt.n=축방향열, Pc=수직피치, pitch=축피치.
-//   소요: Vu(수직전단), Mux=Vu·e(첨판 편심휨).
+//   소요: Vu(수직전단), Mux=Vu·e(이음판 편심휨).
 // ────────────────────────────────────────────────────────────────────────────
 import type { DesignResult, DesignCondition, BoltName } from '../types.ts';
 import { parseName } from '../sections.ts';
@@ -35,7 +35,7 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
   const Fub = BOLT_MAT[cond.bolt].Fu;
   const thread = cond.threadCond ?? 'N';
   const Fnv = FNV_FACTOR[thread] * Fub;
-  const Ns = 2;                                        // 양면 첨판 이중전단
+  const Ns = 2;                                        // 양면 이음판 이중전단
 
   const pSteel = cond.plateSteel ?? cond.steel;
   const pFy = FySteel(pSteel, 20), pFu = FuSteel(pSteel);
@@ -48,11 +48,11 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
   const Pc = r.web.Pc ?? 60;                           // 수직 피치
   const webP = r.web.pitch ?? 60;                      // 축 피치
   const edge = r.web.edge ?? 40;
-  const tp = wp.t, dp = wp.w;                          // 첨판 두께·춤
+  const tp = wp.t, dp = wp.w;                          // 이음판 두께·춤
   const LvVert = edge + (nVert - 1) * Pc;             // 수직 전단선 길이
   const colsAxis = Array.from({ length: nHoriz }, (_, i) => (i - (nHoriz - 1) / 2) * webP); // 축방향 열 x
 
-  const g = `E. 웨브 첨판 PL-${tp}×${dp}×2`;
+  const g = `E. 웨브 이음판 PL-${tp}×${dp}×2`;
 
   // ── WB. 볼트 (동심, 이중전단) ──
   {
@@ -74,13 +74,13 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
     }
   }
 
-  // ── WR. 지압·찢김 (부재웨브 tw 단면 vs 첨판 2·tp, 최소지배) ──
+  // ── WR. 지압·찢김 (부재웨브 tw 단면 vs 이음판 2·tp, 최소지배) ──
   {
     const brWeb = bearing(tw, mFu, d, nHoriz, nVert, edge, Pc);     // 부재웨브(1매)
-    const brPl = bearing(2 * tp, pFu, d, nHoriz, nVert, edge, Pc);  // 첨판(2매 합산 두께)
+    const brPl = bearing(2 * tp, pFu, d, nHoriz, nVert, edge, Pc);  // 이음판(2매 합산 두께)
     const govWeb = brWeb.total <= brPl.total;
-    checks.push(finalize({ id: 'WR1', region: 'web', group: g, label: '지압·찢김(웨브/첨판)', clause: 'J3.10',
-      detail: `min(웨브 ${kN(brWeb.total)}, 첨판×2 ${kN(brPl.total)}) → ${govWeb ? '웨브' : '첨판'}`,
+    checks.push(finalize({ id: 'WR1', region: 'web', group: g, label: '지압·찢김(웨브/이음판)', clause: 'J3.10',
+      detail: `min(웨브 ${kN(brWeb.total)}, 이음판×2 ${kN(brPl.total)}) → ${govWeb ? '웨브' : '이음판'}`,
       phiRn: kN(Math.min(brWeb.total, brPl.total)), demand: kN(Vu), unit: 'kN',
       steps: [
         S('Member web (t = tw)', 'Σ φ·min(2.4dtFu, 1.2Lc·t·Fu)', `tw=${tw}, n=${nb}`, kN(brWeb.total), 'kN', 'J3.10'),
@@ -89,14 +89,14 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
       ] }));
   }
 
-  // ── WP. 첨판 블록전단(×2, 수직 전단·수평 인장) Case A/B/C ──
+  // ── WP. 이음판 블록전단(×2, 수직 전단·수평 인장) Case A/B/C ──
   {
     const bs = blockShearGovern({ t: tp, Fy: pFy, Fu: pFu, d, nrow: nVert, Lv: LvVert, halfWidth: (wp.L ?? dp) / 2, cols: colsAxis }, Vu, 2);
     checks.push(finalize({ id: 'WP1', region: 'web', group: g, label: '블록 전단(×2)', clause: 'J4.3',
       detail: bsDetail(bs), phiRn: kN(bs.phiRn), demand: kN(bs.demand), unit: 'kN', cases: bs.cases }));
   }
 
-  // ── WI. 첨판 항복/파단 상호작용 (2매 합성단면, Mux+Vu) ──
+  // ── WI. 이음판 항복/파단 상호작용 (2매 합성단면, Mux+Vu) ──
   {
     const Zpl = 2 * (tp * dp * dp / 4);        // 소성단면계수(2매)
     const Ipl = 2 * (tp * dp ** 3 / 12);
@@ -157,5 +157,5 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
   return checks;
 }
 
-/** 첨판 휨 Fy (판두께 항복강도) — 가독성용 래퍼 */
+/** 이음판 휨 Fy (판두께 항복강도) — 가독성용 래퍼 */
 function mFyPlate(pFy: number): number { return pFy; }

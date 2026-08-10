@@ -38,7 +38,7 @@ export default function ProjectPanel({ items, onChange, onClose }: {
         <h2>프로젝트 부재 ({items.length})</h2>
         <p className="cond-line">
           여러 부재를 담아 물량을 합산·저장합니다.
-          {items.length > 0 && <span className="qty-badge">총 볼트 {nf(agg.totalBolts)}개 · 첨판 {nf(agg.totalWeightKg)} kg</span>}
+          {items.length > 0 && <span className="qty-badge">총 볼트 {nf(agg.totalBolts)}개 · 이음판 {nf(agg.totalWeightKg)} kg</span>}
         </p>
 
         {items.length === 0 ? (
@@ -52,7 +52,7 @@ export default function ProjectPanel({ items, onChange, onClose }: {
                   <th className="gcol">설계조건</th>
                   <th className="gcol">볼트</th>
                   <th className="gcol">개수</th>
-                  <th>첨판중량(kg)</th>
+                  <th>이음판중량(kg)</th>
                   <th></th>
                 </tr>
               </thead>

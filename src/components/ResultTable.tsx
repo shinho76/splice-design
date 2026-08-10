@@ -87,11 +87,11 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
             <th>{L('볼트열', 'Bolts')}<br />m×n</th>
             <th>g₁</th>
             <th className="gcol">g₂</th>
-            <th>{L('외첨판', 'Outer PL')}</th>
-            <th className="gcol">{L('내첨판', 'Inner PL')}<br /><span className="unit">{L('t×폭×길이', 't×w×L')}</span></th>
+            <th>{L('외부 이음판', 'Outer PL')}</th>
+            <th className="gcol">{L('내부 이음판', 'Inner PL')}<br /><span className="unit">{L('t×폭×길이', 't×w×L')}</span></th>
             <th>{L('볼트열', 'Bolts')}<br />m×n</th>
             <th>P<sub>c</sub></th>
-            <th>{L('첨판', 'Web PL')}<br /><span className="unit">{L('t×춤×너비', 't×d×w')}</span></th>
+            <th>{L('이음판', 'Web PL')}<br /><span className="unit">{L('t×춤×너비', 't×d×w')}</span></th>
           </tr>
         </thead>
         <tbody>

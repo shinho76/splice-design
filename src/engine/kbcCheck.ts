@@ -1,5 +1,5 @@
 // KBC-09 한계상태별 DCR(소요/설계강도 비) — 최종 설계결과에서 역산.
-// engine.ts의 수용력 공식(boltCap·boltStrength·플랜지첨판 항복·웨브첨판)과 동일하게 재현하여
+// engine.ts의 수용력 공식(boltCap·boltStrength·플랜지이음판 항복·웨브 이음판)과 동일하게 재현하여
 // 설계가 만족시킨 각 한계상태의 여유(DCR≤1)를 정량화한다. AISC의 aiscCheck와 대응.
 import type { DesignCondition, DesignResult, BoltName } from './types.ts';
 import { Fy, BOLT_MAT, Fu as FuSteel } from './materials.ts';
@@ -63,18 +63,18 @@ export function kbcCheck(r: DesignResult, cond: DesignCondition): KbcCheckResult
   const nBoltCap = cap.uniform ? fB.m * fB.n * cap.rn1 : fB.m * (cap.rn1 + (fB.n - 1) * cap.rn2);
   add('KFB', '플랜지 볼트', bearing ? '플랜지 볼트 지압·전단' : '플랜지 볼트 미끄럼', Puf, nBoltCap, bearing ? '6.4' : '5.4');
 
-  // 나) 플랜지 첨판 항복(외/내) — 내첨판 유무에 따라 소요 분담(외 50% / 내측 페어 50%)
+  // 나) 플랜지 이음판 항복(외/내) — 내부 이음판 유무에 따라 소요 분담(외 50% / 내측 페어 50%)
   const shareOuter = inner ? 0.5 : 1.0;
-  if (outer) add('KOP', '외첨판', '외첨판 인장항복', shareOuter * Puf, PHI_FLEX * pfy * outer.t * outer.w / 1e3, '5.3');
-  if (inner) add('KIP', '내첨판', '내첨판 인장항복(2장)', 0.5 * Puf, PHI_FLEX * pfy * 2 * inner.t * inner.w / 1e3, '5.3');
+  if (outer) add('KOP', '외부 이음판', '외부 이음판 인장항복', shareOuter * Puf, PHI_FLEX * pfy * outer.t * outer.w / 1e3, '5.3');
+  if (inner) add('KIP', '내부 이음판', '내부 이음판 인장항복(2장)', 0.5 * Puf, PHI_FLEX * pfy * 2 * inner.t * inner.w / 1e3, '5.3');
 
   // 바) 웨브 볼트
   const phiRnW = webBoltCap(cond, bolt, sec.tw, fu);
   add('KWB', '웨브 볼트', bearing ? '웨브 볼트 지압·전단' : '웨브 볼트 미끄럼', Vw, wB.m * wB.n * phiRnW, bearing ? '6.8' : '5.7');
 
-  // 바) 웨브 첨판(2장) — 보=전단항복(0.6Fy)·기둥=압축항복(Fy)
+  // 바) 웨브 이음판(2장) — 보=전단항복(0.6Fy)·기둥=압축항복(Fy)
   const nomFactor = isCol ? 1.0 : 0.6;
-  if (webPl) add('KWP', '웨브 첨판', isCol ? '웨브 첨판 압축항복(2장)' : '웨브 첨판 전단항복(2장)', Vw, 2 * PHI_FLEX * nomFactor * pfy * webPl.t * webPl.w / 1e3, isCol ? '7.6' : '5.6');
+  if (webPl) add('KWP', '웨브 이음판', isCol ? '웨브 이음판 압축항복(2장)' : '웨브 이음판 전단항복(2장)', Vw, 2 * PHI_FLEX * nomFactor * pfy * webPl.t * webPl.w / 1e3, isCol ? '7.6' : '5.6');
 
   if (!items.length) return { govDcr: null, items: [] };
   const gov = items.reduce((a, b) => (b.dcr > a.dcr ? b : a));

@@ -1,4 +1,4 @@
-// 접합부 3D 지오메트리 모델 — 계산결과(DesignResult)에서 부재·첨판·볼트를 프리미티브로 산출.
+// 접합부 3D 지오메트리 모델 — 계산결과(DesignResult)에서 부재·이음판·볼트를 프리미티브로 산출.
 // Three.js 뷰어와 IFC 내보내기가 공유. 좌표계: X=폭(플랜지너비), Y=높이, Z=부재축(길이).
 import type { DesignResult } from './types.ts';
 import { parseName, sectionByName } from './sections.ts';
@@ -57,16 +57,16 @@ export function connParts(r: DesignResult): ConnParts {
   const bolts: PartBolt[] = [];
   const boltSize = { shankR, headR: dia * 0.85, headH: dia * 0.65, nutH: dia * 0.8, protr: dia * 0.6 };
 
-  // 내첨판 중심 = 웨브 양측 볼트열의 평균(측당 1장). 각 열마다가 아님 → 폭 초과 방지
+  // 내부 이음판 중심 = 웨브 양측 볼트열의 평균(측당 1장). 각 열마다가 아님 → 폭 초과 방지
   const mean = (a: number[]) => a.reduce((x, y) => x + y, 0) / a.length;
   const innerCx = [mean(colY.filter(c => c < 0)), mean(colY.filter(c => c > 0))];
-  // 플랜지 외첨판(상·하) + 내첨판(상·하 × 양측)
+  // 플랜지 외부 이음판(상·하) + 내부 이음판(상·하 × 양측)
   for (const fy of [1, -1] as const) {
     if (outer) boxes.push({ kind: 'outer', cx: 0, cy: fy * (H / 2 + oT / 2), cz: 0, sx: oW, sy: oT, sz: oL });
     if (inner) for (const cx of innerCx)
       boxes.push({ kind: 'inner', cx, cy: fy * (H / 2 - tf - inner.t / 2), cz: 0, sx: inner.w, sy: inner.t, sz: inner.L });
   }
-  // 웨브 첨판(양면)
+  // 웨브 이음판(양면)
   if (web) for (const wx of [1, -1] as const)
     boxes.push({ kind: 'web', cx: wx * (tw / 2 + web.t / 2), cy: 0, cz: 0, sx: web.t, sy: web.w, sz: web.L });
 

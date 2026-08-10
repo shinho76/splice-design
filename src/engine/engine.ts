@@ -15,7 +15,7 @@ const ceil = Math.ceil;
 const ceilHalf = (x: number) => Math.ceil(x * 2) / 2;
 const boltDiaOf = (b: string) => parseInt(b.slice(1), 10) as import('./types.ts').BoltDia;
 const boltNameOf = (d: number) => ('M' + d) as import('./types.ts').BoltName;
-// AISC 360-16 표 J3.4M 최소 연단거리(mm) — 외첨판 폭 캡 시 횡연단 하한 보장용
+// AISC 360-16 표 J3.4M 최소 연단거리(mm) — 외부 이음판 폭 캡 시 횡연단 하한 보장용
 const MIN_EDGE: Record<number, number> = { 16: 22, 18: 24, 20: 26, 22: 28, 24: 30, 27: 34, 30: 38 };
 
 /**
@@ -33,7 +33,7 @@ function boltStrength(cond: DesignCondition, bolt: BoltName, Ns: number, tGov: n
 
 /**
  * 플랜지 볼트 설계강도 — 연단부 Rn1 / 중간부 Rn2 (제6.4.1).
- * 지압: min(볼트전단, 전단파괴 1.2·Lc·t·Fu, 국부압축 2.4·d·t·Fu), 모재·첨판 각각 검토.
+ * 지압: min(볼트전단, 전단파괴 1.2·Lc·t·Fu, 국부압축 2.4·d·t·Fu), 모재·이음판 각각 검토.
  * 마찰: rn1=rn2=설계미끄럼강도(균일).
  */
 interface BoltCap { rn1: number; rn2: number; uniform: boolean; }
@@ -46,7 +46,7 @@ function boltCap(cond: DesignCondition, bolt: BoltName, Ns: number, tMember: num
   const boltShear = 0.5 * BOLT_MAT[cond.bolt].Fu * Ab[bolt] * Ns;
   const Lc1 = 40 - hole / 2, Lc2 = pitch - hole;               // 연단·중간 순간격
   const bear = (t: number, Lc: number, fu: number) => Math.min(1.2 * Lc * t * fu, 2.4 * d * t * fu);
-  const rn1 = Math.min(boltShear, bear(tMember, Lc1, fuMember), bear(tPlate, Lc1, fuPlate));  // 모재=fu, 첨판=pfu
+  const rn1 = Math.min(boltShear, bear(tMember, Lc1, fuMember), bear(tPlate, Lc1, fuPlate));  // 모재=fu, 이음판=pfu
   const rn2 = Math.min(boltShear, bear(tMember, Lc2, fuMember), bear(tPlate, Lc2, fuPlate));
   return { rn1: PHI_BEAR * rn1 / 1e3, rn2: PHI_BEAR * rn2 / 1e3, uniform: false };
 }
@@ -73,7 +73,7 @@ function designBeam(cond: DesignCondition, sec: HSection, forceDia?: number): De
   const steps: CalcStep[] = [];
   const fy = Fy(cond.steel, sec.tf);
   const fu = FuSteel(cond.steel);
-  const pGrade = cond.plateSteel ?? cond.steel;   // 첨판 강종(미지정=모재 동일)
+  const pGrade = cond.plateSteel ?? cond.steel;   // 이음판 강종(미지정=모재 동일)
   const pfy = Fy(pGrade, sec.tf), pfu = FuSteel(pGrade);
   const alpha = cond.strengthRatio;
   const std = forceDia ? { ...flangeStdFor(sec.B), bolt: boltNameOf(forceDia) } : flangeStdFor(sec.B);
@@ -91,7 +91,7 @@ function designBeam(cond: DesignCondition, sec: HSection, forceDia?: number): De
       note:'횡좌굴은 무시하고 국부좌굴만, 총단면에 대해 산정한다.' },
     { group:'가) 소요휨강도 · 플랜지 소요축력', label:'접합부 소요휨강도', formula:'Mu = α·φ·Mn', substitution:`${alpha}×0.9×${Mn.toFixed(0)}`, value:+Mu.toFixed(0), unit:'kN·m', ref:'5.2.3' },
     { group:'가) 소요휨강도 · 플랜지 소요축력', label:'플랜지 소요축력', formula:'Puf = Mu / dm', substitution:`${Mu.toFixed(0)}×10⁶ / ${dm}`, value:+Puf.toFixed(0), unit:'kN', ref:'5.2.4',
-      note:`dm = ${hasInner ? '상·하 플랜지 중심거리 (H−tf)' : 'H형강 전체 춤 (외첨판만 사용)'}` },
+      note:`dm = ${hasInner ? '상·하 플랜지 중심거리 (H−tf)' : 'H형강 전체 춤 (외부 이음판만 사용)'}` },
   );
 
   const flange = designFlange(cond, sec, std, fy, fu, pfy, pfu, Puf, bearing, steps);
@@ -109,7 +109,7 @@ function designColumn(cond: DesignCondition, sec: HSection, forceDia?: number): 
   const steps: CalcStep[] = [];
   const fy = Fy(cond.steel, sec.tf);
   const fu = FuSteel(cond.steel);
-  const pGrade = cond.plateSteel ?? cond.steel;   // 첨판 강종(미지정=모재 동일)
+  const pGrade = cond.plateSteel ?? cond.steel;   // 이음판 강종(미지정=모재 동일)
   const pfy = Fy(pGrade, sec.tf), pfu = FuSteel(pGrade);
   const alpha = cond.strengthRatio;
   const std = forceDia ? { ...flangeStdFor(sec.B), bolt: boltNameOf(forceDia) } : flangeStdFor(sec.B);
@@ -133,7 +133,7 @@ function designColumn(cond: DesignCondition, sec: HSection, forceDia?: number): 
 
 // ─────────────────────────────── 플랜지 이음 (공용) ───────────────────────────────
 function designFlange(cond: DesignCondition, sec: HSection, std: ReturnType<typeof flangeStdFor>, fy: number, fu: number, pfy: number, pfu: number, Puf: number, bearing: boolean, steps: CalcStep[]): JointDesign {
-  // W형강: 표준 공칭폭(최근접 반올림)이 실 플랜지폭보다 클 수 있어 외첨판이 플랜지를 넘어감(오버행).
+  // W형강: 표준 공칭폭(최근접 반올림)이 실 플랜지폭보다 클 수 있어 외부 이음판이 플랜지를 넘어감(오버행).
   //   → W형강만 실 플랜지폭으로 캡. 단, 최외곽 볼트열 횡연단이 최소치(AISC J3.4M) 이상이 되도록 하한 보장.
   //     (협폭 단면은 표준게이지 자체가 넓어, 최소연단 확보를 위해 소폭 오버행 잔존 — 연단 우선)
   //   → H형강은 KS 공칭=실폭이라 불변(편람 골든 보존).
@@ -147,40 +147,40 @@ function designFlange(cond: DesignCondition, sec: HSection, std: ReturnType<type
   const g2 = alt300 ? null : std.g2;
   const staggered = std.layout === '엇모' && !wantAligned;   // 엇모 표준은 정렬요청 없으면 엇모 유지
 
-  // W형강: 표준 공칭폭이 실 플랜지폭보다 클 수 있어 외첨판 오버행 → W만 실폭으로 캡(횡연단 하한 보장).
+  // W형강: 표준 공칭폭이 실 플랜지폭보다 클 수 있어 외부 이음판 오버행 → W만 실폭으로 캡(횡연단 하한 보장).
   const dia0 = boltDiaOf(std.bolt), minE0 = MIN_EDGE[dia0] ?? 30;
   const outerColOff = m === 2 ? g1 / 2 : g1 / 2 + (g2 ?? 0);  // 최외곽 볼트열 중심 오프셋(유효 배치)
   const minOuterW = Math.ceil(2 * (outerColOff + minE0));     // 횡연단 최소 확보 하한
   const outerW = cond.profile === 'W'
     ? Math.min(std.outerW, Math.max(Math.floor(sec.B), minOuterW))
     : std.outerW;
-  // 내첨판 폭 = 플랜지끝(B/2)~필렛선단 거리에서 권장 여유 3mm 확보 후 이하 10mm 단위 (필렛 간섭 회피)
+  // 내부 이음판 폭 = 플랜지끝(B/2)~필렛선단 거리에서 권장 여유 3mm 확보 후 이하 10mm 단위 (필렛 간섭 회피)
   // 필렛선단: W형강은 AISC 공표 k1(mm) 사용(기하근사 tw/2+r는 공표 대비 평균 8.5mm 과소평가 → 침범).
   //           H형강은 KS 실측 필렛이 정확하여 tw/2+r 폴백 유지(편람 골든 보존).
   const INNER_CLEAR = 3;   // 필렛선단 이격 권장 여유(mm)
   const filletToe = sec.k1 ?? (sec.tw / 2 + sec.r);
   const flatHalf = sec.B / 2 - filletToe - INNER_CLEAR;
   const innerW = std.innerW != null ? Math.max(10, Math.floor(flatHalf / 10) * 10) : null;
-  const Aupf = (Puf * 1e3) / (PHI_FLEX * pfy);                   // 총단면 항복(첨판 강종)
-  const equalT = innerW != null && !!cond.equalPlateT;          // 내·외첨판 동일 두께 옵션
+  const Aupf = (Puf * 1e3) / (PHI_FLEX * pfy);                   // 총단면 항복(이음판 강종)
+  const equalT = innerW != null && !!cond.equalPlateT;          // 내·외부 이음판 동일 두께 옵션
   // 동일두께: 외·내 합성 순단면(외폭 + 2·내폭)이 Aupf 부담 → 단일 두께. 개별: 외 50% / 내 50%(2장).
   const tOuter0 = equalT ? Aupf / (outerW + 2 * (innerW ?? 0)) : (innerW ? 0.5 * Aupf / outerW : Aupf / outerW);
   const tInner0 = equalT ? tOuter0 : (innerW ? 0.5 * Aupf / (2 * innerW) : 0);
   const tOuter = roundUpThickness(Math.max(tOuter0, equalT ? 9 : 6), FLANGE_PLATE_T);
   const tInner = innerW ? roundUpThickness(Math.max(tInner0, 9), FLANGE_PLATE_T) : 0;
   steps.push(
-    { group:'나) 플랜지 첨판 폭·두께', label:'첨판 소요단면적', formula:'Aupf = Puf/(φ·Fy·첨판)', substitution:`${Puf.toFixed(0)}×10³/(0.9×${pfy})`, value:+Aupf.toFixed(0), unit:'mm²', ref:'5.3.1' },
-    { group:'나) 플랜지 첨판 폭·두께', label: equalT?'첨판 두께(내·외 동일)':'외첨판 두께', formula: equalT?'Aupf/(외폭+2·내폭)':(innerW?'0.5·Aupf/폭':'Aupf/폭'), substitution: equalT?`${Aupf.toFixed(0)}/(${outerW}+2×${innerW})=${tOuter0.toFixed(1)}`:`${innerW?'0.5×':''}${Aupf.toFixed(0)}/${outerW}=${tOuter0.toFixed(1)}`, value:tOuter, unit:'mm', ref:'5.3.3',
-      note: equalT?'내·외첨판 동일 두께(합성 순단면 기준)':(innerW?'':'외첨판만 사용 → 외첨판이 전 축력을 부담한다.') },
-    ...(innerW&&!equalT?[{ group:'나) 플랜지 첨판 폭·두께', label:'내첨판 두께', formula:'0.5·Aupf/(2·폭)', substitution:`0.5×${Aupf.toFixed(0)}/(2×${innerW})=${tInner0.toFixed(1)}`, value:tInner, unit:'mm', ref:'5.3.3' } as CalcStep]:[]),
+    { group:'나) 플랜지 이음판 폭·두께', label:'이음판 소요단면적', formula:'Aupf = Puf/(φ·Fy·이음판)', substitution:`${Puf.toFixed(0)}×10³/(0.9×${pfy})`, value:+Aupf.toFixed(0), unit:'mm²', ref:'5.3.1' },
+    { group:'나) 플랜지 이음판 폭·두께', label: equalT?'이음판 두께(내·외 동일)':'외부 이음판 두께', formula: equalT?'Aupf/(외폭+2·내폭)':(innerW?'0.5·Aupf/폭':'Aupf/폭'), substitution: equalT?`${Aupf.toFixed(0)}/(${outerW}+2×${innerW})=${tOuter0.toFixed(1)}`:`${innerW?'0.5×':''}${Aupf.toFixed(0)}/${outerW}=${tOuter0.toFixed(1)}`, value:tOuter, unit:'mm', ref:'5.3.3',
+      note: equalT?'내·외부 이음판 동일 두께(합성 순단면 기준)':(innerW?'':'외부 이음판만 사용 → 외부 이음판이 전 축력을 부담한다.') },
+    ...(innerW&&!equalT?[{ group:'나) 플랜지 이음판 폭·두께', label:'내부 이음판 두께', formula:'0.5·Aupf/(2·폭)', substitution:`0.5×${Aupf.toFixed(0)}/(2×${innerW})=${tInner0.toFixed(1)}`, value:tInner, unit:'mm', ref:'5.3.3' } as CalcStep]:[]),
   );
 
   const Ns = innerW ? 2 : 1;
   // C안: 정렬 피치를 직경별 최소간격(2.667d, 5mm 올림) 이상으로 — 표준(≤M22)은 60 불변, M24만 상향
   const alignP = Math.max(PITCH_ALIGNED, Math.ceil(2.667 * boltDiaOf(std.bolt) / 5) * 5);
   const pitchEff = staggered ? 90 : alignP;   // 중간부 순간격 기준(엇모=동일선상 2×45=90)
-  const tPlate = innerW ? tOuter + tInner : tOuter;            // 첨판 두께 합(6.4.1-3)
-  const cap = boltCap(cond, std.bolt, Ns, sec.tf, tPlate, fu, pfu, pitchEff); // 모재 tf(fu)·첨판(pfu)
+  const tPlate = innerW ? tOuter + tInner : tOuter;            // 이음판 두께 합(6.4.1-3)
+  const cap = boltCap(cond, std.bolt, Ns, sec.tf, tPlate, fu, pfu, pitchEff); // 모재 tf(fu)·이음판(pfu)
   const n = requiredRows(Puf, m, cap, staggered);
   steps.push(
     bearing
@@ -193,7 +193,7 @@ function designFlange(cond: DesignCondition, sec: HSection, std: ReturnType<type
   const gap = cond.gap ?? 10;
   const pitch = staggered ? PITCH_STAGGERED : alignP;
   const Lpf = staggered ? 2*((2*n-1)*pitch+2*40)+gap : 2*((n-1)*pitch+2*40)+gap;
-  steps.push({ group:'라) 플랜지 첨판 길이', label:'첨판 길이', formula: staggered?`2[(2n−1)·45+80]+${gap}`:`2[(n−1)·${alignP}+80]+${gap}`, value:Lpf, unit:'mm', ref:'5.5.2' });
+  steps.push({ group:'라) 플랜지 이음판 길이', label:'이음판 길이', formula: staggered?`2[(2n−1)·45+80]+${gap}`:`2[(n−1)·${alignP}+80]+${gap}`, value:Lpf, unit:'mm', ref:'5.5.2' });
 
   return {
     bolt:{ m, n, count:m*n }, gauge:{ g1, g2: g2 ?? undefined },
@@ -208,7 +208,7 @@ function designWeb(cond: DesignCondition, sec: HSection, bolt: BoltName, fy: num
   const { H, tw, tf, r } = sec;
   const phiRnW = boltStrength(cond, bolt, 2, tw, fu);   // 지압: 모재 웨브(tw) 지배
   const Nreq = Math.max(2, ceil(soryeok / phiRnW));
-  // 웨브 첨판이 웨브 필렛을 침범하지 않도록 춤 상한(플랫 웨브 높이 − 2·클리어런스).
+  // 웨브 이음판이 웨브 필렛을 침범하지 않도록 춤 상한(플랫 웨브 높이 − 2·클리어런스).
   // H형강은 편람 골든 유지 위해 제한 없음(진단상 0건). W형강만 필렛 클리어런스 강제.
   const FCL = 8;                                  // 필렛 클리어런스(mm)
   const isW = cond.profile === 'W';
@@ -233,16 +233,16 @@ function designWeb(cond: DesignCondition, sec: HSection, bolt: BoltName, fy: num
   const dpw = chum;
   const webP = Math.max(60, Math.ceil(2.667 * boltDiaOf(bolt) / 5) * 5);   // C안: 웨브 가로피치
   const wpw = 2*((nW-1)*webP + 2*40) + (cond.gap ?? 10);   // 웨브볼트 이음부 연단 40(플랜지와 동일)
-  // 보=전단(0.6Fy), 기둥=압축(Fy). 양면 첨판이 소요력의 절반씩 분담.
+  // 보=전단(0.6Fy), 기둥=압축(Fy). 양면 이음판이 소요력의 절반씩 분담.
   const nomFactor = cond.member === '기둥' ? 1.0 : 0.6;
-  const tpw = roundUpThickness(Math.max(0.5*(soryeok*1e3)/(0.9*nomFactor*pfy*dpw), 6), WEB_PLATE_T);   // 웨브첨판 강종(pfy)
+  const tpw = roundUpThickness(Math.max(0.5*(soryeok*1e3)/(0.9*nomFactor*pfy*dpw), 6), WEB_PLATE_T);   // 웨브 이음판 강종(pfy)
   steps.push(
-    { group:'바) 웨브 볼트 · 첨판', label:`설계${bearing?'지압':'미끄럼'}강도 φRn (2면)`, value:+phiRnW.toFixed(0), unit:'kN', ref:bearing?'6.8':'5.7' },
-    { group:'바) 웨브 볼트 · 첨판', label:'요구 볼트개수', formula:'⌈소요력/φRn⌉', substitution:`⌈${soryeok.toFixed(0)}/${phiRnW.toFixed(0)}⌉`, value:Nreq, unit:'개', ref:'5.8.1' },
-    { group:'바) 웨브 볼트 · 첨판', label:'웨브 볼트 배열', value:mW, unit:`(춤)×${nW}(축), Pc=${Pc ?? '—'}${stagger?' · 엇모':''}`, ref:'5.8.2' },
-    { group:'바) 웨브 볼트 · 첨판', label:'웨브 첨판 (두께×춤×너비)', value:tpw, unit:`× ${dpw} × ${wpw}`, ref:'5.9' },
+    { group:'바) 웨브 볼트 · 이음판', label:`설계${bearing?'지압':'미끄럼'}강도 φRn (2면)`, value:+phiRnW.toFixed(0), unit:'kN', ref:bearing?'6.8':'5.7' },
+    { group:'바) 웨브 볼트 · 이음판', label:'요구 볼트개수', formula:'⌈소요력/φRn⌉', substitution:`⌈${soryeok.toFixed(0)}/${phiRnW.toFixed(0)}⌉`, value:Nreq, unit:'개', ref:'5.8.1' },
+    { group:'바) 웨브 볼트 · 이음판', label:'웨브 볼트 배열', value:mW, unit:`(춤)×${nW}(축), Pc=${Pc ?? '—'}${stagger?' · 엇모':''}`, ref:'5.8.2' },
+    { group:'바) 웨브 볼트 · 이음판', label:'웨브 이음판 (두께×춤×너비)', value:tpw, unit:`× ${dpw} × ${wpw}`, ref:'5.9' },
   );
   // stagger=웨브 춤≤200: 웨브볼트를 플랜지볼트 대비 절반피치(30mm) 바깥으로 엇갈림(체결 간섭 회피, [그림 3.4]).
-  //   → 첨판폭 +60(=2×30)이 이 이동분을 이미 포함 → 도면에서 실제 이동해야 연단거리 40 유지.
+  //   → 이음판폭 +60(=2×30)이 이 이동분을 이미 포함 → 도면에서 실제 이동해야 연단거리 40 유지.
   return { bolt:{ m:mW, n:nW, count:mW*nW }, Pc:Pc ?? undefined, webPlate:{ t:tpw, w:dpw, L:wpw }, staggered: stagger, pitch: webP, edge: 40 };
 }

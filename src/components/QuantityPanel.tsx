@@ -42,7 +42,7 @@ export default function QuantityPanel({ cond, onClose, diaAt, autoFix }: { cond:
         <h2>{L('물량산정', 'Quantity Takeoff')}</h2>
         <p className="cond-line">
           {tMember(cond.member, lang)} · {tJoint(cond.jointType, lang)} · α = {Math.round(cond.strengthRatio * 100)}% · {cond.steel} · {cond.bolt}
-          <span className="qty-badge">{L('볼트', 'Bolts')} {nf(agg.totalBolts)}{L('개', ' ea')} · {nf(agg.boltWeightKg)} kg · {L('첨판', 'Plates')} {nf(agg.plateWeightKg)} kg</span>
+          <span className="qty-badge">{L('볼트', 'Bolts')} {nf(agg.totalBolts)}{L('개', ' ea')} · {nf(agg.boltWeightKg)} kg · {L('이음판', 'Plates')} {nf(agg.plateWeightKg)} kg</span>
         </p>
         <div className="tablewrap">
           <table className="design-table qty-table">
@@ -53,10 +53,10 @@ export default function QuantityPanel({ cond, onClose, diaAt, autoFix }: { cond:
                 <th className="gcol">{L('개수', 'Qty')}</th>
                 <th>{L('볼트길이 F/W', 'Bolt L F/W')}</th>
                 <th className="gcol">{L('볼트중량(kg)', 'Bolt wt (kg)')}</th>
-                <th>{L('플랜지 외첨판', 'Flange outer PL')}</th>
-                <th>{L('플랜지 내첨판', 'Flange inner PL')}</th>
-                <th className="gcol">{L('웨브 첨판', 'Web PL')}</th>
-                <th>{L('첨판중량(kg)', 'Plate wt (kg)')}</th>
+                <th>{L('플랜지 외부 이음판', 'Flange outer PL')}</th>
+                <th>{L('플랜지 내부 이음판', 'Flange inner PL')}</th>
+                <th className="gcol">{L('웨브 이음판', 'Web PL')}</th>
+                <th>{L('이음판중량(kg)', 'Plate wt (kg)')}</th>
               </tr>
             </thead>
             <tbody>
@@ -67,8 +67,8 @@ export default function QuantityPanel({ cond, onClose, diaAt, autoFix }: { cond:
                   <td className="gcol">{q.boltCount}</td>
                   <td>L{q.boltSpec.flange.length}/{q.boltSpec.web.length}</td>
                   <td className="gcol">{nf(q.boltWeightKg)}</td>
-                  <td>{plateStr(q, '외첨판')}</td>
-                  <td>{plateStr(q, '내첨판')}</td>
+                  <td>{plateStr(q, '외부 이음판')}</td>
+                  <td>{plateStr(q, '내부 이음판')}</td>
                   <td className="gcol">{plateStr(q, '웨브')}</td>
                   <td>{nf(q.plateWeightKg)}</td>
                 </tr>
@@ -89,7 +89,7 @@ export default function QuantityPanel({ cond, onClose, diaAt, autoFix }: { cond:
         <p className="note">{lang === 'en'
           ? <>※ Plate weight = volume × 7,850 kg/m³. Per member: outer PL ×2, inner PL ×4, web PL ×2. Bolts = flange(cols×rows×4) + web(cols×rows×2).
             Standard bolt length = grip + add-on → rounded up to 5mm; set weight (bolt+nut+2 washers) per <b>KS B 1010</b> (F/W = flange/web length).</>
-          : <>※ 첨판 중량 = 부피 × 7,850 kg/m³. 외첨판 2매·내첨판 4매·웨브첨판 2매/부재 기준. 볼트 = 플랜지(열×행×4) + 웨브(열×행×2).
+          : <>※ 이음판 중량 = 부피 × 7,850 kg/m³. 외부 이음판 2매·내부 이음판 4매·웨브 이음판 2매/부재 기준. 볼트 = 플랜지(열×행×4) + 웨브(열×행×2).
             볼트 표준길이 = 조임두께(그립) + 부가길이 → 5mm 올림, 세트중량(볼트+너트+와셔2매)은 <b>KS B 1010</b> 기반(F/W = 플랜지/웨브 길이).</>}</p>
       </div>
     </div>

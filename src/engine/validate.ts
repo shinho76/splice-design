@@ -1,5 +1,5 @@
 // 골든 검증: 엔진을 부록 「보 100% SHN490 F10T」(마찰·지압)와 대조
-// 플랜지 볼트배열은 신뢰도 높은 '외첨판 길이'(=행수 n을 인코딩)로 검증(mn 필드는 전사노이즈 가능).
+// 플랜지 볼트배열은 신뢰도 높은 '외부 이음판 길이'(=행수 n을 인코딩)로 검증(mn 필드는 전사노이즈 가능).
 import { designConnection } from './engine.ts';
 import { GOLDEN_BEAM100_SHN490_F10T as G } from './golden_beam100_shn490_f10t.ts';
 import { sectionByName } from './sections.ts';
@@ -15,7 +15,7 @@ function run(jt: JointType) {
     const g = jt==='마찰' ? row.friction : row.bearing;
     const eW=`${r.web.bolt.m}×${r.web.bolt.n}`;
     const c = {
-      fOut:P(r.flange.outerPlate)===g.flange.outer,        // 외첨판(두께·폭·길이=n)
+      fOut:P(r.flange.outerPlate)===g.flange.outer,        // 외부 이음판(두께·폭·길이=n)
       fIn:P(r.flange.innerPlate)===(g.flange.inner??'—'),
       wOK: eW.replace(/\.0$/,'')===g.web.mn.replace(/\.0$/,'') && (r.web.Pc??null)===g.web.Pc && P(r.web.webPlate)===g.web.plate,
     };
@@ -25,7 +25,7 @@ function run(jt: JointType) {
   }
   const N=G.length;
   console.log(`\n=== 보 ${jt} 100% SHN490 F10T (n=${N}) ===`);
-  console.log(`외첨판(n):${fOut}/${N} 내첨판:${fIn}/${N} 웨브:${wAll}/${N}  ⇒ 전항목 ${allOK}/${N}`);
+  console.log(`외부 이음판(n):${fOut}/${N} 내부 이음판:${fIn}/${N} 웨브:${wAll}/${N}  ⇒ 전항목 ${allOK}/${N}`);
   fails.slice(0,10).forEach(f=>console.log('  '+f));
 }
 run('마찰');

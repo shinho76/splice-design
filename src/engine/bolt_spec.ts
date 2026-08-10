@@ -1,6 +1,6 @@
 // 고력볼트 표준길이·세트중량 산정 — KS B 1010 / JIS B 1186 세트중량표(볼트+너트+와셔2매) 직접 적용.
 // 표준길이 = 조임길이(그립) + 부가길이 → 5mm 올림. 세트중량 = 표값(길이별) 조회.
-// 계산엔진(소요력·본수·첨판)은 무관 — 물량/사양 파생만 담당.
+// 계산엔진(소요력·본수·이음판)은 무관 — 물량/사양 파생만 담당.
 import type { DesignResult, BoltName } from './types.ts';
 import { boltNameByDia } from './bolts.ts';
 import { parseName } from './sections.ts';
@@ -27,12 +27,12 @@ const ADD_LEN: Record<BoltName, number> = { M16: 25, M18: 28, M20: 30, M22: 35, 
 
 const ceil5 = (v: number) => Math.ceil(v / 5) * 5;
 
-/** 플랜지 볼트 조임길이(그립) = 외첨판 + 플랜지 + 내첨판 */
+/** 플랜지 볼트 조임길이(그립) = 외부 이음판 + 플랜지 + 내부 이음판 */
 export function gripFlange(r: DesignResult): number {
   const { tf } = parseName(r.section);
   return (r.flange.outerPlate?.t ?? 0) + tf + (r.flange.innerPlate?.t ?? 0);
 }
-/** 웨브 볼트 조임길이(그립) = 웨브첨판 2매(양면) + 웨브 */
+/** 웨브 볼트 조임길이(그립) = 웨브 이음판 2매(양면) + 웨브 */
 export function gripWeb(r: DesignResult): number {
   const { tw } = parseName(r.section);
   return (r.web.webPlate?.t ?? 0) * 2 + tw;

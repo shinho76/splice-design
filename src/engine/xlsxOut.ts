@@ -9,10 +9,10 @@ const plateCell = (q: Quantity, role: string) => {
 };
 
 export function downloadXlsx(qs: Quantity[], title: string, filename: string) {
-  const head = ['단면치수', '볼트', '볼트개수', '플랜지볼트 L', '웨브볼트 L', '볼트중량(kg)', '플랜지 외첨판', '플랜지 내첨판', '웨브 첨판', '첨판중량(kg)'];
+  const head = ['단면치수', '볼트', '볼트개수', '플랜지볼트 L', '웨브볼트 L', '볼트중량(kg)', '플랜지 외부 이음판', '플랜지 내부 이음판', '웨브 이음판', '이음판중량(kg)'];
   const rows = qs.map(q => [q.section, q.bolts[0].name, q.boltCount,
     `L${q.boltSpec.flange.length}×${q.boltSpec.flange.count}`, `L${q.boltSpec.web.length}×${q.boltSpec.web.count}`, q.boltWeightKg,
-    plateCell(q, '외첨판'), plateCell(q, '내첨판'), plateCell(q, '웨브'), q.plateWeightKg]);
+    plateCell(q, '외부 이음판'), plateCell(q, '내부 이음판'), plateCell(q, '웨브'), q.plateWeightKg]);
   const agg = aggregate(qs);
   const boltSummary = Object.entries(agg.boltByName).map(([k, v]) => `${k}:${v}`).join(' / ');
   const aoa: (string | number)[][] = [

@@ -63,7 +63,7 @@ export default function AiscCalcReport({ result, cond, onClose }: { result: Desi
 
         <div className="doc-head">
           <div className="doc-kicker">{stdLabelLong(cond.designStd)} · LRFD · {L('플랜지·웨브 이음 전 한계상태 검토', 'FLANGE & WEB SPLICE — ALL LIMIT STATES')}</div>
-          <h2>{stdLabel(cond.designStd)} {L('첨판 이음 계산서', 'Splice Calculation')}</h2>
+          <h2>{stdLabel(cond.designStd)} {L('이음판 이음 계산서', 'Splice Calculation')}</h2>
           <table className="doc-meta"><tbody>
             <tr><th>{L('부재 / 접합', 'Member / Joint')}</th><td>{r.section} · {tMember(cond.member, lang)} {tJoint(cond.jointType, lang)}</td><th>{L('나사조건', 'Thread')}</th><td>{cond.threadCond ?? 'N'}</td></tr>
             <tr><th>{L('강종(H/판)', 'Steel H/PL')}</th><td>{cond.steel} / {cond.plateSteel ?? cond.steel} · {L('볼트', 'Bolt')} {cond.bolt}</td><th>{L('플랜지력 Pf', 'Flange force Pf')}</th><td>{r.Puf_kN.toLocaleString()} kN</td></tr>
@@ -75,9 +75,9 @@ export default function AiscCalcReport({ result, cond, onClose }: { result: Desi
         <section className="doc-sec">
           <h3><span className="sec-no">1.</span>{L('배치 · 최적화', 'Layout & Optimization')}</h3>
           <table className="result-table2"><tbody>
-            <tr><th>{L('편람 표준배치', 'KBC layout')}</th><td>{L('외첨판', 'Outer')} PL-{result.flange.outerPlate?.t}×{result.flange.outerPlate?.w} · {L('내첨판', 'Inner')} PL-{result.flange.innerPlate?.t}×{result.flange.innerPlate?.w}×2 · {L('볼트', 'Bolt')} {result.flange.bolt.m}×{Math.round(result.flange.bolt.n)}-M{result.boltDia}</td></tr>
+            <tr><th>{L('편람 표준배치', 'KBC layout')}</th><td>{L('외부 이음판', 'Outer')} PL-{result.flange.outerPlate?.t}×{result.flange.outerPlate?.w} · {L('내부 이음판', 'Inner')} PL-{result.flange.innerPlate?.t}×{result.flange.innerPlate?.w}×2 · {L('볼트', 'Bolt')} {result.flange.bolt.m}×{Math.round(result.flange.bolt.n)}-M{result.boltDia}</td></tr>
             <tr><th>{L('보정 내역', 'Changes')}</th><td>{ac.changes.length ? ac.changes.map(x => trA(x, lang)).join(' · ') : L('보정 없음(전 항목 만족)', 'none (all pass)')}</td></tr>
-            <tr><th>{L('보정 후', 'Corrected')}</th><td><b>{L('외첨판', 'Outer')} PL-{r.flange.outerPlate?.t}×{r.flange.outerPlate?.w} · {L('내첨판', 'Inner')} PL-{r.flange.innerPlate?.t}×{r.flange.innerPlate?.w}×2 · {L('볼트', 'Bolt')} {r.flange.bolt.m}×{Math.round(r.flange.bolt.n)}-M{r.boltDia}</b> {!ac.ok && <span className="ag-ng">· {L('부재 단면 한계 — 단면 상향 필요', 'member section limited — upsize needed')}</span>}</td></tr>
+            <tr><th>{L('보정 후', 'Corrected')}</th><td><b>{L('외부 이음판', 'Outer')} PL-{r.flange.outerPlate?.t}×{r.flange.outerPlate?.w} · {L('내부 이음판', 'Inner')} PL-{r.flange.innerPlate?.t}×{r.flange.innerPlate?.w}×2 · {L('볼트', 'Bolt')} {r.flange.bolt.m}×{Math.round(r.flange.bolt.n)}-M{r.boltDia}</b> {!ac.ok && <span className="ag-ng">· {L('부재 단면 한계 — 단면 상향 필요', 'member section limited — upsize needed')}</span>}</td></tr>
             {ac.pfCap != null && <tr><th>{L('소요 캡핑', 'Demand cap')}</th><td>{L('부재 F13/D2 강도로 제한', 'limited by member F13/D2')}: Pf {r.Puf_kN.toLocaleString()} → <b>{Math.round(ac.pfCap).toLocaleString()} kN</b> <span className="ag-ng">({L('구멍 있는 부재의 실제 발현강도', 'holed-member achievable strength')})</span></td></tr>}
             <tr><th>{L('플랜지판 중량', 'Plate weight')}</th><td>{ac.wt0.toFixed(1)} → {ac.wt1.toFixed(1)} kg · {L('지배 DCR', 'gov. DCR')} <b className={ac.ok ? 'ag-ok' : 'ag-ng'}>{ac.report.govDcr}</b> {ac.ok ? 'OK' : 'NG'}</td></tr>
           </tbody></table>
@@ -109,7 +109,7 @@ export default function AiscCalcReport({ result, cond, onClose }: { result: Desi
             </table>
           </section>
         ))}
-        <p className="note">{L('※ 편람 표준배치를 입력으로 AISC 360-16 전 한계상태(플랜지 FB/FP/FI/FM · 웨브 WB/WR/WP/WI/WM)를 검토 후, DCR>1.0 항목을 강재 중량 최소 방향(첨판두께·볼트·웨브첨판 표준증분)으로 자동 최소화한 결과. 블록전단은 요소별 Case A/B/C/D를 하중분담(tributary)으로 판정한 최소지배. 부재 F13·D2·전단항복 초과는 소요를 부재강도로 캡핑(부분강도접합).',
+        <p className="note">{L('※ 편람 표준배치를 입력으로 AISC 360-16 전 한계상태(플랜지 FB/FP/FI/FM · 웨브 WB/WR/WP/WI/WM)를 검토 후, DCR>1.0 항목을 강재 중량 최소 방향(이음판두께·볼트·웨브 이음판 표준증분)으로 자동 최소화한 결과. 블록전단은 요소별 Case A/B/C/D를 하중분담(tributary)으로 판정한 최소지배. 부재 F13·D2·전단항복 초과는 소요를 부재강도로 캡핑(부분강도접합).',
           '※ KBC standard layout is checked against all AISC 360-16 limit states (flange FB/FP/FI/FM, web WB/WR/WP/WI/WM), then DCR>1.0 items are auto-minimized toward least steel weight (plate-thickness / bolt increments). Block shear evaluates element cases A/B/C/D by tributary load. Member F13/D2/shear-yield overstress caps demand to member strength (partial-strength splice).')}</p>
       </div>
     </div>

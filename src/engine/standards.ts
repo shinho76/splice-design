@@ -2,9 +2,9 @@
 // 근거: docs/01_설계조건_표준화방안_1-4장.md §3, docs/02 §5.4
 import type { BoltName } from './types';
 
-// [표 3.1] 플랜지 첨판 두께 표준 (mm)
+// [표 3.1] 플랜지 이음판 두께 표준 (mm)
 export const FLANGE_PLATE_T = [9, 12, 16, 19, 22, 25, 28];
-// [표 3.2] 웨브 첨판 두께 표준 (mm)
+// [표 3.2] 웨브 이음판 두께 표준 (mm)
 export const WEB_PLATE_T = [6, 9, 12, 14, 16, 19];
 
 // 피치 (3.2.1 / 3.2.2)
@@ -22,8 +22,8 @@ export function nominalWidth(B: number): number {
 }
 
 /**
- * [표 3.3 + 표 5.1] 플랜지 이음 표준: 공칭폭 → 볼트규격·열수·배치·게이지·첨판폭
- * outerW = 공칭폭. innerW = null 이면 외첨판만(폭이 좁은 경우).
+ * [표 3.3 + 표 5.1] 플랜지 이음 표준: 공칭폭 → 볼트규격·열수·배치·게이지·이음판폭
+ * outerW = 공칭폭. innerW = null 이면 외부 이음판만(폭이 좁은 경우).
  * 부록 I(보 100% SHN490 F10T 1/4·2/4)로 전 항목 교차검증 완료.
  */
 export interface FlangeStd {

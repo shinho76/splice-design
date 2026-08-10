@@ -32,7 +32,7 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
         <Seg label={L('접합', 'Joint')} value={cond.jointType} opts={['마찰', '지압']} optLabels={[L('마찰', 'Slip'), L('지압', 'Bearing')]} onPick={v => set('jointType', v as JointType)} />
       </div>
 
-      {/* ② 재료 (H형강→첨판→볼트) */}
+      {/* ② 재료 (H형강→이음판→볼트) */}
       <div className="fgrp">
         <div className="fld">
           <label>{L('H형강', 'H-Beam')}</label>
@@ -46,7 +46,7 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
           </select>
         </div>
         <div className="fld">
-          <label>{L('첨판', 'Plate')}</label>
+          <label>{L('이음판', 'Plate')}</label>
           <select value={cond.plateSteel ?? cond.steel} onChange={e => set('plateSteel', e.target.value as SteelGrade)}>
             <optgroup label="KS">
               <option value="SS275">SS275</option><option value="SM355">SM355</option><option value="SN355">SN355</option>
@@ -69,12 +69,12 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
         </div>
       </div>
 
-      {/* ③ 볼트 배치·첨판 (나사부→볼트안→엇모배치→첨판두께) */}
+      {/* ③ 볼트 배치·이음판 (나사부→볼트안→엇모배치→이음판두께) */}
       <div className="fgrp">
         {(cond.designStd === 'AISC' || cond.designStd === 'KDS') && <Seg label={L('나사부', 'Thread')} value={cond.threadCond ?? 'N'} opts={['N', 'X']} onPick={v => set('threadCond', v as 'N' | 'X')} />}
         <Seg label={L('볼트 직경', 'Bolt Ø')} value={boltMode} opts={['Default', 'Custom']} optLabels={[L('표준', 'Standard'), L('지정', 'Custom')]} onPick={v => onBoltMode(v as 'Default' | 'Custom')} />
         <Seg label={L('엇모', 'Stagger')} value={(cond.noStagger ?? false) ? '제외' : '포함'} opts={['포함', '제외']} optLabels={[L('포함', 'On'), L('제외', 'Off')]} onPick={v => set('noStagger', v === '제외')} />
-        <Seg label={L('첨판두께', 'Plate t')} value={(cond.equalPlateT ?? true) ? '동일' : '개별'} opts={['동일', '개별']} optLabels={[L('동일', 'Equal'), L('개별', 'Indiv.')]} onPick={v => set('equalPlateT', v === '동일')} />
+        <Seg label={L('이음판두께', 'Plate t')} value={(cond.equalPlateT ?? true) ? '동일' : '개별'} opts={['동일', '개별']} optLabels={[L('동일', 'Equal'), L('개별', 'Indiv.')]} onPick={v => set('equalPlateT', v === '동일')} />
       </div>
 
       {/* ④ 설계 파라미터 (강도비→갭) */}

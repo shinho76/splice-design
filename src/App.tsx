@@ -146,25 +146,25 @@ export default function App() {
                     <button className="help-x" title={L('닫기', 'Close')} onClick={() => setShowHelp(false)}>✕</button>
                   </div>
                   <p className="help-lead">{L(
-                    'H·W형강 보/기둥 이음부(플랜지·웨브)를 KBC-09 / KDS 14 31 25 / AISC 360-16 기준으로 전 단면 자동 설계하고, 볼트 배열·첨판 치수·물량·상세도면을 만들어 주는 도구입니다.',
+                    'H·W형강 보/기둥 이음부(플랜지·웨브)를 KBC-09 / KDS 14 31 25 / AISC 360-16 기준으로 전 단면 자동 설계하고, 볼트 배열·이음판 치수·물량·상세도면을 만들어 주는 도구입니다.',
                     'Auto-designs flange/web splices of H/W-shape beams & columns per KBC-09 / KDS 14 31 25 / AISC 360-16, producing bolt layouts, plate sizes, quantities and shop drawings for the whole section catalog.')}</p>
                   <div className="help-sec">{L('① 사용 순서', '① How to use')}</div>
                   <ol className="help-ol">
                     <li>{L('좌측 「설계 조건」에서 형강(H/W)·설계기준·부재(보/기둥)·접합(마찰/지압)·강종·볼트·강도비 α를 설정', 'Set profile, design standard, member, joint type, steel, bolt and ratio α in the left panel.')}</li>
-                    <li>{L('중앙 결과표에서 전 단면의 적합/부적합·DCR·볼트·첨판을 확인 (조건 변경 시 즉시 갱신)', 'Review pass/fail, DCR, bolts and plates for every section in the center table (updates instantly).')}</li>
-                    <li>{L('행을 클릭하면 우측에 볼트·첨판·접합상세도가 표시됩니다.', 'Click a row to see bolts, plates and the detail drawing on the right.')}</li>
+                    <li>{L('중앙 결과표에서 전 단면의 적합/부적합·DCR·볼트·이음판을 확인 (조건 변경 시 즉시 갱신)', 'Review pass/fail, DCR, bolts and plates for every section in the center table (updates instantly).')}</li>
+                    <li>{L('행을 클릭하면 우측에 볼트·이음판·접합상세도가 표시됩니다.', 'Click a row to see bolts, plates and the detail drawing on the right.')}</li>
                     <li>{L('우측 버튼으로 계산서·DXF·3D·IFC 내보내기, 프로젝트 담기가 가능합니다.', 'Export calc sheet, DXF, 3D, IFC or add to project from the right-side buttons.')}</li>
                   </ol>
                   <div className="help-sec">{L('② 결과물', '② What you get')}</div>
                   <ul className="help-ul">
-                    <li>{L('볼트 배열(열×행)·첨판 치수(두께×폭×길이)·게이지·피치·연단거리', 'Bolt array (col×row), plate sizes (t×w×L), gauge, pitch, edge distance')}</li>
+                    <li>{L('볼트 배열(열×행)·이음판 치수(두께×폭×길이)·게이지·피치·연단거리', 'Bolt array (col×row), plate sizes (t×w×L), gauge, pitch, edge distance')}</li>
                     <li>{L('강도검토(DCR) — 항목별 검토값 팝업(DCR 배지 클릭)', 'Strength check (DCR) with a per-item popup (click the DCR badge)')}</li>
                     <li>{L('물량 — 고력볼트 본수·중량, 강판 중량(좌측 ▦)', 'Quantities — bolt count/weight, plate weight (▦ on the left rail)')}</li>
                     <li>{L('상세도면 DXF(개별/전체·사무소 표준 포맷 ⤓²)·3D·IFC·계산서', 'Detail DXF (single/all · office format ⤓²), 3D, IFC and calc sheets')}</li>
                   </ul>
                   <div className="help-sec">{L('③ 참고', '③ Tips')}</div>
                   <ul className="help-ul">
-                    <li>{L('AISC/KDS 기준에서 「⚙ 최적화」가 켜져 있으면 철판 물량 최소로 DCR≤1.0을 맞춥니다(부재지배는 부분강도로 최대비율 표시).', 'With ⚙ Optimize on (AISC/KDS), plates are minimized to reach DCR≤1.0; member-governed cases show the partial-strength ratio.')}</li>
+                    <li>{L('AISC/KDS 기준에서 「⚙ KBC-09 검토」가 켜져 있으면 철판 물량 최소로 DCR≤1.0을 맞춥니다(부재지배는 부분강도로 최대비율 표시).', 'With ⚙ KBC-09 Check on (AISC/KDS), plates are minimized to reach DCR≤1.0; member-governed cases show the partial-strength ratio.')}</li>
                     <li>{L('각 버튼에 마우스를 올리면 기능 설명이 표시됩니다.', 'Hover any button to see what it does.')}</li>
                   </ul>
                 </div>
@@ -187,7 +187,7 @@ export default function App() {
             <FilterBar cond={cond} onChange={setCond} boltMode={boltMode} onBoltMode={setBoltMode} />
             {usesLimitState(cond.designStd) && (
               <div className="cf-autofix">
-                <button type="button" className={autoFix ? 'on' : ''} onClick={() => setAutoFix(v => !v)} aria-pressed={autoFix} title={L('전체 부재 AISC 최적화 — 철판 물량 최소로 DCR≤1.0 달성(부재지배는 부분강도)', 'Optimize all members — minimum plate to reach DCR≤1.0 (member-governed → partial strength)')}>⚙ {L('최적화', 'Optimize')}</button>
+                <button type="button" className={autoFix ? 'on' : ''} onClick={() => setAutoFix(v => !v)} aria-pressed={autoFix} title={L('전체 부재 KBC-09 검토 — 철판 물량 최소로 DCR≤1.0 달성(부재지배는 부분강도)', 'KBC-09 check for all members — minimum plate to reach DCR≤1.0 (member-governed → partial strength)')}>⚙ {L('KBC-09 검토', 'KBC-09 Check')}</button>
               </div>
             )}
             <div className="cfilters-hint">▸ {L('조건을 바꾸면 결과표가 즉시 갱신됩니다.', 'Changing conditions updates the table instantly.')}</div>
@@ -199,7 +199,7 @@ export default function App() {
               <div className="kpi"><div className="k">{L('적합', 'Pass')}</div><div className="v num ok">{stats.ok}</div><div className="d ok">{stats.total ? Math.round(stats.ok / stats.total * 100) : 0}%</div></div>
               <div className="kpi"><div className="k">{L('부적합', 'Fail')}</div><div className="v num ng">{stats.total - stats.ok}</div><div className="d ng">{stats.total - stats.ok ? L('재검토', 'recheck') : '—'}</div></div>
               <div className="kpi"><div className="k">{L('고력볼트', 'H.S. Bolts')}</div><div className="v num">{nf(stats.bolts)}<small> {L('본', 'ea')}</small> / {(stats.boltWt / 1000).toFixed(2)}<small> t</small></div><div className="d">{cond.bolt}</div></div>
-              <div className="kpi"><div className="k">{L('강재 물량', 'Steel Qty')}</div><div className="v num">{(stats.wt / 1000).toFixed(2)}<small> t</small></div><div className="d">{L('첨판', 'plates')}</div></div>
+              <div className="kpi"><div className="k">{L('강재 물량', 'Steel Qty')}</div><div className="v num">{(stats.wt / 1000).toFixed(2)}<small> t</small></div><div className="d">{L('이음판', 'plates')}</div></div>
             </div>
             <div className="cgrid"><ResultTable cond={cond} onSelect={setSelected} onView3D={setView3D} custom={boltMode === 'Custom'} diaAt={diaAt} onSetDia={setDiaAt} selectedSection={selected?.section} autoFix={autoFix} hidden={hidden} onHide={hideSection} onResetHidden={resetHidden} onDcrClick={setDcrView} /></div>
           </div>
@@ -209,15 +209,15 @@ export default function App() {
               <>
                 <div className="dh">{sectionByName(selEff.section)?.label ?? selEff.section}
                   {sectionByName(selEff.section)?.label && <span className="dh-mm">{selEff.section}</span>}
-                  <span className="dbadge">{autoFix && usesLimitState(cond.designStd) ? L('최적화', 'Optimized') : L('선택됨', 'Selected')}</span></div>
+                  <span className="dbadge">{autoFix && usesLimitState(cond.designStd) ? L('KBC-09 검토', 'KBC-09 Check') : L('선택됨', 'Selected')}</span></div>
                 <div className="dsub">{tMember(cond.member, lang)} · {tJoint(cond.jointType, lang)} · {cond.steel} · {cond.bolt}</div>
                 <div className="dspecs">
                   <div><span>{isCol ? L('압축강도', 'Compression') : L('휨모멘트', 'Moment')}</span><b>{nf(isCol ? selEff.Puf_kN : selEff.Mu_kNm)} kN{isCol ? '' : '·m'}</b></div>
                   <div><span>{L('플랜지 볼트', 'Flange bolts')}</span><b>{selEff.flange.bolt.m}×{selEff.flange.bolt.n} · {selEff.flange.bolt.m * Math.round(selEff.flange.bolt.n) * 4}-M{selEff.boltDia}</b></div>
-                  <div><span>{L('외첨판', 'Outer plate')}</span><b>{plate(selEff.flange.outerPlate)} ×2</b></div>
-                  <div><span>{L('내첨판', 'Inner plate')}</span><b>{selEff.flange.innerPlate ? `${plate(selEff.flange.innerPlate)} ×4` : '—'}</b></div>
+                  <div><span>{L('외부 이음판', 'Outer plate')}</span><b>{plate(selEff.flange.outerPlate)} ×2</b></div>
+                  <div><span>{L('내부 이음판', 'Inner plate')}</span><b>{selEff.flange.innerPlate ? `${plate(selEff.flange.innerPlate)} ×4` : '—'}</b></div>
                   <div><span>{L('웨브 볼트', 'Web bolts')}</span><b>{selEff.web.bolt.m}×{selEff.web.bolt.n} · {selEff.web.bolt.m * selEff.web.bolt.n * 2}-M{selEff.boltDia}</b></div>
-                  <div><span>{L('웨브첨판', 'Web plate')}</span><b>{plate(selEff.web.webPlate)} ×2</b></div>
+                  <div><span>{L('웨브 이음판', 'Web plate')}</span><b>{plate(selEff.web.webPlate)} ×2</b></div>
                   {detailQ && <>
                     <div className="dspec-hd"><span>{L('고력볼트', 'H.S. bolts')} (KS B 1010)</span><b>{detailQ.boltSpec.totalCount}{L('본', 'ea')} · {detailQ.boltWeightKg} kg</b></div>
                     <div><span>{L('플랜지볼트', 'Flange bolts')}</span><b>M{selEff.boltDia} L{detailQ.boltSpec.flange.length} · {detailQ.boltSpec.flange.count}{L('본', 'ea')} · {detailQ.boltSpec.flange.totalKg} kg</b></div>

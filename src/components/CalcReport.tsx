@@ -41,7 +41,7 @@ export default function CalcReport({ result, cond, onClose, onAdd }: {
           <table className="doc-meta">
             <tbody>
               <tr><th>{L('부재 / 접합', 'Member / Joint')}</th><td>{tMember(cond.member, lang)} · {tJoint(cond.jointType, lang)}</td><th>{L('단면', 'Section')}</th><td>{result.section}</td></tr>
-              <tr><th>{L('강종 / 볼트', 'Steel / Bolt')}</th><td>{L('H형강', 'H-beam')} {cond.steel} · {L('첨판', 'plate')} {cond.plateSteel ?? cond.steel} / {L('고력볼트', 'H.S. bolt')} {cond.bolt}</td><th>{L('부분강도비 α', 'Partial-strength ratio α')}</th><td>{pct}%</td></tr>
+              <tr><th>{L('강종 / 볼트', 'Steel / Bolt')}</th><td>{L('H형강', 'H-beam')} {cond.steel} · {L('이음판', 'plate')} {cond.plateSteel ?? cond.steel} / {L('고력볼트', 'H.S. bolt')} {cond.bolt}</td><th>{L('부분강도비 α', 'Partial-strength ratio α')}</th><td>{pct}%</td></tr>
               <tr><th>{L('설계기준', 'Design Code')}</th><td colSpan={3}>{L('KBC-09 한계상태설계법 · 한국강구조학회 고력볼트 표준접합 설계편람', 'KBC-09 LRFD · KSSC High-Strength Bolt Standard Connection Design Guide')}</td></tr>
             </tbody>
           </table>
@@ -89,10 +89,10 @@ export default function CalcReport({ result, cond, onClose, onAdd }: {
           <table className="result-table2">
             <tbody>
               <tr><th>{L('플랜지 볼트', 'Flange bolts')}</th><td>{result.flange.bolt.m} {L('열', 'col')} × {result.flange.bolt.n} {L('행', 'row')} = {result.flange.bolt.m * Math.round(result.flange.bolt.n) * 4}-M{result.boltDia}</td></tr>
-              <tr><th>{L('플랜지 외첨판', 'Flange outer plate')}</th><td>{plate(result.flange.outerPlate)} <span className="q">({L('2매', '2 ea')})</span></td></tr>
-              <tr><th>{L('플랜지 내첨판', 'Flange inner plate')}</th><td>{result.flange.innerPlate ? <>{plate(result.flange.innerPlate)} <span className="q">({L('4매', '4 ea')})</span></> : '—'}</td></tr>
+              <tr><th>{L('플랜지 외부 이음판', 'Flange outer plate')}</th><td>{plate(result.flange.outerPlate)} <span className="q">({L('2매', '2 ea')})</span></td></tr>
+              <tr><th>{L('플랜지 내부 이음판', 'Flange inner plate')}</th><td>{result.flange.innerPlate ? <>{plate(result.flange.innerPlate)} <span className="q">({L('4매', '4 ea')})</span></> : '—'}</td></tr>
               <tr><th>{L('웨브 볼트', 'Web bolts')}</th><td>{result.web.bolt.m}×{result.web.bolt.n} = {result.web.bolt.m * result.web.bolt.n * 2}-M{result.boltDia} (Pc={result.web.Pc ?? '—'})</td></tr>
-              <tr><th>{L('웨브 첨판', 'Web plate')}</th><td>{plate(result.web.webPlate)} <span className="q">({L('2매', '2 ea')})</span></td></tr>
+              <tr><th>{L('웨브 이음판', 'Web plate')}</th><td>{plate(result.web.webPlate)} <span className="q">({L('2매', '2 ea')})</span></td></tr>
             </tbody>
           </table>
         </section>

@@ -24,7 +24,7 @@ function run(jt: JointType) {
   }
   const N=G.length;
   console.log(`\n=== 기둥 ${jt} 100% SHN490 F10T (n=${N}) ===`);
-  console.log(`축력 Nc(±2%):${nc}/${N}  외첨판(n):${fOut}/${N}  웨브:${wAll}/${N}  ⇒ 전항목(외+웨브) ${allOK}/${N}`);
+  console.log(`축력 Nc(±2%):${nc}/${N}  외부 이음판(n):${fOut}/${N}  웨브:${wAll}/${N}  ⇒ 전항목(외+웨브) ${allOK}/${N}`);
   fails.slice(0,40).forEach(f=>console.log('  '+f));
 }
 run('마찰');

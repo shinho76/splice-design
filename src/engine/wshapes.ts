@@ -1,6 +1,6 @@
 // AISC Shapes Database v16.0 — W형강 289종 (inch·lb/ft → mm 변환).
 // H,B: 반올림 mm · tw,tf,r: 0.1mm · Ag/Sx/Zx: computeProps(필렛기하) — H형강 카탈로그와 동일 방식.
-// r(필렛)=(kdes-tf)×25.4. k1=공표 k1×25.4(0.1mm, 내첨판 폭 산정용). label=AISC_Manual_Label(예 W16X40).
+// r(필렛)=(kdes-tf)×25.4. k1=공표 k1×25.4(0.1mm, 내부 이음판 폭 산정용). label=AISC_Manual_Label(예 W16X40).
 import type { HSection } from './types.ts';
 
 export const WSECTIONS: HSection[] = [

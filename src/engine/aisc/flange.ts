@@ -1,6 +1,6 @@
 // ────────────────────────────────────────────────────────────────────────────
 // 플랜지 이음 검토 (AISC 360-16, SI)
-//   FB 볼트 · FP 외첨판 · FI 내첨판(×2) · FM 부재 플랜지
+//   FB 볼트 · FP 외부 이음판 · FI 내부 이음판(×2) · FM 부재 플랜지
 //   블록전단은 요소별 케이스 A/B/C/D 최소 지배(geometry.blockShear).
 // 소요: Pf(볼트·부재), half=Pf/2(판군 이중전단 50:50), Mu(F13.1).
 // 각 검토는 steps[](면적 세분·중간값)를 보유 → 영문 상세계산서에서 서술 렌더.
@@ -48,7 +48,7 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
   const mFy = FySteel(cond.steel, tf), mFu = FuSteel(cond.steel);
 
   const Pf = dem.Pf, Mu = dem.Mu;
-  const halfOut = dem.halfOuter, halfIn = dem.halfInner;   // 외/내첨판 비례분배 소요
+  const halfOut = dem.halfOuter, halfIn = dem.halfInner;   // 외/내부 이음판 비례분배 소요
 
   const m = r.flange.bolt.m, nrow = Math.max(1, Math.round(r.flange.bolt.n));
   const nb = m * nrow;
@@ -59,7 +59,7 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
   const cols = flangeColumns(m, g1, g2);
   const stagF = r.flange.staggered ?? false;              // 엇모 여부 → B4.3b 순단면
   const colsOff = colOffsets(cols, stagF);                // 전 열 {x, off}
-  const innerColsOff = colsOff.filter(c => c.x > 0);      // 내첨판 1매(웨브 한쪽) 열들
+  const innerColsOff = colsOff.filter(c => c.x > 0);      // 내부 이음판 1매(웨브 한쪽) 열들
 
   const oT = r.flange.outerPlate?.t ?? 9, oW = r.flange.outerPlate?.w ?? B;
   const inner = r.flange.innerPlate, iT = inner?.t ?? 0, iW = inner?.w ?? 0;
@@ -97,9 +97,9 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
     }
   }
 
-  // ── FP. 외첨판 PL (half) ──
+  // ── FP. 외부 이음판 PL (half) ──
   {
-    const g = `B. 외첨판 PL-${oT}×${oW}`;
+    const g = `B. 외부 이음판 PL-${oT}×${oW}`;
     const ns = netAreaStag(oW, oT, colsOff, ndp), An = ns.area, Ag = grossArea(oW, oT), Ae = Math.min(An, 0.85 * Ag);
     checks.push(finalize({
       id: 'FP1', region: 'outer', group: g, label: '인장 항복', clause: 'J4.1',
@@ -146,9 +146,9 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
     }));
   }
 
-  // ── FI. 내첨판 PL ×2 (half) ──
+  // ── FI. 내부 이음판 PL ×2 (half) ──
   if (inner) {
-    const g = `C. 내첨판 PL-${iT}×${iW}×2`;
+    const g = `C. 내부 이음판 PL-${iT}×${iW}×2`;
     const nHalf = Math.ceil(m / 2);                 // 내판 1매당 열수
     const nsI = netAreaStag(iW, iT, innerColsOff, ndp);   // 내판 1매 B4.3b 순단면
     const Ag = 2 * grossArea(iW, iT), An = 2 * nsI.area, Ae = Math.min(An, 0.85 * Ag);

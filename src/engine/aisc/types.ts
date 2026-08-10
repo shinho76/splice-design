@@ -29,7 +29,7 @@ export interface AiscStep {
 export interface AiscCheck {
   id: string;         // "FB1", "FI2", "WI1" …
   region: Region;
-  group: string;      // 표시 그룹 "A. 볼트" / "B. 외첨판 PL-12×300"
+  group: string;      // 표시 그룹 "A. 볼트" / "B. 외부 이음판 PL-12×300"
   label: string;      // "볼트 전단(이중전단)"
   clause: string;     // "J3.6"
   phiRn?: number;     // 지배 설계강도 (kN / kN·m)
@@ -61,8 +61,8 @@ export interface BlockCase {
 export interface DemandSet {
   Pf: number;         // 플랜지 소요축력 (N)  = M/(d−tf) + P/2
   half: number;       // 판군 분담 Pf/2 (N)   (초기설계=이중전단 50:50)
-  halfOuter: number;  // 외첨판 분담 (N) = Pf·(A외/(A외+A내)) — 판 총단면적 비례분배
-  halfInner: number;  // 내첨판쌍 분담 (N) = Pf·(A내/(A외+A내))
+  halfOuter: number;  // 외부 이음판 분담 (N) = Pf·(A외/(A외+A내)) — 판 총단면적 비례분배
+  halfInner: number;  // 내부 이음판쌍 분담 (N) = Pf·(A내/(A외+A내))
   Mu: number;         // 부재 소요휨 (N·mm)
   Vu: number;         // 웨브 소요전단 (N)
   MuxWeb: number;     // 웨브 편심모멘트 Vu·e (N·mm)

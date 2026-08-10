@@ -1,5 +1,5 @@
 // IFC4 내보내기 — 최종 확정 수치(좌표·두께·직경·필렛R)를 글로벌 표준 IFC(STEP) 파일로 패킹.
-// H형강 = IfcIShapeProfileDef(필렛 R 내장) 압출, 첨판 = 사각형 압출, 볼트 = 원형 압출.
+// H형강 = IfcIShapeProfileDef(필렛 R 내장) 압출, 이음판 = 사각형 압출, 볼트 = 원형 압출.
 // 생성 결과는 web-ifc(IfcAPI.OpenModel)로 파싱 검증됨(tools/verify_ifc.mjs).
 import type { DesignResult, DesignCondition } from './types.ts';
 import { connParts } from './connParts.ts';
@@ -74,7 +74,7 @@ export function toIFC(r: DesignResult, cond: DesignCondition): string {
     const prod = add(`IFCBEAM('${guid(100 + products.length)}',${R(owner)},'H-Beam ${sgn > 0 ? 'R' : 'L'}',$,'${P.section}',${R(pl)},${R(shapeOf(extrude(iProf, P.segLen)))},$,.BEAM.)`);
     products.push(prod);
   }
-  // ── 첨판(사각형 압출) ──
+  // ── 이음판(사각형 압출) ──
   for (const bx of P.boxes) {
     const prof = add(`IFCRECTANGLEPROFILEDEF(.AREA.,$,${R(place2)},${f(bx.sx)},${f(bx.sy)})`);
     const pl = placeAt(bx.cx, bx.cy, bx.cz - bx.sz / 2);

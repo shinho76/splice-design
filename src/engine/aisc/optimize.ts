@@ -1,7 +1,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 // AISC 자동 최소화 (사전식 유도 그리디) — 강재 중량 최소 방향으로 DCR≤1 달성
 //   목적: ① 볼트수·판 최소  ② 지배 실패항목만 최소증분(불필요한 과설계 회피)
-//   레버: 첨판두께 · 플랜지 볼트행 · 웨브 볼트 · 웨브첨판 두께·춤 · 볼트직경 · 부재한계 소요캡핑
+//   레버: 이음판두께 · 플랜지 볼트행 · 웨브 볼트 · 웨브 이음판 두께·춤 · 볼트직경 · 부재한계 소요캡핑
 //   부재(F13.1·D2·전단항복 등)는 접합 보강 불가 → 소요를 부재강도로 캡핑(부분강도접합).
 //   탐색이력(history)에 매 반복 지배·DCR·조정을 기록(참고 엔진 optimize 이식).
 // ────────────────────────────────────────────────────────────────────────────
@@ -11,8 +11,8 @@ import { sectionByName } from '../sections.ts';
 import type { AiscResult } from './types.ts';
 
 // 실무 표준 시리즈(KS D 3503/3515 상용 압연 강판 두께 mm · KS B 1010 볼트호칭)
-const FT = [9, 10, 12, 14, 16, 19, 22, 25, 28, 32, 36, 40, 45, 50, 55, 60];   // 플랜지 첨판 두께
-const WT = [6, 8, 9, 10, 12, 14, 16, 19, 22, 25, 28, 32, 36, 40, 45, 50];     // 웨브 첨판 두께
+const FT = [9, 10, 12, 14, 16, 19, 22, 25, 28, 32, 36, 40, 45, 50, 55, 60];   // 플랜지 이음판 두께
+const WT = [6, 8, 9, 10, 12, 14, 16, 19, 22, 25, 28, 32, 36, 40, 45, 50];     // 웨브 이음판 두께
 const DIA = [16, 20, 22, 24, 27, 30];
 const nextUp = (v: number, s: number[]) => s.find(x => x > v + 1e-6) ?? v;
 
@@ -28,10 +28,10 @@ export interface AiscOptResult {
   ok: boolean;
   flangeScale: number; webScale: number;   // <1 이면 부분강도(소요캡핑)
   memberLimited: boolean;
-  wt0: number; wt1: number;                 // 강재중량(플랜지+웨브 첨판, kg/부재)
+  wt0: number; wt1: number;                 // 강재중량(플랜지+웨브 이음판, kg/부재)
 }
 
-/** 첨판 강재중량(kg/부재) — 플랜지 외·내(×2) + 웨브(×2) */
+/** 이음판 강재중량(kg/부재) — 플랜지 외·내(×2) + 웨브(×2) */
 function plateWeight(r: DesignResult): number {
   const o = r.flange.outerPlate, i = r.flange.innerPlate, w = r.web.webPlate;
   const vol = (o ? o.t * o.w * o.L : 0)
@@ -63,11 +63,11 @@ export function aiscOptimize(r0: DesignResult, cond: DesignCondition, limits: Op
 
   // 지오메트리 상수(재산정용) — 엔진 designFlange/designWeb 식과 반드시 일치해야 연단/필렛 정합
   const fPitch = r.flange.pitch ?? 60, fEdge = r.flange.edge ?? 40, gap = r.flange.gap ?? 10;
-  const fStag = r.flange.staggered ?? false;          // 엇모면 첨판 길이식이 다름((2n−1)·45)
+  const fStag = r.flange.staggered ?? false;          // 엇모면 이음판 길이식이 다름((2n−1)·45)
   const Pc = r.web.Pc ?? 60, webP = r.web.pitch ?? 60, wEdge = r.web.edge ?? 40;
   const secG = sectionByName(r.section);          // 카탈로그 실치수(H·tf·r) — parse는 W-호칭 미지원
   const H = secG?.H ?? 0, tf = secG?.tf ?? 0, rFil = secG?.r ?? 0;
-  const FCL = 8;    // 웨브첨판 필렛 클리어런스(엔진 designWeb과 동일). H형강은 플랫 이내만 강제.
+  const FCL = 8;    // 웨브 이음판 필렛 클리어런스(엔진 designWeb과 동일). H형강은 플랫 이내만 강제.
   const chumCap = cond.profile === 'W' ? (H - 2 * (tf + rFil) - 2 * FCL) : (H - 2 * (tf + rFil));
   // 엇모: 엔진 Lpf = 2[(2n−1)·45 + 2·40] + gap.  정렬: 2[(n−1)·pitch + 2·40] + gap.
   const flangeLen = (n: number) => fStag
@@ -75,7 +75,7 @@ export function aiscOptimize(r0: DesignResult, cond: DesignCondition, limits: Op
     : 2 * ((Math.round(n) - 1) * fPitch + 2 * fEdge) + gap;
   const webWidth = (nh: number) => 2 * ((nh - 1) * webP + 2 * wEdge) + gap;
   const webDepth = (mv: number) => Math.min((mv - 1) * Pc + 80, chumCap);   // 필렛플랫 초과 방지
-  const maxWebVert = Math.max(1, Math.floor((chumCap - 80) / Pc) + 1);      // 춤(첨판) 필렛플랫 이내
+  const maxWebVert = Math.max(1, Math.floor((chumCap - 80) / Pc) + 1);      // 춤(이음판) 필렛플랫 이내
 
   const capBy = (res: AiscResult, ids: string[]): number => {
     const fs = res.checks.filter(c => ids.includes(c.id) && c.ok === false && c.phiRn && c.demand);
@@ -104,12 +104,12 @@ export function aiscOptimize(r0: DesignResult, cond: DesignCondition, limits: Op
     const bumpOuter = () => {
       if (!r.flange.outerPlate) return false;
       const t = r.flange.outerPlate.t, nt = nextUp(t, FT); if (nt === t) return false;
-      r.flange.outerPlate.t = nt; action = `외첨판 두께 ${t}→${nt}`; return true;
+      r.flange.outerPlate.t = nt; action = `외부 이음판 두께 ${t}→${nt}`; return true;
     };
     const bumpInner = () => {
       if (!r.flange.innerPlate) return false;
       const t = r.flange.innerPlate.t, nt = nextUp(t, FT); if (nt === t) return false;
-      r.flange.innerPlate.t = nt; action = `내첨판 두께 ${t}→${nt}`; return true;
+      r.flange.innerPlate.t = nt; action = `내부 이음판 두께 ${t}→${nt}`; return true;
     };
     const bumpDia = () => {
       const nd = nextUp(r.boltDia, DIA); if (nd === r.boltDia) return false;
@@ -117,7 +117,7 @@ export function aiscOptimize(r0: DesignResult, cond: DesignCondition, limits: Op
     };
     const addWebVert = () => {
       const mv = r.web.bolt.m; if (mv >= maxWebVert) return false;
-      if (mv * Pc + 80 > chumCap) return false;   // 다음 행 추가 시 첨판 춤이 필렛플랫 초과 → 불가
+      if (mv * Pc + 80 > chumCap) return false;   // 다음 행 추가 시 이음판 춤이 필렛플랫 초과 → 불가
 
       r.web.bolt = { m: mv + 1, n: r.web.bolt.n, count: (mv + 1) * r.web.bolt.n };
       if (r.web.webPlate) r.web.webPlate.w = webDepth(mv + 1);
@@ -132,7 +132,7 @@ export function aiscOptimize(r0: DesignResult, cond: DesignCondition, limits: Op
     const bumpWebT = () => {
       if (!r.web.webPlate) return false;
       const t = r.web.webPlate.t, nt = nextUp(t, WT); if (nt === t) return false;
-      r.web.webPlate.t = nt; action = `웨브첨판 두께 ${t}→${nt}`; return true;
+      r.web.webPlate.t = nt; action = `웨브 이음판 두께 ${t}→${nt}`; return true;
     };
     const capFlange = () => {
       const s = capBy(res, ['FM2', 'FM3', 'FM4', 'FM1', 'FM5']);
@@ -205,7 +205,7 @@ export function aiscOptimize(r0: DesignResult, cond: DesignCondition, limits: Op
   function trimDown() {
     const passOK = () => aiscRun(r, cond, { flangeScale: fScale, webScale: wScale }).ok;
     if (!passOK()) return;
-    const eqT = !!cond.equalPlateT && !!r.flange.outerPlate && !!r.flange.innerPlate;   // 외·내첨판 동일두께 옵션
+    const eqT = !!cond.equalPlateT && !!r.flange.outerPlate && !!r.flange.innerPlate;   // 외·내부 이음판 동일두께 옵션
     for (let g2 = 0; g2 < 40; g2++) {
       let trimmed = false;
       for (const [pl, series] of [[r.flange.outerPlate, FT], [r.flange.innerPlate, FT], [r.web.webPlate, WT]] as const) {
@@ -232,7 +232,7 @@ export function aiscOptimize(r0: DesignResult, cond: DesignCondition, limits: Op
         if (r.flange.outerPlate) r.flange.outerPlate.L = flangeLen(n0 - 1);
         if (r.flange.innerPlate) r.flange.innerPlate.L = flangeLen(n0 - 1);
         if (passOK()) trimmed = true;
-        else { r.flange.bolt = b0;                    // 정확한 원본 복원(분수 n 유지 → 첨판길이 정합)
+        else { r.flange.bolt = b0;                    // 정확한 원본 복원(분수 n 유지 → 이음판길이 정합)
           if (r.flange.outerPlate && oL0 != null) r.flange.outerPlate.L = oL0;
           if (r.flange.innerPlate && iL0 != null) r.flange.innerPlate.L = iL0; }
       }

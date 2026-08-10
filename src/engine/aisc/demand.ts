@@ -44,7 +44,7 @@ export function computeDemand(r: DesignResult, inp: DemandInput = {}): DemandSet
   const e = webEccentricity(r);
   const MuxWeb = Vu * e;
 
-  // 외/내첨판 소요분배: 판 총단면적 비례(불균등판 표준배분). 초기설계는 A외=A내 → 50:50과 동치.
+  // 외/내부 이음판 소요분배: 판 총단면적 비례(불균등판 표준배분). 초기설계는 A외=A내 → 50:50과 동치.
   // 내판이 폭한계(k1)로 얇지 못할 때, 옵티마이저가 외판을 키우면 소요가 외판으로 이동(내판 파단 완화).
   const oT = r.flange.outerPlate?.t ?? 0, oW = r.flange.outerPlate?.w ?? 0;
   const inner = r.flange.innerPlate;

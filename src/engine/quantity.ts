@@ -1,4 +1,4 @@
-// 물량산정 — 부재별 볼트 개수·중량(KS B 1010)·첨판 물량(중량). 강재비중 7,850 kg/m³.
+// 물량산정 — 부재별 볼트 개수·중량(KS B 1010)·이음판 물량(중량). 강재비중 7,850 kg/m³.
 import type { DesignResult, DesignCondition, Plate } from './types.ts';
 import { boltSpecOf, type BoltSpec } from './bolt_spec.ts';
 
@@ -21,9 +21,9 @@ function plateItem(role: string, p: Plate, count: number): PlateItem {
 /** 부재 1개(이음 1개소)의 물량 */
 export function quantityOf(r: DesignResult, cond: DesignCondition): Quantity {
   const plates: PlateItem[] = [];
-  if (r.flange.outerPlate) plates.push(plateItem('플랜지 외첨판', r.flange.outerPlate, 2));       // 상·하 플랜지 2매
-  if (r.flange.innerPlate) plates.push(plateItem('플랜지 내첨판', r.flange.innerPlate, 4));       // 상·하 × 좌우 4매
-  if (r.web.webPlate) plates.push(plateItem('웨브 첨판', r.web.webPlate, 2));                     // 양면 2매
+  if (r.flange.outerPlate) plates.push(plateItem('플랜지 외부 이음판', r.flange.outerPlate, 2));       // 상·하 플랜지 2매
+  if (r.flange.innerPlate) plates.push(plateItem('플랜지 내부 이음판', r.flange.innerPlate, 4));       // 상·하 × 좌우 4매
+  if (r.web.webPlate) plates.push(plateItem('웨브 이음판', r.web.webPlate, 2));                     // 양면 2매
 
   const nF = Math.round(r.flange.bolt.n);
   const flangeBolts = r.flange.bolt.m * nF * 4;                 // 열×행 × (좌우2)×(상하플랜지2)
@@ -57,19 +57,19 @@ export function aggregate(qs: Quantity[]) {
     boltByName, totalBolts,
     plateWeightKg: +totalWeightKg.toFixed(1),
     boltWeightKg: +boltWeightKg.toFixed(1),
-    totalWeightKg: +(totalWeightKg + boltWeightKg).toFixed(1), // 첨판+볼트
+    totalWeightKg: +(totalWeightKg + boltWeightKg).toFixed(1), // 이음판+볼트
   };
 }
 
-/** 물량표 CSV (부재별 볼트 본수·표준길이·중량 + 첨판중량) */
+/** 물량표 CSV (부재별 볼트 본수·표준길이·중량 + 이음판중량) */
 export function quantityCsv(qs: Quantity[], cond: DesignCondition): string {
-  const head = ['단면치수', '볼트', '볼트개수', '플랜지볼트(L)', '웨브볼트(L)', '볼트중량(kg)', '외첨판', '내첨판', '웨브첨판', '첨판중량(kg)'];
+  const head = ['단면치수', '볼트', '볼트개수', '플랜지볼트(L)', '웨브볼트(L)', '볼트중량(kg)', '외부 이음판', '내부 이음판', '웨브 이음판', '이음판중량(kg)'];
   const rows = qs.map(q => {
     const f = (role: string) => { const p = q.plates.find(x => x.role.includes(role)); return p ? `${p.t}×${p.w}×${p.L}×${p.count}매` : '—'; };
     const bf = q.boltSpec.flange, bw = q.boltSpec.web;
     return [q.section, q.bolts[0].name, String(q.boltCount),
       `L${bf.length}×${bf.count}본`, `L${bw.length}×${bw.count}본`, String(q.boltWeightKg),
-      f('외첨판'), f('내첨판'), f('웨브'), String(q.plateWeightKg)];
+      f('외부 이음판'), f('내부 이음판'), f('웨브'), String(q.plateWeightKg)];
   });
   const agg = aggregate(qs);
   const bolts = Object.entries(agg.boltByName).map(([k, v]) => `${k}:${v}`).join(' / ');

@@ -5,7 +5,7 @@ import { useLang, tJoint, tMember } from '../i18n.ts';
 /**
  * 접합 상세도 — 계산 결과 기반 파라메트릭 렌더.
  * 치수는 실제 볼트 좌표·판 치수에서 도출 → 도면과 항상 일치(연단거리 포함).
- * 웨브 입면(플랜지 외·내첨판, 웨브첨판, 볼트) + 플랜지 평면(웨브 은선·게이지) + 요약표. 해칭·테마 대응.
+ * 웨브 입면(플랜지 외·내부 이음판, 웨브 이음판, 볼트) + 플랜지 평면(웨브 은선·게이지) + 요약표. 해칭·테마 대응.
  */
 export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: DesignCondition }) {
   const lang = useLang();
@@ -14,7 +14,7 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
   const fB = r.flange.bolt, wB = r.web.bolt, dia = r.boltDia;
   const g1 = r.flange.gauge?.g1 ?? 90, g2 = r.flange.gauge?.g2 ?? 0;
   const stag = r.flange.staggered ?? false;   // 엔진의 실제 엇모 여부(공칭300만) — m≥4로 판정 금지
-  const gap = r.flange.gap ?? 10;             // 첨판 길이에 반영된 이격(엔진과 동일)
+  const gap = r.flange.gap ?? 10;             // 이음판 길이에 반영된 이격(엔진과 동일)
   const base = gap / 2 + 40;
   const fp = r.flange.pitch ?? 60, wp = r.web.pitch ?? 60;   // 엔진 피치(Custom 대구경 상향)
 
@@ -37,7 +37,7 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
   const webWid = r.web.webPlate?.L ?? 170, wT = r.web.webPlate?.t;
   const flOff = Math.round((H - chum) / 2);
   const webRowY = Array.from({ length: mW }, (_, i) => (i - (mW - 1) / 2) * Pc);
-  // 웨브볼트는 정렬(엇갈림 없음) — DXF와 동일. (과거 +30 엇갈림은 첨판폭 미보정으로 연단 40→10mm 파괴 + DXF 불일치 유발)
+  // 웨브볼트는 정렬(엇갈림 없음) — DXF와 동일. (과거 +30 엇갈림은 이음판폭 미보정으로 연단 40→10mm 파괴 + DXF 불일치 유발)
   const webPosX = Array.from({ length: nW }, (_, i) => base + i * wp);
 
   // ── 치수체인: 실제 좌표·판치수에서 도출 ──
@@ -113,10 +113,10 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
           {/* 상·하 플랜지 */}
           <rect x={-beamW * sc1 / 2} y={-webPx / 2} width={beamW * sc1} height={Math.max(3, tf * sc1)} className="svg-flange-band" />
           <rect x={-beamW * sc1 / 2} y={webPx / 2 - Math.max(3, tf * sc1)} width={beamW * sc1} height={Math.max(3, tf * sc1)} className="svg-flange-band" />
-          {/* 플랜지 외첨판(외측, 해칭) */}
+          {/* 플랜지 외부 이음판(외측, 해칭) */}
           <rect x={-Lpf * sc1 / 2} y={-webPx / 2 - fbT} width={Lpf * sc1} height={fbT} className="svg-flg" />
           <rect x={-Lpf * sc1 / 2} y={webPx / 2} width={Lpf * sc1} height={fbT} className="svg-flg" />
-          {/* 플랜지 내첨판(내측, 해칭) */}
+          {/* 플랜지 내부 이음판(내측, 해칭) */}
           {inner && <>
             <rect x={-(inner.L) * sc1 / 2} y={-webPx / 2 + Math.max(3, tf * sc1)} width={inner.L * sc1} height={ibT} className="svg-flg" />
             <rect x={-(inner.L) * sc1 / 2} y={webPx / 2 - Math.max(3, tf * sc1) - ibT} width={inner.L * sc1} height={ibT} className="svg-flg" />
@@ -126,7 +126,7 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
             <line x1={x * sc1} y1={-webPx / 2 - fbT} x2={x * sc1} y2={-webPx / 2 + Math.max(3, tf * sc1) + ibT} className="svg-ver" />
             <line x1={x * sc1} y1={webPx / 2 + fbT} x2={x * sc1} y2={webPx / 2 - Math.max(3, tf * sc1) - ibT} className="svg-ver" />
           </g>)}
-          {/* 웨브 첨판(해칭) + 볼트 */}
+          {/* 웨브 이음판(해칭) + 볼트 */}
           <rect x={-webWid * sc1 / 2} y={-chum * sc1 / 2} width={webWid * sc1} height={chum * sc1} className="svg-web" />
           {([1, -1] as const).flatMap(s => webPosX.flatMap((wx, xi) => webRowY.map((wy, yi) =>
             <Cross key={`w${s}${xi}${yi}`} x={s * wx * sc1} y={wy * sc1} />)))}
@@ -136,7 +136,7 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
         </g>
 
         {/* ── 플랜지 평면도 ── */}
-        <text x={30} y={yFl - 8} className="svg-cap">{L('플랜지 평면도 (외첨판)', 'Flange plan (outer plate)')}{isCol ? L(' (수직)', ' (vert.)') : ''}</text>
+        <text x={30} y={yFl - 8} className="svg-cap">{L('플랜지 평면도 (외부 이음판)', 'Flange plan (outer plate)')}{isCol ? L(' (수직)', ' (vert.)') : ''}</text>
         <g transform={rot(yFl + flBandH / 2)}>
           <rect x={-Lpf * sc2 / 2} y={-flPx / 2} width={Lpf * sc2} height={flPx} className="svg-flg" />
           <line x1={-Lpf * sc2 / 2} y1={-tw * sc2 / 2} x2={Lpf * sc2 / 2} y2={-tw * sc2 / 2} className="svg-hidden" />

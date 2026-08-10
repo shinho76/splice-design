@@ -31,7 +31,7 @@ const TH = 20;   // 도면 문자높이
 const TB = 24;   // 정보표 문자높이(셀폭 150 내 라벨 수용 — 겹침 방지)
 const FONT = 'Cell Body';  // 라벨/주기 문자 스타일 — 참조도면 맑은고딕(malgun) TrueType, 한글 렌더. 치수문자는 STANDARD.
 const ARROW = 5.0;                        // exe DIMSTYLE dimasz(41) = _ARCHTICK INSERT scale
-const PW = 0.6;                           // 첨판 선 폭(POLYLINE width) — 얇게(과다 굵기 방지)
+const PW = 0.6;                           // 이음판 선 폭(POLYLINE width) — 얇게(과다 굵기 방지)
 
 // ── 좌표 변환(회전+평행이동) : 보 deg=0, 기둥 deg=90 ──
 interface Xf { c: number; s: number; ox: number; oy: number; deg: number; }
@@ -77,20 +77,20 @@ function pen(doc: Doc, t: Xf) {
   const PX = (x: number, y: number) => ff(Tx(t, x, y)), PY = (x: number, y: number) => ff(Ty(t, x, y));
   const line = (x1: number, y1: number, x2: number, y2: number, lay: string) =>
     doc.e.push('0', 'LINE', '8', lay, '10', PX(x1, y1), '20', PY(x1, y1), '30', '0', '11', PX(x2, y2), '21', PY(x2, y2), '31', '0');
-  // 점선(HIDDEN 선타입 오버라이드) — 내첨판 안쪽선·필렛
+  // 점선(HIDDEN 선타입 오버라이드) — 내부 이음판 안쪽선·필렛
   const dline = (x1: number, y1: number, x2: number, y2: number, lay: string) =>
     doc.e.push('0', 'LINE', '8', lay, '6', 'HIDDEN', '10', PX(x1, y1), '20', PY(x1, y1), '30', '0', '11', PX(x2, y2), '21', PY(x2, y2), '31', '0');
   return {
     line, dline,
     dot: (cx: number, cy: number, lay: string) => doc.e.push(...roundDot(t, cx, cy, lay)),
-    // 두꺼운 닫힌 폴리라인(POLYLINE 폭) — 첨판을 두꺼운 선으로
+    // 두꺼운 닫힌 폴리라인(POLYLINE 폭) — 이음판을 두꺼운 선으로
     prect: (x: number, y: number, w: number, h: number, lay: string, width: number) => {
       const pts: [number, number][] = [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
       doc.e.push('0', 'POLYLINE', '8', lay, '66', '1', '70', '1', '40', ff(width), '41', ff(width));
       for (const [px, py] of pts) doc.e.push('0', 'VERTEX', '8', lay, '10', PX(px, py), '20', PY(px, py), '30', '0');
       doc.e.push('0', 'SEQEND', '8', lay);
     },
-    // 점선 사각형(내첨판 외곽)
+    // 점선 사각형(내부 이음판 외곽)
     drect: (x: number, y: number, w: number, h: number, lay: string) => {
       dline(x, y, x + w, y, lay); dline(x + w, y, x + w, y + h, lay);
       dline(x + w, y + h, x, y + h, lay); dline(x, y + h, x, y, lay);
@@ -242,7 +242,7 @@ function drawHProfile(p: Pen, cx: number, cy: number, H: number, B: number, tw: 
     p.arc(cx - wt2 - r, cy - yi + r, r, 270, 360, lay);
   }
 }
-// ── 단면(斷面) 뷰 : H형강 단면 + 외/내첨판 + 웨브첨판 + 볼트 측면. 부재 우측에 배치(참조도면 우하). ──
+// ── 단면(斷面) 뷰 : H형강 단면 + 외/내부 이음판 + 웨브 이음판 + 볼트 측면. 부재 우측에 배치(참조도면 우하). ──
 interface SecDims {
   H: number; B: number; tw: number; tf: number; oT: number; outerW: number; chum: number;
   colY: number[]; webRowY: number[]; innerCxAbs: number; dia: number; inner?: Plate;
@@ -253,16 +253,16 @@ function drawSection(doc: Doc, t: Xf, cx: number, cy: number, r: DesignResult, d
   const tpw = r.web.webPlate?.t ?? 9, iT = inner?.t ?? 0, iw = inner?.w ?? 0;
   // 부재 단면(플랜지 2 + 웨브 + 웨브-플랜지 필렛 r)
   drawHProfile(p, cx, cy, H, B, tw, tf, sectionByName(r.section)?.r ?? 0, 'MAIN');
-  // 외첨판(상·하)
+  // 외부 이음판(상·하)
   p.prect(cx - outerW / 2, cy + H / 2, outerW, oT, 'FLG_PL', PW);
   p.prect(cx - outerW / 2, cy - H / 2 - oT, outerW, oT, 'FLG_PL', PW);
-  // 내첨판(4매: 웨브 양측 × 상·하)
+  // 내부 이음판(4매: 웨브 양측 × 상·하)
   if (inner) ([1, -1] as const).forEach(sx => {
     const xc = sx * innerCxAbs;
     p.prect(cx + xc - iw / 2, cy + H / 2 - tf - iT, iw, iT, 'FLG_PL', PW);
     p.prect(cx + xc - iw / 2, cy - H / 2 + tf, iw, iT, 'FLG_PL', PW);
   });
-  // 웨브첨판(양면 2매)
+  // 웨브 이음판(양면 2매)
   p.prect(cx + tw / 2, cy - chum / 2, tpw, chum, 'WEB_PL', PW);
   p.prect(cx - tw / 2 - tpw, cy - chum / 2, tpw, chum, 'WEB_PL', PW);
   // 플랜지볼트(수직) — 열 x=colY, 상·하 플랜지 관통(외판+플랜지+내판)
@@ -271,17 +271,17 @@ function drawSection(doc: Doc, t: Xf, cx: number, cy: number, r: DesignResult, d
     const fc = cy + sy * (H / 2 + (oT - tf - iT) / 2);
     boltSide(p, cx + xw, fc, fHalf, true, dia, sy);   // 머리는 바깥(상부 +1 / 하부 −1)
   }));
-  // 웨브볼트(수평) — 행 y=webRowY, 웨브+양면 웨브첨판 관통
+  // 웨브볼트(수평) — 행 y=webRowY, 웨브+양면 웨브 이음판 관통
   const wHalf = (tw + 2 * tpw) / 2;
   webRowY.forEach(yw => boltSide(p, cx, cy + yw, wHalf, false, dia));
-  // 치수(참조도면 캡처4): 게이지+폭B+외첨판폭(상단 3단) · 웨브피치+웨브스팬+춤H(우측 3단) · 판/부재 두께(좌·하)
+  // 치수(참조도면 캡처4): 게이지+폭B+외부 이음판폭(상단 3단) · 웨브피치+웨브스팬+춤H(우측 3단) · 판/부재 두께(좌·하)
   const fyTop = cy + H / 2 + oT, exR = cx + Math.max(B, outerW) / 2, exL = cx - Math.max(B, outerW) / 2;
-  // ── 상단: 플랜지 볼트 게이지 → 부재 폭 B → 외첨판 폭(이중치수) ──
+  // ── 상단: 플랜지 볼트 게이지 → 부재 폭 B → 외부 이음판 폭(이중치수) ──
   const gxs = [...colY].sort((a, b) => a - b);
   for (let i = 0; i < gxs.length - 1; i++)
     emitDim(doc, t, [cx + gxs[i], fyTop], [cx + gxs[i + 1], fyTop], [cx + (gxs[i] + gxs[i + 1]) / 2, fyTop + 42], `${round(gxs[i + 1] - gxs[i])}`, false);
   emitDim(doc, t, [cx - B / 2, fyTop], [cx + B / 2, fyTop], [cx, fyTop + 112], `${round(B)}`, false);            // 부재 폭 B
-  emitDim(doc, t, [cx - outerW / 2, fyTop], [cx + outerW / 2, fyTop], [cx, fyTop + 182], `${round(outerW)}`, false);  // 외첨판 폭
+  emitDim(doc, t, [cx - outerW / 2, fyTop], [cx + outerW / 2, fyTop], [cx, fyTop + 182], `${round(outerW)}`, false);  // 외부 이음판 폭
   // ── 우측: 웨브 볼트 피치 → 웨브볼트 스팬 → 춤 H(삼중치수) ──
   if (webRowY.length > 1) {
     const wys = [...webRowY].map(y => cy + y).sort((a, b) => b - a);
@@ -290,9 +290,9 @@ function drawSection(doc: Doc, t: Xf, cx: number, cy: number, r: DesignResult, d
     emitDim(doc, t, [exR, wys[0]], [exR, wys[wys.length - 1]], [exR + 124, 0], `${round(Math.abs(wys[0] - wys[wys.length - 1]))}`, true);  // 웨브볼트 스팬
   }
   emitDim(doc, t, [exR, fyTop], [exR, cy - H / 2 - oT], [exR + 193, 0], `${round(H)}`, true);                    // 춤 H(외측)
-  // ── 좌·하: 판/부재 두께(외첨판 oT·내첨판 iT·플랜지 tf·웨브 tw) ──
-  emitDim(doc, t, [exL, cy + H / 2 + oT], [exL, cy + H / 2], [exL - 38, 0], `${oT}`, true);                       // 외첨판 두께
-  if (inner) emitDim(doc, t, [exL, cy + H / 2 - tf], [exL, cy + H / 2 - tf - iT], [exL - 38, 0], `${iT}`, true);  // 내첨판 두께
+  // ── 좌·하: 판/부재 두께(외부 이음판 oT·내부 이음판 iT·플랜지 tf·웨브 tw) ──
+  emitDim(doc, t, [exL, cy + H / 2 + oT], [exL, cy + H / 2], [exL - 38, 0], `${oT}`, true);                       // 외부 이음판 두께
+  if (inner) emitDim(doc, t, [exL, cy + H / 2 - tf], [exL, cy + H / 2 - tf - iT], [exL - 38, 0], `${iT}`, true);  // 내부 이음판 두께
   emitDim(doc, t, [exL, cy - H / 2 + tf], [exL, cy - H / 2], [exL - 38, 0], `${tf}`, true);                       // 플랜지 두께
   emitDim(doc, t, [cx - tw / 2, cy - H / 2 - oT], [cx + tw / 2, cy - H / 2 - oT], [cx, cy - H / 2 - oT - 48], `${tw}`, false);   // 웨브 두께
   p.text(cx, cy - H / 2 - oT - 108, TH * 1.05, 'SECTION', 'DIM', { align: 'c' });
@@ -463,7 +463,7 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
     });
   });
   breakV(p, -memHalf, yW, H / 2); breakV(p, memHalf, yW, H / 2);
-  // 플랜지 첨판(외·내) = green 두꺼운 선 / 웨브 첨판 = cyan 두꺼운 선
+  // 플랜지 이음판(외·내) = green 두꺼운 선 / 웨브 이음판 = cyan 두꺼운 선
   p.prect(-Lpf / 2, yW + H / 2, Lpf, oT, 'FLG_PL', PW); p.prect(-Lpf / 2, yW - H / 2 - oT, Lpf, oT, 'FLG_PL', PW);
   if (inner) { p.prect(-inner.L / 2, yW + H / 2 - tf - inner.t, inner.L, inner.t, 'FLG_PL', PW); p.prect(-inner.L / 2, yW - H / 2 + tf, inner.L, inner.t, 'FLG_PL', PW); }
   p.prect(-webWid / 2, yW - chum / 2, webWid, chum, 'WEB_PL', PW);
@@ -493,7 +493,7 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   // 필렛(r) 위치 점선
   const fr = sectionByName(r.section)?.r ?? 0;
   if (fr) { p.dline(-Lpf / 2, yF - tw / 2 - fr, Lpf / 2, yF - tw / 2 - fr, 'MAIN'); p.dline(-Lpf / 2, yF + tw / 2 + fr, Lpf / 2, yF + tw / 2 + fr, 'MAIN'); }
-  // 내첨판 외곽(점선·안쪽선 포함) — 웨브 양측당 1장, 그 측 볼트열 중심에 폭 inner.w
+  // 내부 이음판 외곽(점선·안쪽선 포함) — 웨브 양측당 1장, 그 측 볼트열 중심에 폭 inner.w
   const innerCy = [colY.filter(c => c < 0), colY.filter(c => c > 0)].map(a => a.reduce((x, y) => x + y, 0) / a.length);
   if (inner) innerCy.forEach(cy => p.drect(-inner.L / 2, yF + cy - inner.w / 2, inner.L, inner.w, 'FLG_PL'));
   ([1, -1] as const).forEach(s => colY.forEach((cy) => {
@@ -501,9 +501,9 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
     else { const { off, rows } = stagOf(cy); for (let j = 0; j < rows; j++) boltPlan(p, s * (base + off + j * 90), yF + cy, dia, hole); }
   }));
   // ── 웨브 이음판·웨브볼트(플랜지판 아래 은선) — 점선(hidden) 표기 ──
-  const wpe = tw / 2 + (r.web.webPlate?.t ?? 9);            // 웨브첨판 외면(웨브중심~첨판바깥)
-  p.dline(-webWid / 2, yF - wpe, webWid / 2, yF - wpe, 'WEB_PL'); p.dline(-webWid / 2, yF + wpe, webWid / 2, yF + wpe, 'WEB_PL');   // 웨브첨판 양면 외곽(점선)
-  p.dline(-webWid / 2, yF - wpe, -webWid / 2, yF + wpe, 'WEB_PL'); p.dline(webWid / 2, yF - wpe, webWid / 2, yF + wpe, 'WEB_PL');   // 첨판 단부(점선)
+  const wpe = tw / 2 + (r.web.webPlate?.t ?? 9);            // 웨브 이음판 외면(웨브중심~이음판바깥)
+  p.dline(-webWid / 2, yF - wpe, webWid / 2, yF - wpe, 'WEB_PL'); p.dline(-webWid / 2, yF + wpe, webWid / 2, yF + wpe, 'WEB_PL');   // 웨브 이음판 양면 외곽(점선)
+  p.dline(-webWid / 2, yF - wpe, -webWid / 2, yF + wpe, 'WEB_PL'); p.dline(webWid / 2, yF - wpe, webWid / 2, yF + wpe, 'WEB_PL');   // 이음판 단부(점선)
   webPosX.flatMap(x => [x, -x]).forEach(wx => { const m = dia * 0.55; p.dline(wx - m, yF, wx + m, yF, 'BOLT'); p.dline(wx, yF - wpe, wx, yF + wpe, 'BOLT'); });   // 웨브볼트 점선 십자(중심선상 열별)
   // ── 폭방향 게이지 치수 — 좌·우 대칭(양측 동일 적용) ──
   const flYs = [...new Set([outerW / 2, ...[...colY].sort((a, b) => b - a), -outerW / 2].map(y => yF + y))].sort((a, b) => b - a);
@@ -568,7 +568,7 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
     pfc.dot(hA[0], hA[1], 'DIM');
     pfc.line(hA[0], hA[1], lx, hA[1], 'DIM'); pfc.line(lx, hA[1], lx, hty, 'DIM');
     pfc.text(lx, hty - TH / 2, TH, secLbl, 'DIM', { align: 'l' });
-    // 판·볼트 라벨 → 입면(하단) 우측 여백, 앵커 높이 정렬(외첨판↑ … 플랜지볼트↓·하부플랜지)
+    // 판·볼트 라벨 → 입면(하단) 우측 여백, 앵커 높이 정렬(외부 이음판↑ … 플랜지볼트↓·하부플랜지)
     const oR = pt(tMl, Lpf / 3, yW + H / 2 + oT), iR = pt(tMl, (inner?.L ?? Lpf) / 3, yW + H / 2 - tf - (inner?.t ?? 0) / 2);
     const wR = pt(tMl, webWid / 2, yW), wbR = pt(tMl, webWid / 4, yW - chum / 2 + 20), fbR = pt(tMl, base, yW - H / 2 - oT);
     stackRight([
@@ -633,15 +633,15 @@ const LAYERS: [string, number, string][] = [
   ['Steel', 2, 'CONTINUOUS'], ['Steel-Hidden', 2, 'DASHED0'],
   ['Plate', 3, 'CONTINUOUS'], ['Plate-Hidden', 3, 'DASHED0'],
   ['Bolt', 2, 'CONTINUOUS'], ['Bolt-Center', 16, 'DASHDOTDOT0'], ['Bolt-Head', 8, 'CONTINUOUS'],   // 볼트=색2(황), 외접원=색8(회) — 참조도면 규약
-  ['Dimension', 1, 'CONTINUOUS'], ['Dimension(Section)', 16, 'CONTINUOUS'],
-  ['Table(Main)', 2, 'CONTINUOUS'], ['Table(Sub)', 7, 'CONTINUOUS'], ['Table(Etc)', 8, 'CONTINUOUS'],
-  ['TableText(Head)', 6, 'CONTINUOUS'], ['TableText(RowHead)', 9, 'CONTINUOUS'],
+  ['Dimension', 1, 'CONTINUOUS'], ['Dimension_Section', 16, 'CONTINUOUS'],
+  ['Table_Main', 2, 'CONTINUOUS'], ['Table_Sub', 7, 'CONTINUOUS'], ['Table_Etc', 8, 'CONTINUOUS'],
+  ['TableText_Head', 6, 'CONTINUOUS'], ['TableText_RowHead', 9, 'CONTINUOUS'],   // R12 심볼명 규칙상 괄호 불가 → 언더스코어(AutoCAD 'Improper table entry name' 해소)
 ];
 // 내부 단축명 → 참조도면 레이어명(단일지점 변환: wrap()에서 전 엔티티 적용).
 const LMAP: Record<string, string> = {
   MAIN: 'Steel', HIDDEN: 'Steel-Hidden', FLG_PL: 'Plate', WEB_PL: 'Plate',
-  BOLT: 'Bolt', VER_BOLT: 'Bolt', BOLTG: 'Bolt-Head', DIM: 'Dimension', SECTION: 'Dimension(Section)',
-  MINI_BOX: 'Table(Main)', NOTE: 'Table(Etc)', TEXT: 'TableText(RowHead)', MINI_HEAD: 'TableText(Head)',
+  BOLT: 'Bolt', VER_BOLT: 'Bolt', BOLTG: 'Bolt-Head', DIM: 'Dimension', SECTION: 'Dimension_Section',
+  MINI_BOX: 'Table_Main', NOTE: 'Table_Etc', TEXT: 'TableText_RowHead', MINI_HEAD: 'TableText_Head',
 };
 const LY = (k: string): string => LMAP[k] ?? k;
 // 문자 스타일(참조도면): 한글 malgun TrueType — 라벨/주기 한글 렌더. 치수문자는 STANDARD 유지.

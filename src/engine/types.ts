@@ -26,7 +26,7 @@ export interface HSection {
   /** 단면성능 출처: 'ks'=KS 규격표 확정값, 'calc'=치수 기반 계산값, 'aisc'=AISC v16.0(inch→mm) */
   propSource: 'ks' | 'calc' | 'aisc';
   label?: string;    // AISC W형강 원 표기(예 "W16X40"). H형강은 미사용
-  k1?: number;       // 공표 k1(mm): 웨브중심~플랜지필렛선단. 내첨판 폭 산정에 사용(W형강). 없으면 tw/2+r 폴백
+  k1?: number;       // 공표 k1(mm): 웨브중심~플랜지필렛선단. 내부 이음판 폭 산정에 사용(W형강). 없으면 tw/2+r 폴백
 }
 
 /** 설계조건 (필터 → 엔진 입력) */
@@ -34,19 +34,19 @@ export interface DesignCondition {
   member: Member;
   jointType: JointType;
   steel: SteelGrade;        // H형강(모재) 강종 — 부재강도(Mn·Puf·Vu) 산정
-  plateSteel?: SteelGrade;  // 첨판(PLATE) 강종 — 첨판 소요면적·두께·지압 산정. 미지정 시 모재와 동일
+  plateSteel?: SteelGrade;  // 이음판(PLATE) 강종 — 이음판 소요면적·두께·지압 산정. 미지정 시 모재와 동일
   bolt: BoltGrade;
   strengthRatio: StrengthRatio;
   sectionType: SectionType;
   noStagger?: boolean;   // 엇모배치 제외(공칭300을 정렬 2/4열로 설계)
-  equalPlateT?: boolean; // 내·외첨판 동일 두께 설계(합성 순단면 기준 단일 두께)
+  equalPlateT?: boolean; // 내·외부 이음판 동일 두께 설계(합성 순단면 기준 단일 두께)
   gap?: number;          // 이음부 이격 갭(mm, 0·5·10). 기본 10
   designStd?: 'KBC' | 'KDS' | 'AISC';  // 설계기준. KBC-09(편람) / KDS 14 31 25(AISC 준용) / AISC 360-16
   threadCond?: 'N' | 'X';      // AISC 볼트 나사조건(전단면 통과 N / 제외 X). 기본 N
   profile?: 'H' | 'W';         // 형강 카탈로그. H=편람 73종(기본) / W=AISC v16.0 289종
 }
 
-/** 첨판 치수 (두께 × 폭[or 춤] × 길이[or 너비]) */
+/** 이음판 치수 (두께 × 폭[or 춤] × 길이[or 너비]) */
 export interface Plate {
   t: number;   // 두께
   w: number;   // 폭(플랜지) 또는 춤(웨브)
@@ -65,11 +65,11 @@ export interface JointDesign {
   bolt: BoltArray;
   gauge?: { g1: number; g2?: number }; // 플랜지 게이지
   Pc?: number;                          // 웨브 상하 피치
-  outerPlate?: Plate;                   // 플랜지 외첨판
-  innerPlate?: Plate;                   // 플랜지 내첨판
-  webPlate?: Plate;                     // 웨브 첨판
+  outerPlate?: Plate;                   // 플랜지 외부 이음판
+  innerPlate?: Plate;                   // 플랜지 내부 이음판
+  webPlate?: Plate;                     // 웨브 이음판
   staggered?: boolean;                  // 엇모배치 여부(플랜지) — 도면 볼트 배치용
-  gap?: number;                         // 이음부 이격(첨판 길이에 반영된 값)
+  gap?: number;                         // 이음부 이격(이음판 길이에 반영된 값)
   pitch?: number;                       // 볼트 응력방향 피치(정렬=60, 엇모=90, Custom 대구경 상향)
   edge?: number;                        // 연단거리(응력방향, mm)
 }

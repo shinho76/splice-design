@@ -26,7 +26,7 @@ export const caseLabel = (label: string, lang: Lang): string => {
 // 그룹 헤더 영문화(치수·기호 유지)
 export const groupEn = (g: string): string => g
   .replace('볼트(웨브)', 'Bolts (web)').replace('볼트', 'Bolts')
-  .replace('외첨판', 'Outer plate').replace('내첨판', 'Inner plates').replace('웨브 첨판', 'Web plates')
+  .replace('외부 이음판', 'Outer plate').replace('내부 이음판', 'Inner plates').replace('웨브 이음판', 'Web plates')
   .replace('부재 H형강', 'H-beam member').replace('부재 웨브', 'Beam web');
 export const groupT = (g: string, lang: Lang) => lang === 'ko' ? g : groupEn(g);
 export const labelT = (id: string, koLabel: string, lang: Lang) => lang === 'ko' ? koLabel : (EN_LABEL[id] ?? koLabel);
@@ -35,14 +35,14 @@ export const labelT = (id: string, koLabel: string, lang: Lang) => lang === 'ko'
 const A_TERMS: [string, string][] = [
   ['플랜지 소요캡핑', 'flange demand cap'], ['웨브 소요캡핑', 'web demand cap'],
   ['플랜지 볼트행', 'flange bolt rows'], ['웨브 볼트(춤)', 'web bolts(depth)'], ['웨브 볼트(축)', 'web bolts(long.)'],
-  ['웨브첨판 두께', 'web plate t'], ['외첨판 두께', 'outer plate t'], ['내첨판 두께', 'inner plate t'],
+  ['웨브 이음판 두께', 'web plate t'], ['외부 이음판 두께', 'outer plate t'], ['내부 이음판 두께', 'inner plate t'],
   ['볼트직경', 'bolt dia'], ['보정불가(한계)', 'no more correction (limit)'], ['(부분강도)', ' (partial-strength)'],
   ['전열 U블록', 'full U-block'], ['외연 L블록', 'outer L-block'], ['중앙 L블록', 'central L-block'],
   ['내측 페어', 'inner pair'], ['양연 U블록', 'twin U-block'],
   ['지압접합 → 해당 없음', 'bearing-type → N/A'], ['단일열 → 인장파단(FI2)이 지배', 'single line → net rupture (FI2) governs'],
   ['압축플랜지 한정', 'compression flange only'], ['감소없음', 'no reduction'], ['파단지배', 'rupture governs'],
   ['지배', 'gov'], ['연단', 'edge'], ['간격', 'spaced'], ['동심', 'concentric'],
-  ['외첨판', 'outer plate'], ['내첨판', 'inner plate'], ['웨브', 'web'], ['첨판', 'plate'],
+  ['외부 이음판', 'outer plate'], ['내부 이음판', 'inner plate'], ['웨브', 'web'], ['이음판', 'plate'],
   ['플랜지', 'flange'], ['부재', 'member'],
   ['완료', 'done'], ['단일열', 'single line'], ['지압', 'bearing'],
 ];

@@ -27,7 +27,7 @@ const SL_KO: Record<string, string> = {
   'Net elastic modulus Snet': '순 탄성단면계수 Snet', 'Net flange area Afn': '플랜지 순단면적 Afn', 'Net shear area Anv (2 plates)': '순전단면적 Anv(2매)',
   'Net shear width': '순전단폭', 'Nominal moment Mn': '공칭휨강도 Mn', 'Nominal shear stress Fnv': '공칭전단강도 Fnv',
   'Plastic modulus Zpl (2 plates)': '소성단면계수 Zpl(2매)', 'Radius of gyration r': '회전반경 r', 'Shear planes / bolts': '전단면·볼트수',
-  'Shear-lag factor U': '전단지연계수 U', 'Slenderness KL/r': '세장비 KL/r', 'Splice plates (t = 2·tp)': '첨판 (t=2·tp)',
+  'Shear-lag factor U': '전단지연계수 U', 'Slenderness KL/r': '세장비 KL/r', 'Splice plates (t = 2·tp)': '이음판 (t=2·tp)',
   'Total': '합계', 'Total (m edge + m(n−1) interior)': '합계 (연단 m + 내부 m(n−1))',
   'WT flange part': 'WT 플랜지부', 'WT gross area Awt': 'WT 총단면적 Awt', 'WT web-stem part': 'WT 웨브스템부',
 };
@@ -35,29 +35,29 @@ const slabel = (s: string, lang: Lang) => lang === 'ko' ? (SL_KO[s] ?? s) : s;
 
 // 검토별 도입 서술 [ko, en]
 const INTRO: Record<string, [string, string]> = {
-  FB1: ['볼트는 플랜지력 Pf 전체를 2개 전단면(이중전단: 외첨판+플랜지+내첨판쌍)으로 전달한다.', 'The bolts transfer the full flange force Pf across two shear planes (double shear: outer plate + flange + inner plate pair).'],
+  FB1: ['볼트는 플랜지력 Pf 전체를 2개 전단면(이중전단: 외부 이음판+플랜지+내부 이음판쌍)으로 전달한다.', 'The bolts transfer the full flange force Pf across two shear planes (double shear: outer plate + flange + inner plate pair).'],
   FB2: ['마찰접합에서 볼트는 Pf 하에서 미끄러지지 않아야 하며, 마찰은 볼트장력으로 발현된다.', 'For a slip-critical joint the bolts must not slip under Pf; friction is developed by the bolt pretension.'],
-  FP1: ['외첨판은 분담 플랜지력 하에서 총단면 항복이 없어야 한다.', 'The outer splice plate must not yield across its gross section under its share of the flange force.'],
-  FP2: ['항복 외에, 외첨판은 볼트구멍 열(순단면)에서 파단하지 않아야 한다.', 'Beyond yielding, the outer plate must not rupture through the line of bolt holes (net section).'],
-  FP3: ['해당 플랜지가 압축이면 외첨판은 이음갭 구간 좌굴을 검토한다.', 'Where this flange is in compression, the outer plate is checked for buckling across the open splice gap.'],
-  FP4: ['각 볼트는 외첨판에 지압하며, 연단·내부 볼트의 지압·찢김을 합산한다.', 'Each bolt bears against the outer plate; bearing and tear-out are summed over the edge and interior bolts.'],
-  FP5: ['외첨판의 한 블록이 볼트군 주위로 뜯길 수 있어 모든 후보블록(Case A~D)을 검토한다.', 'A wedge of the outer plate could tear out around the bolt group; every candidate block (Cases A–D) is examined.'],
-  FI1: ['내첨판 2매는 합성 총단면에서 항복하지 않아야 한다.', 'The pair of inner plates must not yield across their combined gross section.'],
-  FI2: ['내첨판은 볼트구멍에서 파단하지 않아야 한다.', 'The inner plates must not rupture through the bolt holes.'],
-  FI3: ['압축 시 내첨판은 이음갭 좌굴을 검토한다.', 'In compression the inner plates are checked for buckling across the gap.'],
-  FI4: ['내첨판의 지압·찢김을 전 볼트에 대해 합산한다.', 'Bearing and tear-out of the inner plates, summed over all bolts.'],
-  FI5: ['내첨판(2매)의 블록전단 뜯김을 모든 케이스에 대해 검토한다.', 'Block-shear tear-out of the inner plates (two plates), every candidate case.'],
+  FP1: ['외부 이음판은 분담 플랜지력 하에서 총단면 항복이 없어야 한다.', 'The outer splice plate must not yield across its gross section under its share of the flange force.'],
+  FP2: ['항복 외에, 외부 이음판은 볼트구멍 열(순단면)에서 파단하지 않아야 한다.', 'Beyond yielding, the outer plate must not rupture through the line of bolt holes (net section).'],
+  FP3: ['해당 플랜지가 압축이면 외부 이음판은 이음갭 구간 좌굴을 검토한다.', 'Where this flange is in compression, the outer plate is checked for buckling across the open splice gap.'],
+  FP4: ['각 볼트는 외부 이음판에 지압하며, 연단·내부 볼트의 지압·찢김을 합산한다.', 'Each bolt bears against the outer plate; bearing and tear-out are summed over the edge and interior bolts.'],
+  FP5: ['외부 이음판의 한 블록이 볼트군 주위로 뜯길 수 있어 모든 후보블록(Case A~D)을 검토한다.', 'A wedge of the outer plate could tear out around the bolt group; every candidate block (Cases A–D) is examined.'],
+  FI1: ['내부 이음판 2매는 합성 총단면에서 항복하지 않아야 한다.', 'The pair of inner plates must not yield across their combined gross section.'],
+  FI2: ['내부 이음판은 볼트구멍에서 파단하지 않아야 한다.', 'The inner plates must not rupture through the bolt holes.'],
+  FI3: ['압축 시 내부 이음판은 이음갭 좌굴을 검토한다.', 'In compression the inner plates are checked for buckling across the gap.'],
+  FI4: ['내부 이음판의 지압·찢김을 전 볼트에 대해 합산한다.', 'Bearing and tear-out of the inner plates, summed over all bolts.'],
+  FI5: ['내부 이음판(2매)의 블록전단 뜯김을 모든 케이스에 대해 검토한다.', 'Block-shear tear-out of the inner plates (two plates), every candidate case.'],
   FM1: ['볼트는 H형강 플랜지 자체에도 지압한다.', 'The bolts also bear against the H-beam flange itself.'],
   FM2: ['구멍으로 약화된 인장플랜지의 휨파단(F13.1)을 검토한다.', 'The tension flange, weakened by holes, is checked for flexural rupture (F13.1).'],
   FM3: ['이음 플랜지를 WT(플랜지+웨브 스템)로 이상화하여 인장항복을 검토한다.', 'The spliced flange is idealised as a WT (flange + web stem) and checked for tension yielding.'],
   FM4: ['동일 WT를 전단지연을 포함해 인장파단으로 검토한다.', 'The same WT is checked for tension rupture, including the shear-lag effect.'],
   FM5: ['볼트군 주위 H형강 플랜지의 블록전단 뜯김을 모든 케이스에 대해 검토한다.', 'Block-shear tear-out of the H-beam flange around the bolt group, every candidate case.'],
-  WB1: ['웨브 볼트는 전단 Vu 전체를 부담한다. 볼트군은 동심(C=n)으로 보고 편심모멘트는 첨판이 부담한다.', 'The web bolts carry the full shear Vu; the group is taken as concentric — the plates absorb the eccentric moment.'],
+  WB1: ['웨브 볼트는 전단 Vu 전체를 부담한다. 볼트군은 동심(C=n)으로 보고 편심모멘트는 이음판이 부담한다.', 'The web bolts carry the full shear Vu; the group is taken as concentric — the plates absorb the eccentric moment.'],
   WB2: ['마찰 웨브에서 볼트는 Vu 하에서 미끄러지지 않아야 한다.', 'For a slip-critical web the bolts must not slip under Vu.'],
-  WR1: ['웨브 볼트는 부재웨브와 첨판 2매에 지압하며, 약한 쪽이 지배한다.', 'The web bolts bear on the beam web and on the two splice plates; the weaker of the two governs.'],
-  WP1: ['웨브 첨판의 한 블록이 수직전단으로 뜯길 수 있어 모든 케이스를 검토한다.', 'A block of the web plates could tear out under the vertical shear; every candidate case is examined.'],
-  WI1: ['웨브 첨판은 전단 Vu와 편심모멘트 Mux를 함께 받으며, 항복을 상호작용으로 검토한다.', 'The web plates carry shear Vu together with the eccentric moment Mux; yielding is checked by an interaction.'],
-  WI2: ['동일 전단+휨 조합을 웨브 첨판 순단면 파단에 대해 검토한다.', 'The same shear + moment combination is checked against rupture of the net web-plate section.'],
+  WR1: ['웨브 볼트는 부재웨브와 이음판 2매에 지압하며, 약한 쪽이 지배한다.', 'The web bolts bear on the beam web and on the two splice plates; the weaker of the two governs.'],
+  WP1: ['웨브 이음판의 한 블록이 수직전단으로 뜯길 수 있어 모든 케이스를 검토한다.', 'A block of the web plates could tear out under the vertical shear; every candidate case is examined.'],
+  WI1: ['웨브 이음판은 전단 Vu와 편심모멘트 Mux를 함께 받으며, 항복을 상호작용으로 검토한다.', 'The web plates carry shear Vu together with the eccentric moment Mux; yielding is checked by an interaction.'],
+  WI2: ['동일 전단+휨 조합을 웨브 이음판 순단면 파단에 대해 검토한다.', 'The same shear + moment combination is checked against rupture of the net web-plate section.'],
   WM1: ['부재 웨브 자체의 전단항복을 검토한다.', 'The beam web itself is checked for shear yielding.'],
   WM2: ['이음부 부재 웨브의 블록전단 뜯김을 검토한다.', 'Block-shear tear-out of the beam web at the splice.'],
 };
@@ -152,10 +152,10 @@ export default function AiscDetailReport({ result, cond, onClose }: { result: De
           <h2>{r.section} — {L('고력볼트 이음 상세 계산', 'Bolted Splice, Full Design Narrative')}</h2>
           <p className="narr-lead">
             {L(`${cond.member} · ${cond.jointType === '지압' ? '지압접합' : '마찰접합(Class B)'}. `, `${cond.member === '기둥' ? 'Column' : 'Beam'} splice, ${cond.jointType === '지압' ? 'bearing-type' : 'slip-critical (Class B)'} joint. `)}
-            {L('H형강 강종 ', 'Beam steel ')}<b>{cond.steel}</b>, {L('첨판 강종 ', 'plate steel ')}<b>{ps}</b>, {L('볼트 ', 'bolts ')}<b>{cond.bolt}</b> M{r.boltDia},
+            {L('H형강 강종 ', 'Beam steel ')}<b>{cond.steel}</b>, {L('이음판 강종 ', 'plate steel ')}<b>{ps}</b>, {L('볼트 ', 'bolts ')}<b>{cond.bolt}</b> M{r.boltDia},
             {L(` 나사부 ${cond.threadCond === 'X' ? '전단면 제외(X)' : '전단면 통과(N)'}.`, ` threads ${cond.threadCond === 'X' ? 'excluded (X)' : 'included (N)'} from the shear plane.`)}
-            {L(' 자동최소화 후 배치: 플랜지 ', ' Layout after auto-minimisation: flange ')}{r.flange.bolt.m}×{Math.round(r.flange.bolt.n)}{L('볼트, 외첨판 ', ' bolts, outer PL-')}{L(`PL-${r.flange.outerPlate?.t}×${r.flange.outerPlate?.w}`, `${r.flange.outerPlate?.t}×${r.flange.outerPlate?.w}`)}
-            {r.flange.innerPlate ? L(`, 내첨판 PL-${r.flange.innerPlate.t}×${r.flange.innerPlate.w}×2`, `, inner PL-${r.flange.innerPlate.t}×${r.flange.innerPlate.w}×2`) : ''};
+            {L(' 자동최소화 후 배치: 플랜지 ', ' Layout after auto-minimisation: flange ')}{r.flange.bolt.m}×{Math.round(r.flange.bolt.n)}{L('볼트, 외부 이음판 ', ' bolts, outer PL-')}{L(`PL-${r.flange.outerPlate?.t}×${r.flange.outerPlate?.w}`, `${r.flange.outerPlate?.t}×${r.flange.outerPlate?.w}`)}
+            {r.flange.innerPlate ? L(`, 내부 이음판 PL-${r.flange.innerPlate.t}×${r.flange.innerPlate.w}×2`, `, inner PL-${r.flange.innerPlate.t}×${r.flange.innerPlate.w}×2`) : ''};
             {L(' 웨브 ', ' web ')}{r.web.bolt.m}×{r.web.bolt.n}{L('볼트, PL-', ' bolts, PL-')}{r.web.webPlate?.t}×{r.web.webPlate?.w}×2.
           </p>
         </div>
@@ -171,14 +171,14 @@ export default function AiscDetailReport({ result, cond, onClose }: { result: De
           </p>
           <p className="narr-p">
             {L('이 플랜지력은 이중전단 경로를 따르며 ', 'This flange force follows a double-shear load path and is shared ')}<b>50 : 50</b>
-            {L('으로 분담된다 — 외첨판 1매가 Pf/2 = ', ' — the single outer plate resists Pf/2 = ')}<b>{kn(dem.half)}</b>
-            {L(' kN, 내첨판 2매가 나머지 Pf/2를 부담한다. 다만 각 볼트는 2개 전단면을 지나므로 ', ' kN, and the pair of inner plates together resist the other Pf/2. Every bolt, however, sees the ')}
+            {L('으로 분담된다 — 외부 이음판 1매가 Pf/2 = ', ' — the single outer plate resists Pf/2 = ')}<b>{kn(dem.half)}</b>
+            {L(' kN, 내부 이음판 2매가 나머지 Pf/2를 부담한다. 다만 각 볼트는 2개 전단면을 지나므로 ', ' kN, and the pair of inner plates together resist the other Pf/2. Every bolt, however, sees the ')}
             <i>{L('Pf 전체', 'full Pf')}</i>{L('를 받는다.', ' because it crosses two shear planes.')}
           </p>
           <p className="narr-p">
             {L('웨브 이음은 설계전단 ', 'The web splice carries the design shear ')}<span className="narr-eq">V<sub>u</sub> = <b>{kn(dem.Vu)}</b> kN</span>
             {L('를 부담한다. 웨브 볼트군이 이음 중심선에서 ', '. Because the web bolt group sits a distance ')}
-            <span className="narr-eq">e = {nf(dem.e, 0)} mm</span>{L(' 떨어져 있어 첨판은 편심모멘트 ', ' from the splice centre-line, the web plates must also resist the eccentric moment ')}
+            <span className="narr-eq">e = {nf(dem.e, 0)} mm</span>{L(' 떨어져 있어 이음판은 편심모멘트 ', ' from the splice centre-line, the web plates must also resist the eccentric moment ')}
             <span className="narr-eq">M<sub>ux</sub> = V<sub>u</sub>·e = <b>{knm(dem.MuxWeb)}</b> kN·m</span>{L('도 부담한다.', '.')}
           </p>
           {dem.capScale < 1 && (

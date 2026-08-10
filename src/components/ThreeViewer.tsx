@@ -234,8 +234,8 @@ export default function ThreeViewer({ r, cond, onClose }: { r: DesignResult; con
         </div>
         <div className="v3d-legend">
           <span><i style={{ background: '#9aa7b4' }} />{L('H형강(필렛R)', 'H-beam (fillet R)')}</span>
-          <span><i style={{ background: '#39c46e' }} />{L('플랜지 첨판', 'Flange plate')}</span>
-          <span><i style={{ background: '#2bb6d6' }} />{L('웨브 첨판', 'Web plate')}</span>
+          <span><i style={{ background: '#39c46e' }} />{L('플랜지 이음판', 'Flange plate')}</span>
+          <span><i style={{ background: '#2bb6d6' }} />{L('웨브 이음판', 'Web plate')}</span>
           <span><i style={{ background: '#2e3138' }} />{L('고력볼트(머리·너트·와셔2·여장)', 'H.S. bolt (head·nut·2 washers·stickout)')}</span>
           <span className="v3d-hint">{mode === '2D' ? L('평면(90°)·정면·측면 + 3D 등각 (화면맞춤)', 'Plan(90°)·Front·Side + 3D iso (fit)') : L('드래그=회전 · 휠=줌 · 플랜지/웨브=치수', 'Drag=rotate · Wheel=zoom · Flange/Web=dims')}</span>
         </div>

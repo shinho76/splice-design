@@ -156,7 +156,7 @@ export function blockShearGovern(p: BlockShearParams, demandN: number, plates = 
   { cases: BlockCase[]; gov: BlockCase; phiRn: number; demand: number; dcr: number } {
   const { cases } = blockShear(p);
   for (const c of cases) {
-    c.phiRn *= plates; c.Rn *= plates;                    // 다판(내첨판·웨브 첨판 ×2) 합산
+    c.phiRn *= plates; c.Rn *= plates;                    // 다판(내부 이음판·웨브 이음판 ×2) 합산
     c.dcr = +((c.frac * demandN) / c.phiRn).toFixed(3);
   }
   const gov = cases.reduce((a, b) => (b.dcr! > a.dcr! ? b : a));
