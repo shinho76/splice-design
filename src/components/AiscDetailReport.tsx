@@ -7,6 +7,7 @@ import { parseName } from '../engine/sections.ts';
 import { useLang, type Lang } from '../i18n.ts';
 import { EN_LABEL, caseLabel, groupT as group } from './aiscI18n.ts';
 import { stdLabelLong } from '../engine/std.ts';
+import CheckFig from './CheckFig.tsx';
 
 const nf = (n?: number, d = 1) => n == null ? '—' : n.toLocaleString('en-US', { maximumFractionDigits: d });
 
@@ -166,7 +167,7 @@ export default function AiscDetailReport({ result, cond, onClose }: { result: De
           <p className="narr-p">
             {L('이음부는 부재 설계강도를 발현하도록 설계한다. 휨모멘트를 플랜지 커플로 분해하면 인장(및 압축)플랜지가 다음 힘을 부담한다:',
               'The splice is proportioned to develop the member design strength. The bending moment is resolved into a flange couple: the tension (and compression) flange carries')}
-            <span className="narr-eq"> P<sub>f</sub> = M<sub>u</sub>/(d − t<sub>f</sub>) = {knm(dem.Mu)}×10⁶/({H} − {tf}) = <b>{kn(dem.Pf)}</b> kN</span>
+            <span className="narr-eq"> {dem.capScale < 1 ? L('발현 ', 'developed ') : ''}P<sub>f</sub> = M<sub>u</sub>/(d − t<sub>f</sub>) = {knm(dem.Mu)}×10⁶/({H} − {tf}) = <b>{kn(dem.Pf)}</b> kN{dem.capScale < 1 ? L(` (부재 Pf ${nf(r.Puf_kN)} kN)`, ` (member Pf ${nf(r.Puf_kN)} kN)`) : ''}</span>
             &nbsp;({L('커플 arm', 'lever arm')} d − t<sub>f</sub> = {arm} mm).
           </p>
           <p className="narr-p">
@@ -199,6 +200,7 @@ export default function AiscDetailReport({ result, cond, onClose }: { result: De
             {groups[g].map((c, i) => (
               <div key={i} className={'narr-check' + (c.ok === false ? ' is-ng' : '')}>
                 <div className="narr-ct"><span className="narr-id">{c.id}</span> {lang === 'ko' ? c.label : (EN_LABEL[c.id] ?? c.label)} <span className="narr-cl">[{c.clause}]</span></div>
+                <CheckFig c={c} lang={lang} />
                 {INTRO[c.id] && <p className="narr-intro">{L(INTRO[c.id][0], INTRO[c.id][1])}</p>}
                 {c.steps && c.steps.length > 0 && <Steps steps={c.steps} lang={lang} />}
                 {c.cases && c.cases.length > 0 && <>

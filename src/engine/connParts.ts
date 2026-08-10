@@ -88,3 +88,22 @@ export function connParts(r: DesignResult): ConnParts {
 
   return { section: r.section, H, B, tw, tf, r: fillet, gap, segLen, boxes, bolts };
 }
+
+/**
+ * 시공성 가드 — 플랜지 내부 이음판 ↔ 웨브 이음판 3D 박스 간섭 검출.
+ * 웨브판 두께·내부판 두께가 필렛을 동시 초과하는 초대형(주로 W형강 부분강도) 단면에서 발생.
+ * 겹침이 있으면 최대 겹침량(mm)을 반환, 없으면 null.
+ */
+export function innerWebClash(r: DesignResult): { oy: number; ox: number } | null {
+  const cp = connParts(r);
+  const inner = cp.boxes.filter(b => b.kind === 'inner');
+  const web = cp.boxes.filter(b => b.kind === 'web');
+  let worst: { oy: number; ox: number } | null = null;
+  for (const i of inner) for (const w of web) {
+    const ox = (i.sx + w.sx) / 2 - Math.abs(i.cx - w.cx);
+    const oy = (i.sy + w.sy) / 2 - Math.abs(i.cy - w.cy);
+    const oz = (i.sz + w.sz) / 2 - Math.abs(i.cz - w.cz);
+    if (ox > 0.5 && oy > 0.5 && oz > 0.5 && (!worst || oy > worst.oy)) worst = { oy: +oy.toFixed(1), ox: +ox.toFixed(1) };
+  }
+  return worst;
+}

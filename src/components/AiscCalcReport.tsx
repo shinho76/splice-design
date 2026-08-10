@@ -4,6 +4,7 @@ import { parseName } from '../engine/sections.ts';
 import { useLang, tMember, tJoint } from '../i18n.ts';
 import { groupT, labelT, trA } from './aiscI18n.ts';
 import { stdLabel, stdLabelLong } from '../engine/std.ts';
+import { innerWebClash } from '../engine/connParts.ts';
 
 // 검토 대상 부위 글리프(육안 확인용). clause로 종류 판별.
 function glyphKey(c: AiscCheck): string {
@@ -52,6 +53,7 @@ export default function AiscCalcReport({ result, cond, onClose }: { result: Desi
   const order: string[] = [];
   const groups: Record<string, AiscCheck[]> = {};
   for (const c of ac.report.checks) { if (!groups[c.group]) order.push(c.group); (groups[c.group] ??= []).push(c); }
+  const clash = innerWebClash(r);   // 시공성 가드: 내부 이음판↔웨브 이음판 간섭
 
   return (
     <div className="report" onClick={onClose}>
@@ -66,7 +68,7 @@ export default function AiscCalcReport({ result, cond, onClose }: { result: Desi
           <h2>{stdLabel(cond.designStd)} {L('이음판 이음 계산서', 'Splice Calculation')}</h2>
           <table className="doc-meta"><tbody>
             <tr><th>{L('부재 / 접합', 'Member / Joint')}</th><td>{r.section} · {tMember(cond.member, lang)} {tJoint(cond.jointType, lang)}</td><th>{L('나사조건', 'Thread')}</th><td>{cond.threadCond ?? 'N'}</td></tr>
-            <tr><th>{L('강종(H/판)', 'Steel H/PL')}</th><td>{cond.steel} / {cond.plateSteel ?? cond.steel} · {L('볼트', 'Bolt')} {cond.bolt}</td><th>{L('플랜지력 Pf', 'Flange force Pf')}</th><td>{r.Puf_kN.toLocaleString()} kN</td></tr>
+            <tr><th>{L('강종(H/판)', 'Steel H/PL')}</th><td>{cond.steel} / {cond.plateSteel ?? cond.steel} · {L('볼트', 'Bolt')} {cond.bolt}</td><th>{L('플랜지력 Pf(부재)', 'Flange force Pf (member)')}</th><td>{r.Puf_kN.toLocaleString()} kN</td></tr>
             <tr><th>{L('설계기준', 'Basis')}</th><td colSpan={3}>{stdLabelLong(cond.designStd)} · {L('φ(항복0.9·파단/전단/지압0.75)', 'φ (yield 0.9, rupture/shear/bearing 0.75)')} · {L('분담 50:50·Ubs 1.0·K 1.2', 'split 50:50, Ubs 1.0, K 1.2')}</td></tr>
           </tbody></table>
         </div>
@@ -80,6 +82,9 @@ export default function AiscCalcReport({ result, cond, onClose }: { result: Desi
             <tr><th>{L('보정 후', 'Corrected')}</th><td><b>{L('외부 이음판', 'Outer')} PL-{r.flange.outerPlate?.t}×{r.flange.outerPlate?.w} · {L('내부 이음판', 'Inner')} PL-{r.flange.innerPlate?.t}×{r.flange.innerPlate?.w}×2 · {L('볼트', 'Bolt')} {r.flange.bolt.m}×{Math.round(r.flange.bolt.n)}-M{r.boltDia}</b> {!ac.ok && <span className="ag-ng">· {L('부재 단면 한계 — 단면 상향 필요', 'member section limited — upsize needed')}</span>}</td></tr>
             {ac.pfCap != null && <tr><th>{L('소요 캡핑', 'Demand cap')}</th><td>{L('부재 F13/D2 강도로 제한', 'limited by member F13/D2')}: Pf {r.Puf_kN.toLocaleString()} → <b>{Math.round(ac.pfCap).toLocaleString()} kN</b> <span className="ag-ng">({L('구멍 있는 부재의 실제 발현강도', 'holed-member achievable strength')})</span></td></tr>}
             <tr><th>{L('플랜지판 중량', 'Plate weight')}</th><td>{ac.wt0.toFixed(1)} → {ac.wt1.toFixed(1)} kg · {L('지배 DCR', 'gov. DCR')} <b className={ac.ok ? 'ag-ok' : 'ag-ng'}>{ac.report.govDcr}</b> {ac.ok ? 'OK' : 'NG'}</td></tr>
+            {clash && <tr><th>⚠ {L('시공성', 'Clash')}</th><td className="ag-ng">{L(
+              `내부 이음판 ↔ 웨브 이음판 간섭 ${clash.oy}mm (웨브·내부판 두께가 필렛 초과). 상세화 재검토 필요 — 초대형 부분강도 단면.`,
+              `inner ↔ web plate overlap ${clash.oy}mm (plate thickness exceeds fillet). Revise detailing — jumbo partial-strength section.`)}</td></tr>}
           </tbody></table>
         </section>
 
