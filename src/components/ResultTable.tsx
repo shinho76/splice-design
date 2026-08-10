@@ -6,6 +6,7 @@ import { aiscCheck, aiscAutoCorrect } from '../engine/aisc/compat.ts';
 import { kbcCheck } from '../engine/kbcCheck.ts';
 import { usesLimitState } from '../engine/std.ts';
 import { nominalOf, unitWeightOf } from '../engine/hbeam_catalog.ts';
+import { innerWebClash } from '../engine/connParts.ts';
 import { useLang } from '../i18n.ts';
 
 const nf = (v?: number) => v == null ? '' : v.toLocaleString('en-US');   // 1000+ 콤마
@@ -35,7 +36,8 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
     const govDcr = ac ? ac.report.govDcr : (isAisc ? aiscCheck(r, cond).govDcr : kbcCheck(r, cond).govDcr);
     const partial = ac && ac.memberLimited ? Math.min(ac.flangeScale, ac.webScale) : null;  // 부분강도 최대비율
     const fScale = ac ? ac.flangeScale : 1, wScale = ac ? ac.webScale : 1;   // DCR팝업 캡핑 기준(테이블 일치)
-    return { s, i, r, dr, govDcr, partial, fScale, wScale };
+    const clash = innerWebClash(dr);                       // 내부 이음판↔웨브 이음판 간섭(시공성)
+    return { s, i, r, dr, govDcr, partial, fScale, wScale, clash };
   }), [cond, diaAt, autoFix, isAisc]);
   const rows = allRows.filter(({ s }) => !hidden?.has(s.name));
   const dbW = 46;                                     // 볼트 직경열: 지정/표준 동일 폭(토글 시 표 흔들림 방지)
@@ -95,7 +97,7 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
           </tr>
         </thead>
         <tbody>
-          {rows.map(({ s, i, r, dr, govDcr, partial, fScale, wScale }, idx) => {
+          {rows.map(({ s, i, r, dr, govDcr, partial, fScale, wScale, clash }, idx) => {
             const nominal = nominalOf(s.H, s.B);
             const newSeries = idx === 0 || nominal !== nominalOf(rows[idx - 1].s.H, rows[idx - 1].s.B);
             const inner = fmtPlate(dr.flange.innerPlate);
@@ -114,7 +116,9 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
                       : r.section}</button>
                   {partial != null && <span className="cn-partial"
                     title={L('부분강도접합 — 발현 가능한 최대 강도비율', 'Partial-strength splice — max developable ratio')}>
-                    {Math.round(partial * 100)}%</span>}</td>
+                    {Math.round(partial * 100)}%</span>}
+                  {clash && <span className="cn-clash"
+                    title={L(`내부 이음판 ↔ 웨브 이음판 간섭 ${clash.oy}mm — 상세화 재검토 필요(초대형 부분강도 단면)`, `inner ↔ web plate overlap ${clash.oy}mm — revise detailing (jumbo partial-strength section)`)}>⚠</span>}</td>
                 <td className={`dcr-cell${govDcr != null && govDcr > 1.0 ? ' ng' : ''}${govDcr != null ? ' dcr-click' : ''}`}
                   title={govDcr == null ? undefined : L('선택 + 검토항목별 DCR 보기', 'Select + view DCR by limit state')}
                   onClick={govDcr != null ? (e => { e.stopPropagation(); onSelect(dr); onDcrClick?.({ r: dr, fScale, wScale }); }) : undefined}>

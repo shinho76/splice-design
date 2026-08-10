@@ -196,7 +196,7 @@ export default function AiscDetailReport({ result, cond, onClose }: { result: De
         {/* 2..N. 검토 그룹 */}
         {order.map((g, gi) => (
           <section key={g} className="doc-sec">
-            <h3><span className="sec-no">{gi + 2}.</span>{group(g, lang)}</h3>
+            <h3><span className="sec-no">{gi + 2}.</span>{group(g, lang).replace(/^[A-Z]\.\s*/, '')}</h3>
             {groups[g].map((c, i) => (
               <div key={i} className={'narr-check' + (c.ok === false ? ' is-ng' : '')}>
                 <div className="narr-ct"><span className="narr-id">{c.id}</span> {lang === 'ko' ? c.label : (EN_LABEL[c.id] ?? c.label)} <span className="narr-cl">[{c.clause}]</span></div>
