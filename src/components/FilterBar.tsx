@@ -3,6 +3,12 @@ import { useLang } from '../i18n.ts';
 
 const PRESETS = [100, 95, 90, 85, 80, 75, 70, 65, 60, 50];
 
+// H형강(모재) 강종 → 이음판 기본 강종 자동선택 (예 A992 → A572 Gr50, SN355 → SM355)
+const PLATE_FOR: Record<string, SteelGrade> = {
+  SS275: 'SS275', SM275: 'SM275', SM355: 'SM355', SN355: 'SM355',
+  A36: 'A36', A572: 'A572', A992: 'A572',
+};
+
 export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
   cond: DesignCondition; onChange: (c: DesignCondition) => void;
   boltMode: 'Default' | 'Custom'; onBoltMode: (m: 'Default' | 'Custom') => void;
@@ -36,12 +42,12 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
       <div className="fgrp">
         <div className="fld">
           <label>{L('H형강', 'H-Beam')}</label>
-          <select value={cond.steel} onChange={e => set('steel', e.target.value as SteelGrade)}>
+          <select value={cond.steel} onChange={e => { const v = e.target.value as SteelGrade; onChange({ ...cond, steel: v, plateSteel: PLATE_FOR[v] ?? v }); }}>
             <optgroup label="KS">
-              <option value="SS275">SS275</option><option value="SM355">SM355</option><option value="SN355">SN355</option>
+              <option value="SS275">SS275</option><option value="SM275">SM275</option><option value="SM355">SM355</option><option value="SN355">SN355</option>
             </optgroup>
             <optgroup label="ASTM">
-              <option value="A36">A36</option><option value="A572">A572 Gr50</option><option value="A992">A992</option>
+              <option value="A36">A36</option><option value="A992">A992</option><option value="A572">A572 Gr50</option>
             </optgroup>
           </select>
         </div>
@@ -49,10 +55,10 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
           <label>{L('이음판', 'Plate')}</label>
           <select value={cond.plateSteel ?? cond.steel} onChange={e => set('plateSteel', e.target.value as SteelGrade)}>
             <optgroup label="KS">
-              <option value="SS275">SS275</option><option value="SM355">SM355</option><option value="SN355">SN355</option>
+              <option value="SS275">SS275</option><option value="SM275">SM275</option><option value="SM355">SM355</option>
             </optgroup>
             <optgroup label="ASTM">
-              <option value="A36">A36</option><option value="A572">A572 Gr50</option><option value="A588">A588</option>
+              <option value="A36">A36</option><option value="A572">A572 Gr50</option>
             </optgroup>
           </select>
         </div>
@@ -63,7 +69,7 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
               <option value="F10T">F10T, S10T</option><option value="F13T">F13T</option>
             </optgroup>
             <optgroup label="ASTM">
-              <option value="A325">A325</option><option value="A490">A490</option>
+              <option value="A325">A325</option><option value="F1852">F1852</option><option value="A490">A490</option><option value="F2280">F2280</option>
             </optgroup>
           </select>
         </div>

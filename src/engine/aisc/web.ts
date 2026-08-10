@@ -56,19 +56,22 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
 
   // ── WB. 볼트 (동심, 이중전단) ──
   {
-    const phiRn = PHI.V * Fnv * ab * Ns * nb;
+    const phiRn1 = PHI.V * Fnv * ab * Ns;         // 볼트 1개 설계전단강도(이중전단)
+    const phiRn = phiRn1 * nb;                     // 총 = 1개 강도 × 본수
     checks.push(finalize({ id: 'WB1', region: 'web', group: 'A. 볼트(웨브)', label: '볼트 전단(이중전단)', clause: 'J3.6',
-      detail: `φFnvAb·ns·n = 0.75·${Fnv.toFixed(0)}·${ab}·2·${nb} (${thread}, 동심 C=n)`, phiRn: kN(phiRn), demand: kN(Vu), unit: 'kN',
+      detail: `φrₙ = 0.75·${Fnv.toFixed(0)}·${ab}·2 = ${kN(phiRn1)} kN/EA ×${nb} = ${kN(phiRn)} kN (${thread}, 동심 C=n)`, phiRn: kN(phiRn), demand: kN(Vu), unit: 'kN',
       steps: [
         S('Nominal shear stress Fnv', thread === 'X' ? '0.563·Fu(bolt)' : '0.450·Fu(bolt)', `${FNV_FACTOR[thread]}·${Fub}`, +Fnv.toFixed(0), 'MPa', 'J3.6'),
         S('Bolt group', 'concentric (plate carries eccentric moment)', `ns=2, n=${nVert}×${nHoriz}=${nb}`),
-        S('Design shear φRn', 'φ·Fnv·Ab·ns·n', `0.75·${Fnv.toFixed(0)}·${ab}·2·${nb}`, kN(phiRn), 'kN'),
+        S('Per-bolt design shear φrₙ', 'φ·Fnv·Ab·ns', `0.75·${Fnv.toFixed(0)}·${ab}·2`, kN(phiRn1), 'kN', 'J3.6'),
+        S('Total φRn = φrₙ·n', 'φrₙ · n', `${kN(phiRn1)}·${nb}`, kN(phiRn), 'kN'),
       ] }));
     if (cond.jointType === '마찰') {
       const Tb = To_kN[cond.bolt][('M' + d) as BoltName] ?? 0;
-      const slip = PHI.SL * SLIP.MU * SLIP.DU * SLIP.HF * Tb * Ns * nb;
+      const slip1 = PHI.SL * SLIP.MU * SLIP.DU * SLIP.HF * Tb * Ns;   // 볼트 1개 설계미끄럼강도(이중면)
+      const slip = slip1 * nb;                                         // 총 = 1개 강도 × 본수
       checks.push(finalize({ id: 'WB2', region: 'web', group: 'A. 볼트(웨브)', label: '볼트 미끄럼(Class B)', clause: 'J3.8',
-        detail: `φμDu·Tb·ns·n = 1.0·0.5·1.13·${Tb}·2·${nb}`, phiRn: +slip.toFixed(1), demand: kN(Vu), unit: 'kN' }));
+        detail: `φrₙ = 1.0·0.5·1.13·${Tb}·2 = ${slip1.toFixed(1)} kN/EA ×${nb} = ${slip.toFixed(1)} kN`, phiRn: +slip.toFixed(1), demand: kN(Vu), unit: 'kN' }));
     } else {
       checks.push({ id: 'WB2', region: 'web', group: 'A. 볼트(웨브)', label: '볼트 미끄럼', clause: 'J3.8', detail: '지압접합 → 해당 없음', note: '지압' });
     }

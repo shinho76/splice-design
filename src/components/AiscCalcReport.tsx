@@ -86,7 +86,7 @@ export default function AiscCalcReport({ result, cond, onClose }: { result: Desi
         {/* 검토 항목 (그룹별, 그림 포함) */}
         {order.map((g, gi) => (
           <section key={g} className="doc-sec">
-            <h3><span className="sec-no">{gi + 2}.</span>{groupT(g, lang)}</h3>
+            <h3><span className="sec-no">{gi + 2}.</span>{groupT(g, lang).replace(/^[A-Z]\.\s*/, '')}</h3>
             <table className="ag-table">
               <thead><tr>
                 <th>{L('그림', 'Fig')}</th><th>{L('검토', 'Check')}</th><th>{L('조항', 'Clause')}</th><th>{L('식·치수', 'Detail')}</th>

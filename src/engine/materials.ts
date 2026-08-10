@@ -13,8 +13,9 @@ interface SteelSpec {
 
 // [표 1.2] 주요 구조용 강재의 강도 (MPa)
 export const STEEL: Record<SteelGrade, SteelSpec> = {
-  // KS D (현행 명칭 — 항복강도 기준): SS275·SM355·SN355
+  // KS D (현행 명칭 — 항복강도 기준): SS275·SM275·SM355·SN355
   SS275:  { Fy_le40: 275, Fy_gt40: 255, Fu: 410 }, // 일반구조용(구 SS400)
+  SM275:  { Fy_le40: 275, Fy_gt40: 255, Fu: 410 }, // 용접구조용(구 SM400) — KS D 3515
   SM355:  { Fy_le40: 355, Fy_gt40: 335, Fu: 490 }, // 용접구조용(구 SM490)
   SN355:  { Fy_le40: 355, Fy_gt40: 335, Fu: 490 }, // 건축구조용(구 SN490)
   // KS D (구 명칭 — 호환 유지)
@@ -46,5 +47,7 @@ export const BOLT_MAT: Record<BoltGrade, { Fy: number; Fu: number }> = {
   F13T: { Fy: 1170, Fu: 1300 },
   S10T: { Fy: 900,  Fu: 1000 }, // 국내 토크전단형(F10T 상당)
   A325: { Fy: 660,  Fu: 830 },  // ASTM A325(≈120ksi)
+  F1852:{ Fy: 660,  Fu: 830 },  // ASTM F1852 인장제어형(TC) — A325 상당(Group A)
   A490: { Fy: 900,  Fu: 1040 }, // ASTM A490(≈150ksi)
+  F2280:{ Fy: 900,  Fu: 1040 }, // ASTM F2280 인장제어형(TC) — A490 상당(Group B)
 };

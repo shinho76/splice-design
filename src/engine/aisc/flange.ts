@@ -68,28 +68,31 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
 
   // ── FB. 볼트 ──
   {
-    const phiRn = PHI.V * Fnv * ab * Ns * nb;
+    const phiRn1 = PHI.V * Fnv * ab * Ns;         // 볼트 1개 설계전단강도(이중전단)
+    const phiRn = phiRn1 * nb;                     // 총 설계강도 = 1개 강도 × 본수
     checks.push(finalize({
       id: 'FB1', region: 'bolt', group: 'A. 볼트', label: '볼트 전단(이중전단)', clause: 'J3.6',
-      detail: `φFnvAb·ns·n = 0.75·${Fnv.toFixed(0)}·${ab}·2·${nb} (${thread})`,
+      detail: `φrₙ = 0.75·${Fnv.toFixed(0)}·${ab}·2 = ${kN(phiRn1)} kN/EA ×${nb} = ${kN(phiRn)} kN (${thread})`,
       phiRn: kN(phiRn), demand: kN(Pf), unit: 'kN',
       steps: [
         S('Nominal shear stress Fnv', thread === 'X' ? '0.563·Fu(bolt)' : '0.450·Fu(bolt)', `${FNV_FACTOR[thread]}·${Fub}`, +Fnv.toFixed(0), 'MPa', 'J3.6'),
         S('Bolt shear area Ab', 'π/4·d²', `M${d}`, ab, 'mm²'),
-        S('Shear planes / bolts', 'double shear', `ns=2, n=${nb}`),
-        S('Design shear φRn', 'φ·Fnv·Ab·ns·n', `0.75·${Fnv.toFixed(0)}·${ab}·2·${nb}`, kN(phiRn), 'kN'),
+        S('Per-bolt design shear φrₙ', 'φ·Fnv·Ab·ns', `0.75·${Fnv.toFixed(0)}·${ab}·2`, kN(phiRn1), 'kN', 'J3.6'),
+        S('Total φRn = φrₙ·n', 'φrₙ · n', `${kN(phiRn1)}·${nb}`, kN(phiRn), 'kN'),
       ],
     }));
     if (cond.jointType === '마찰') {
       const Tb = To_kN[cond.bolt][('M' + d) as BoltName] ?? 0;
-      const slip = PHI.SL * SLIP.MU * SLIP.DU * SLIP.HF * Tb * Ns * nb;
+      const slip1 = PHI.SL * SLIP.MU * SLIP.DU * SLIP.HF * Tb * Ns;   // 볼트 1개 설계미끄럼강도(이중면)
+      const slip = slip1 * nb;                                         // 총 = 1개 강도 × 본수
       checks.push(finalize({
         id: 'FB2', region: 'bolt', group: 'A. 볼트', label: '볼트 미끄럼(Class B)', clause: 'J3.8',
-        detail: `φμDu·hf·Tb·ns·n = 1.0·0.5·1.13·${Tb}·2·${nb}`,
+        detail: `φrₙ = 1.0·0.5·1.13·${Tb}·2 = ${slip1.toFixed(1)} kN/EA ×${nb} = ${slip.toFixed(1)} kN`,
         phiRn: +slip.toFixed(1), demand: kN(Pf), unit: 'kN',
         steps: [
           S('Min. bolt pretension Tb', 'KS design bolt tension', `M${d} ${cond.bolt}`, Tb, 'kN', 'J3.8'),
-          S('Design slip φRn', 'φ·μ·Du·hf·Tb·ns·n', `1.0·0.50·1.13·1.0·${Tb}·2·${nb}`, +slip.toFixed(1), 'kN'),
+          S('Per-bolt design slip φrₙ', 'φ·μ·Du·hf·Tb·ns', `1.0·0.50·1.13·1.0·${Tb}·2`, +slip1.toFixed(1), 'kN', 'J3.8'),
+          S('Total φRn = φrₙ·n', 'φrₙ · n', `${slip1.toFixed(1)}·${nb}`, +slip.toFixed(1), 'kN'),
         ],
       }));
     } else {
