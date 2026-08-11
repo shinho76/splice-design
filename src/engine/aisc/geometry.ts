@@ -100,17 +100,31 @@ function bsCapacity(Agv: number, Anv: number, Ant: number, Fu: number, Fy: numbe
 
 export interface BlockShearParams {
   t: number; Fy: number; Fu: number; d: number;
-  nrow: number;          // 응력방향 볼트열수
-  Lv: number;            // 전단선 길이 = 연단(단부) + (nrow−1)·pitch
   halfWidth: number;     // 요소 반폭 (판 가장자리 = ±halfWidth)
   cols: number[];        // 폭방향 볼트열 x좌표(정렬, CL=0 대칭)
-  staggered?: boolean;   // 엇모배치 — U블록 대각 인장면에 순단면 s²/4g 가산(B4.3b)
-  stagS?: number;        // 엇모 응력방향 어긋남 s(mm)
+  edge: number;          // 자유단(단부) 연단거리(mm)
+  pitch: number;         // 정렬 응력방향 피치(mm)
+  nHi: number;           // 외측열 볼트수(=ceil(n)) — 정렬이면 전열 동일
+  nLo: number;           // 내측열 볼트수(=floor(n), 엇모)
+  staggered?: boolean;   // 엇모배치 — 내측열 off=45·전열 90피치(3D/DXF 정합), U블록 인장면 s²/4g
   gauge?: number;        // 인접열 게이지 g(mm)
 }
 
+// 엇모 3D/DXF 정합 상수(connParts stagOf): 내측열 응력방향 어긋남 45, 엇모 피치 90.
+export const BS_STAG_OFF = 45, BS_STAG_PITCH = 90;
 // 파단모드 병기(첨부 도판): A 외연L=Mode1 · B 중앙L=Mode1´ · C 전열U=Mode2 · D 내측페어=Mode3
 const BS_MODE: Record<string, string> = { A: 'Mode 1', B: "Mode 1´", C: 'Mode 2', D: 'Mode 3' };
+
+/** 열좌표 x → 그 열의 전단선 기하(외/내측 행수·오프셋, 3D/DXF stagOf 정합) */
+export function bsColGeom(x: number, p: BlockShearParams) {
+  const maxAbs = Math.max(...p.cols.map(v => Math.abs(v)));
+  const isOut = Math.abs(x) >= maxAbs - 0.5;
+  const rows = p.staggered ? (isOut ? p.nHi : p.nLo) : p.nHi;
+  const off = (p.staggered && !isOut) ? BS_STAG_OFF : 0;
+  const pit = p.staggered ? BS_STAG_PITCH : p.pitch;
+  const Lv = p.edge + off + Math.max(0, rows - 1) * pit;   // 자유단→그 열 마지막 볼트
+  return { isOut, rows, off, Lv };
+}
 
 /**
  * 요소별 블록전단 후보 케이스 열거.
@@ -122,37 +136,36 @@ const BS_MODE: Record<string, string> = { A: 'Mode 1', B: "Mode 1´", C: 'Mode 2
  * 단일열(cols.length=1) 요소는 C(양연 U블록)만 산정.
  */
 export function blockShear(p: BlockShearParams): { cases: BlockCase[]; gov?: BlockCase } {
-  const { t, Fy, Fu, d, nrow, Lv, halfWidth, cols } = p;
+  const { t, Fy, Fu, d, halfWidth, cols } = p;
   const dh = holeDia(d);
-  const nShear = nrow - 0.5;               // 전단선 구멍수(코너 반개 공유)
-  const AgvOne = Lv * t;
-  const AnvOne = Math.max(0, Lv - nShear * dh) * t;
-  // 엇모 순단면 보정(B4.3b): U블록의 대각 인장면은 게이지 gap당 s²/4g 만큼 순단면 회복.
-  const s = p.stagS ?? 0, gg = p.gauge ?? 0;
-  const stagAdd = (p.staggered && s > 0 && gg > 0) ? (s * s) / (4 * gg) : 0;   // gap 1개당 추가폭(mm)
-  const antLine = (w: number) => Math.max(0, w - 0.5 * dh) * t;                       // 단일 인장선(L블록) — 대각 없음
+  // 열별 전단면(3D/DXF stagOf 정합): 외측열 nHi행·off0, 내측열 nLo행·off45.
+  const g1 = (x: number) => { const g = bsColGeom(x, p); const nSh = g.rows - 0.5; return { Agv: g.Lv * t, Anv: Math.max(0, g.Lv - nSh * dh) * t }; };
+  const xOut = Math.max(...cols.map(Math.abs));
+  const xIn = Math.min(...cols.map(Math.abs));
+  const outerG = g1(xOut), innerG = g1(xIn);
+  // 엇모 순단면 보정(B4.3b): U블록 대각 인장면은 gap당 s²/4g 회복(s=45=내측 어긋남).
+  const gg = p.gauge ?? 0;
+  const stagAdd = (p.staggered && gg > 0) ? (BS_STAG_OFF * BS_STAG_OFF) / (4 * gg) : 0;
+  const antLine = (w: number) => Math.max(0, w - 0.5 * dh) * t;                       // 단일 인장선(L블록)
   const antSpan = (w: number, nGap: number) => Math.max(0, w - nGap * dh + nGap * stagAdd) * t; // 열간 인장(U블록)
 
   const m = cols.length;
-  const xOut = Math.max(...cols.map(Math.abs));
-  const xIn = Math.min(...cols.map(Math.abs));
   const cs: BlockCase[] = [];
   const mk = (label: string, mode: string, Ubs: number, Agv: number, Anv: number, Ant: number, frac: number): BlockCase =>
     ({ label, mode, Ubs, Agv, Anv, Ant, frac, ...bsCapacity(Agv, Anv, Ant, Fu, Fy, Ubs) });
 
   if (m >= 2) {
-    // Case C: 전열 U블록 (전체 하중)  = Mode 2
-    const spanC = xOut - Math.min(...cols);
-    cs.push(mk('C(전열 U블록)', BS_MODE.C, UBS.UNIFORM, 2 * AgvOne, 2 * AnvOne, antSpan(spanC, m - 1), 1.0));
-    // Case A: 외연 L블록 (1열 분리)  = Mode 1
-    cs.push(mk('A(외연 L블록)', BS_MODE.A, UBS.NONUNIFORM, AgvOne, AnvOne, antLine(halfWidth - xOut), 1 / m));
-    // Case B: 중앙 L블록 (1열 분리)  = Mode 1´
-    if (xIn > 0.1) cs.push(mk('B(중앙 L블록)', BS_MODE.B, UBS.NONUNIFORM, AgvOne, AnvOne, antLine(xIn), 1 / m));
-    // Case D: 내측 페어 U블록 (2열 분리, m≥4)  = Mode 3(split)
-    if (m >= 4 && xIn > 0.1) cs.push(mk('D(내측 페어)', BS_MODE.D, UBS.UNIFORM, 2 * AgvOne, 2 * AnvOne, antSpan(2 * xIn, 1), 2 / m));
+    // Case C: 전열 U블록 (외측 2전단선)  = Mode 2
+    cs.push(mk('C(전열 U블록)', BS_MODE.C, UBS.UNIFORM, 2 * outerG.Agv, 2 * outerG.Anv, antSpan(2 * xOut, m - 1), 1.0));
+    // Case A: 외연 L블록 (외측 1열)  = Mode 1
+    cs.push(mk('A(외연 L블록)', BS_MODE.A, UBS.NONUNIFORM, outerG.Agv, outerG.Anv, antLine(halfWidth - xOut), 1 / m));
+    // Case B: 중앙 L블록 (내측 1열)  = Mode 1´
+    if (xIn > 0.1) cs.push(mk('B(중앙 L블록)', BS_MODE.B, UBS.NONUNIFORM, innerG.Agv, innerG.Anv, antLine(xIn), 1 / m));
+    // Case D: 내측 페어 U블록 (내측 2전단선, m≥4)  = Mode 3(split)
+    if (m >= 4 && xIn > 0.1) cs.push(mk('D(내측 페어)', BS_MODE.D, UBS.UNIFORM, 2 * innerG.Agv, 2 * innerG.Anv, antSpan(2 * xIn, 1), 2 / m));
   } else {
     // 단일열(1열): 양연 U블록 = Mode 1
-    cs.push(mk('C(양연 U블록)', BS_MODE.A, UBS.UNIFORM, 2 * AgvOne, 2 * AnvOne, antSpan(2 * xOut, 0), 1.0));
+    cs.push(mk('C(양연 U블록)', BS_MODE.A, UBS.UNIFORM, 2 * outerG.Agv, 2 * outerG.Anv, antSpan(2 * xOut, 0), 1.0));
   }
   return { cases: cs };
 }

@@ -56,6 +56,8 @@ export interface BlockShearGeom {
   vertical?: boolean;  // 도해 방향: true=수직 전단(웨브 이음판 — Vu 수직)
   staggered?: boolean; // 엇모배치 — 파단선 지그재그 + s²/4g 표기
   gauge?: number;      // 인접 볼트열 게이지(mm) — 엇모 s²/4g·도해용
+  nHi?: number;        // 외측열 행수(엇모, 3D/DXF 정합)
+  nLo?: number;        // 내측열 행수(엇모)
 }
 
 /** 블록전단 한 케이스 결과 (요소별 A/B/C/D) */

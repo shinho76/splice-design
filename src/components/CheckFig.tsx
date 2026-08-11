@@ -28,38 +28,44 @@ function fracture(letter: string, cols: number[], halfWidth: number): { shearYs:
 
 function BsPanel({ c, geom, lang }: { c: BlockCase; geom: BlockShearGeom; lang: Lang }) {
   const vertical = !!geom.vertical, stag = !!geom.staggered;   // 웨브=수직 전단, 엇모=지그재그
+  const nHi = geom.nHi ?? geom.nrow, nLo = geom.nLo ?? geom.nrow;
   const W = 176, H = vertical ? 150 : 118, pad = 12, aw = 16;  // aw=하중화살표 여백
-  const Lv = geom.edge + (geom.nrow - 1) * geom.pitch;
-  const stagLen = stag ? geom.pitch / 2 : 0;
-  const lenTot = Lv + geom.edge + stagLen;                     // u축: 자유단~후단
-  const widTot = 2 * geom.halfWidth;                           // v축: 폭
+  const maxAbs = Math.max(...geom.cols.map(v => Math.abs(v)));
+  // 3D/DXF connParts stagOf 정합: 내측열 off=45·nLo행, 외측열 off=0·nHi행, 엇모 피치 90.
+  const stagOf = (cv: number) => {
+    const isOut = Math.abs(cv) >= maxAbs - 0.5;
+    const rows = stag ? (isOut ? nHi : nLo) : geom.nrow;
+    const off = (stag && !isOut) ? 45 : 0;
+    const pit = stag ? 90 : geom.pitch;
+    return { rows, off, pit, Lv: geom.edge + off + Math.max(0, rows - 1) * pit };
+  };
+  const LvMax = Math.max(geom.edge, ...geom.cols.map(cv => stagOf(cv).Lv));
+  const lenTot = LvMax + geom.edge, widTot = 2 * geom.halfWidth;
   const sc = Math.min(((vertical ? H : W) - 2 * pad - aw) / lenTot, ((vertical ? W : H) - 2 * pad) / widTot);
   const u0 = pad + aw, vc = (vertical ? W : H) / 2;
-  // u=전단선방향(자유단 0→), v=폭(중심 0). 수직이면 u=세로.
   const map = (u: number, v: number): [number, number] => vertical ? [vc + v * sc, u0 + u * sc] : [u0 + u * sc, vc - v * sc];
   const letter = (c.label[0] || 'C').toUpperCase();
   const f = fracture(letter, geom.cols, geom.halfWidth);
   const br = Math.max(1.3, geom.dh / 2 * sc);
   const pid = 'bsh' + (HID++);
   const onShear = (v: number) => f.shearYs.some(s => Math.abs(s - v) < 0.1);
-  const uBolt = (i: number, ci: number) => geom.edge + i * geom.pitch + (stag ? (ci % 2) * stagLen : 0);
+
+  // 인장 경계 — 열은 그 열 마지막볼트 u(엇모=지그재그), 판단/CL은 가장 가까운 전단열 u
+  const uAt = (v: number) => {
+    const col = geom.cols.find(cc => Math.abs(cc - v) < 0.5);
+    if (col !== undefined) return stagOf(col).Lv;
+    const near = f.shearYs.reduce((a, b) => Math.abs(b - v) < Math.abs(a - v) ? b : a, f.shearYs[0]);
+    return stagOf(near).Lv;
+  };
+  const spanVs = [f.tenLo, ...geom.cols.filter(cc => cc > f.tenLo + 0.1 && cc < f.tenHi - 0.1), f.tenHi].sort((a, b) => a - b);
+  const tenNodes: [number, number][] = spanVs.map(v => [uAt(v), v]);
+  const blockPts = [map(0, f.tenLo), ...tenNodes.map(([u, v]) => map(u, v)), map(0, f.tenHi)].map(p => p.join(',')).join(' ');
+  const tenPts = tenNodes.map(([u, v]) => map(u, v).join(',')).join(' ');
   const rct = (u1: number, v1: number, u2: number, v2: number) => {
     const [x1, y1] = map(u1, v1), [x2, y2] = map(u2, v2);
     return { x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1) };
   };
   const plate = rct(0, -geom.halfWidth, lenTot, geom.halfWidth);
-  const block = rct(0, f.tenLo, Lv, f.tenHi);
-
-  // 인장면 — 엇모 U블록은 열별 마지막볼트 지그재그(대각 순단면 s²/4g)
-  const tenCols = geom.cols.filter(v => v >= f.tenLo - 0.1 && v <= f.tenHi + 0.1).sort((a, b) => a - b);
-  let tension: ReactNode;
-  if (stag && tenCols.length >= 2) {
-    const pts = tenCols.map(v => map(uBolt(geom.nrow - 1, geom.cols.indexOf(v)), v).join(',')).join(' ');
-    tension = <polyline points={pts} fill="none" stroke={TENSION} strokeWidth={1.7} strokeDasharray="4 3" strokeLinecap="round" strokeLinejoin="round" />;
-  } else {
-    const [tx1, ty1] = map(Lv, f.tenLo), [tx2, ty2] = map(Lv, f.tenHi);
-    tension = <line x1={tx1} y1={ty1} x2={tx2} y2={ty2} stroke={TENSION} strokeWidth={1.8} strokeDasharray="4 3" strokeLinecap="round" />;
-  }
   const [la1x, la1y] = map(-1, 0), [la2x, la2y] = map(-13, 0);
   const ahead = vertical ? `M${la2x},${la2y} l-3,5 h6 z` : `M${la2x},${la2y} l5,-3 v6 z`;
   const modeTxt = c.mode ? ` · ${c.mode}` : '';
@@ -70,17 +76,21 @@ function BsPanel({ c, geom, lang }: { c: BlockCase; geom: BlockShearGeom; lang: 
         <defs><pattern id={pid} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
           <line x1="0" y1="0" x2="0" y2="5" stroke={BLOCKS} strokeWidth="0.6" opacity="0.55" /></pattern></defs>
         <rect x={plate.x} y={plate.y} width={plate.w} height={plate.h} fill="none" stroke={c.gov ? BLOCKS : PLATE} strokeWidth={c.gov ? 1.6 : 1} />
-        <rect x={block.x} y={block.y} width={block.w} height={block.h} fill={BLOCKF} stroke="none" />
-        <rect x={block.x} y={block.y} width={block.w} height={block.h} fill={`url(#${pid})`} stroke={BLOCKS} strokeWidth="0.7" strokeDasharray="2 2" />
+        {/* 탈락 블록(폴리곤) — 엇모 경사 s²/4g 삼각부까지 해치 포함 */}
+        <polygon points={blockPts} fill={BLOCKF} stroke="none" />
+        <polygon points={blockPts} fill={`url(#${pid})`} stroke={BLOCKS} strokeWidth="0.7" strokeDasharray="2 2" />
         <line x1={la1x} y1={la1y} x2={la2x} y2={la2y} stroke={LOAD} strokeWidth={1.4} />
         <path d={ahead} fill={LOAD} />
         <text x={vertical ? la2x + 9 : la2x} y={vertical ? la2y + 3 : la2y - 4} fontSize="8" fill={LOAD} textAnchor="middle">{vertical ? 'Vu' : 'Pf'}</text>
-        {geom.cols.map((cv, ci) => Array.from({ length: geom.nrow }, (_, i) => {
-          const [bx, by] = map(uBolt(i, ci), cv);
+        {/* 볼트 — 열별 행수·오프셋(3D/DXF stagOf 동일) */}
+        {geom.cols.map((cv, ci) => { const { rows, off, pit } = stagOf(cv); return Array.from({ length: rows }, (_, i) => {
+          const [bx, by] = map(geom.edge + off + i * pit, cv);
           return <circle key={`${ci}-${i}`} cx={bx} cy={by} r={br} fill="none" stroke={onShear(cv) ? INK : HOLE} strokeWidth={onShear(cv) ? 1.2 : 0.85} />;
-        }))}
-        {f.shearYs.map((v, i) => { const [sx1, sy1] = map(0, v), [sx2, sy2] = map(Lv, v); return <line key={i} x1={sx1} y1={sy1} x2={sx2} y2={sy2} stroke={SHEAR} strokeWidth={1.8} strokeLinecap="round" />; })}
-        {tension}
+        }); })}
+        {/* 전단면 — 열별 Lv */}
+        {f.shearYs.map((v, i) => { const L = stagOf(v).Lv; const [x1, y1] = map(0, v), [x2, y2] = map(L, v); return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={SHEAR} strokeWidth={1.8} strokeLinecap="round" />; })}
+        {/* 인장면 — 엇모면 지그재그 폴리라인 */}
+        <polyline points={tenPts} fill="none" stroke={TENSION} strokeWidth={1.8} strokeDasharray="4 3" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
       <div style={{ fontSize: 10, color: c.gov ? BLOCKS : 'var(--sub,#6b7280)', fontWeight: c.gov ? 700 : 500, marginTop: -1 }}>
         {caseLabel(c.label, lang)}{modeTxt} · U<sub>bs</sub>{c.Ubs.toFixed(1)}{c.gov ? ' ◀' : ''}
