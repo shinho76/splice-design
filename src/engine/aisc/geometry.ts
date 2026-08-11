@@ -104,7 +104,13 @@ export interface BlockShearParams {
   Lv: number;            // 전단선 길이 = 연단(단부) + (nrow−1)·pitch
   halfWidth: number;     // 요소 반폭 (판 가장자리 = ±halfWidth)
   cols: number[];        // 폭방향 볼트열 x좌표(정렬, CL=0 대칭)
+  staggered?: boolean;   // 엇모배치 — U블록 대각 인장면에 순단면 s²/4g 가산(B4.3b)
+  stagS?: number;        // 엇모 응력방향 어긋남 s(mm)
+  gauge?: number;        // 인접열 게이지 g(mm)
 }
+
+// 파단모드 병기(첨부 도판): A 외연L=Mode1 · B 중앙L=Mode1´ · C 전열U=Mode2 · D 내측페어=Mode3
+const BS_MODE: Record<string, string> = { A: 'Mode 1', B: "Mode 1´", C: 'Mode 2', D: 'Mode 3' };
 
 /**
  * 요소별 블록전단 후보 케이스 열거.
@@ -121,29 +127,32 @@ export function blockShear(p: BlockShearParams): { cases: BlockCase[]; gov?: Blo
   const nShear = nrow - 0.5;               // 전단선 구멍수(코너 반개 공유)
   const AgvOne = Lv * t;
   const AnvOne = Math.max(0, Lv - nShear * dh) * t;
-  const antLine = (w: number) => Math.max(0, w - 0.5 * dh) * t;         // 단일 인장선(L블록)
-  const antSpan = (w: number, nGap: number) => Math.max(0, w - nGap * dh) * t; // 열간 인장(U블록)
+  // 엇모 순단면 보정(B4.3b): U블록의 대각 인장면은 게이지 gap당 s²/4g 만큼 순단면 회복.
+  const s = p.stagS ?? 0, gg = p.gauge ?? 0;
+  const stagAdd = (p.staggered && s > 0 && gg > 0) ? (s * s) / (4 * gg) : 0;   // gap 1개당 추가폭(mm)
+  const antLine = (w: number) => Math.max(0, w - 0.5 * dh) * t;                       // 단일 인장선(L블록) — 대각 없음
+  const antSpan = (w: number, nGap: number) => Math.max(0, w - nGap * dh + nGap * stagAdd) * t; // 열간 인장(U블록)
 
   const m = cols.length;
   const xOut = Math.max(...cols.map(Math.abs));
   const xIn = Math.min(...cols.map(Math.abs));
   const cs: BlockCase[] = [];
-  const mk = (label: string, Ubs: number, Agv: number, Anv: number, Ant: number, frac: number): BlockCase =>
-    ({ label, Ubs, Agv, Anv, Ant, frac, ...bsCapacity(Agv, Anv, Ant, Fu, Fy, Ubs) });
+  const mk = (label: string, mode: string, Ubs: number, Agv: number, Anv: number, Ant: number, frac: number): BlockCase =>
+    ({ label, mode, Ubs, Agv, Anv, Ant, frac, ...bsCapacity(Agv, Anv, Ant, Fu, Fy, Ubs) });
 
   if (m >= 2) {
-    // Case C: 전열 U블록 (전체 하중)
+    // Case C: 전열 U블록 (전체 하중)  = Mode 2
     const spanC = xOut - Math.min(...cols);
-    cs.push(mk('C(전열 U블록)', UBS.UNIFORM, 2 * AgvOne, 2 * AnvOne, antSpan(spanC, m - 1), 1.0));
-    // Case A: 외연 L블록 (1열 분리)
-    cs.push(mk('A(외연 L블록)', UBS.NONUNIFORM, AgvOne, AnvOne, antLine(halfWidth - xOut), 1 / m));
-    // Case B: 중앙 L블록 (1열 분리)
-    if (xIn > 0.1) cs.push(mk('B(중앙 L블록)', UBS.NONUNIFORM, AgvOne, AnvOne, antLine(xIn), 1 / m));
-    // Case D: 내측 페어 U블록 (2열 분리, m≥4)
-    if (m >= 4 && xIn > 0.1) cs.push(mk('D(내측 페어)', UBS.UNIFORM, 2 * AgvOne, 2 * AnvOne, antSpan(2 * xIn, 1), 2 / m));
+    cs.push(mk('C(전열 U블록)', BS_MODE.C, UBS.UNIFORM, 2 * AgvOne, 2 * AnvOne, antSpan(spanC, m - 1), 1.0));
+    // Case A: 외연 L블록 (1열 분리)  = Mode 1
+    cs.push(mk('A(외연 L블록)', BS_MODE.A, UBS.NONUNIFORM, AgvOne, AnvOne, antLine(halfWidth - xOut), 1 / m));
+    // Case B: 중앙 L블록 (1열 분리)  = Mode 1´
+    if (xIn > 0.1) cs.push(mk('B(중앙 L블록)', BS_MODE.B, UBS.NONUNIFORM, AgvOne, AnvOne, antLine(xIn), 1 / m));
+    // Case D: 내측 페어 U블록 (2열 분리, m≥4)  = Mode 3(split)
+    if (m >= 4 && xIn > 0.1) cs.push(mk('D(내측 페어)', BS_MODE.D, UBS.UNIFORM, 2 * AgvOne, 2 * AnvOne, antSpan(2 * xIn, 1), 2 / m));
   } else {
-    // 단일열: 양연 U블록만(전체 하중)
-    cs.push(mk('C(양연 U블록)', UBS.UNIFORM, 2 * AgvOne, 2 * AnvOne, antSpan(2 * xOut, 0), 1.0));
+    // 단일열(1열): 양연 U블록 = Mode 1
+    cs.push(mk('C(양연 U블록)', BS_MODE.A, UBS.UNIFORM, 2 * AgvOne, 2 * AnvOne, antSpan(2 * xOut, 0), 1.0));
   }
   return { cases: cs };
 }

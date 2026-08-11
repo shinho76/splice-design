@@ -53,11 +53,15 @@ export interface BlockShearGeom {
   halfWidth: number; // 판/부재 반폭(mm)
   dh: number;        // 볼트구멍 지름(mm)
   plates: number;    // 판수(외/부재=1, 내부·웨브 이음판=2)
+  vertical?: boolean;  // 도해 방향: true=수직 전단(웨브 이음판 — Vu 수직)
+  staggered?: boolean; // 엇모배치 — 파단선 지그재그 + s²/4g 표기
+  gauge?: number;      // 인접 볼트열 게이지(mm) — 엇모 s²/4g·도해용
 }
 
 /** 블록전단 한 케이스 결과 (요소별 A/B/C/D) */
 export interface BlockCase {
   label: string;      // "Case A(외연 L블록)"
+  mode?: string;      // 첨부 도판 파단모드 병기 "Mode 1|2|3"
   Ubs: number;        // 0.5 | 1.0
   Agv: number;        // 총전단면적 mm²
   Anv: number;        // 순전단면적 mm²

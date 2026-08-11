@@ -19,8 +19,8 @@ const S = (label: string, formula?: string, subst?: string, value?: number, unit
 
 /** 블록전단 지배 케이스 요약 문자열 */
 export function bsDetail(bs: { gov: BlockCase; cases: BlockCase[] }): string {
-  return `${bs.gov.label} 지배 · ` +
-    bs.cases.map(c => `${c.label[0]}(Ubs${c.Ubs},f${c.frac.toFixed(2)}):DCR${(c.dcr ?? 0).toFixed(2)}`).join(' / ');
+  return `${bs.gov.label}${bs.gov.mode ? ' ' + bs.gov.mode : ''} 지배 · ` +
+    bs.cases.map(c => `${c.label[0]}${c.mode ? '/' + c.mode.replace('Mode ', 'M') : ''}(Ubs${c.Ubs},f${c.frac.toFixed(2)}):DCR${(c.dcr ?? 0).toFixed(2)}`).join(' / ');
 }
 
 /** dcr·ok 계산 후 push */
@@ -142,11 +142,11 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
         S('Total (m edge + m(n−1) interior)', 'nₑ·edge + nᵢ·interior', `${br.nEdge}·${kN(br.edge)} + ${br.nSpaced}·${kN(br.spaced)}`, kN(br.total), 'kN'),
       ],
     }));
-    const bs = blockShearGovern({ t: oT, Fy: pFy, Fu: pFu, d, nrow, Lv, halfWidth: oW / 2, cols }, halfOut, 1);
+    const bs = blockShearGovern({ t: oT, Fy: pFy, Fu: pFu, d, nrow, Lv, halfWidth: oW / 2, cols, staggered: stagF, stagS: 45, gauge: g1 }, halfOut, 1);
     checks.push(finalize({
       id: 'FP5', region: 'outer', group: g, label: '블록 전단', clause: 'J4.3',
       detail: bsDetail(bs), phiRn: kN(bs.phiRn), demand: kN(bs.demand), unit: 'kN', cases: bs.cases,
-      bsGeom: { cols, nrow, pitch, edge, halfWidth: oW / 2, dh, plates: 1 },
+      bsGeom: { cols, nrow, pitch, edge, halfWidth: oW / 2, dh, plates: 1, staggered: stagF, gauge: g1 },
     }));
   }
 
@@ -195,11 +195,11 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
     }));
     if (nHalf >= 2) {
       const iCols = [-g2 / 2, g2 / 2];
-      const bs = blockShearGovern({ t: iT, Fy: pFy, Fu: pFu, d, nrow, Lv, halfWidth: iW / 2, cols: iCols }, halfIn, 2);
+      const bs = blockShearGovern({ t: iT, Fy: pFy, Fu: pFu, d, nrow, Lv, halfWidth: iW / 2, cols: iCols, staggered: stagF, stagS: 45, gauge: g2 || g1 }, halfIn, 2);
       checks.push(finalize({
         id: 'FI5', region: 'inner', group: g, label: '블록 전단(×2)', clause: 'J4.3',
         detail: bsDetail(bs), phiRn: kN(bs.phiRn), demand: kN(bs.demand), unit: 'kN', cases: bs.cases,
-        bsGeom: { cols: iCols, nrow, pitch, edge, halfWidth: iW / 2, dh, plates: 2 },
+        bsGeom: { cols: iCols, nrow, pitch, edge, halfWidth: iW / 2, dh, plates: 2, staggered: stagF, gauge: g2 || g1 },
       }));
     } else {
       checks.push({ id: 'FI5', region: 'inner', group: g, label: '블록 전단', clause: 'J4.3', detail: '단일열 → 인장파단(FI2)이 지배', note: '단일열' });
@@ -261,11 +261,11 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
         S('Design rupture φRn', 'φ·Fu·Ae', `0.75·${mFu}·${AeWt.toFixed(0)}`, kN(PHI.V * mFu * AeWt), 'kN', 'D2.2'),
       ],
     }));
-    const bs = blockShearGovern({ t: tf, Fy: mFy, Fu: mFu, d, nrow, Lv, halfWidth: B / 2, cols }, Pf, 1);
+    const bs = blockShearGovern({ t: tf, Fy: mFy, Fu: mFu, d, nrow, Lv, halfWidth: B / 2, cols, staggered: stagF, stagS: 45, gauge: g1 }, Pf, 1);
     checks.push(finalize({
       id: 'FM5', region: 'member', group: g, label: '부재 블록 전단', clause: 'J4.3',
       detail: bsDetail(bs), phiRn: kN(bs.phiRn), demand: kN(bs.demand), unit: 'kN', cases: bs.cases,
-      bsGeom: { cols, nrow, pitch, edge, halfWidth: B / 2, dh, plates: 1 },
+      bsGeom: { cols, nrow, pitch, edge, halfWidth: B / 2, dh, plates: 1, staggered: stagF, gauge: g1 },
     }));
   }
 
