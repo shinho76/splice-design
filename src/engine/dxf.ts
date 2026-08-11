@@ -29,7 +29,7 @@ function groupBySeries(rows: DesignResult[]): { key: string; items: DesignResult
 const round = Math.round;
 const TH = 20;   // 도면 문자높이
 const TB = 24;   // 정보표 문자높이(셀폭 150 내 라벨 수용 — 겹침 방지)
-const FONT = 'Cell Body';  // 라벨/주기 문자 스타일 — 참조도면 맑은고딕(malgun) TrueType, 한글 렌더. 치수문자는 STANDARD.
+const FONT = 'CellBody';  // 라벨/주기 문자 스타일 — 참조도면 맑은고딕(malgun) TrueType, 한글 렌더. 치수문자는 STANDARD. (R12 심볼명: 공백 불가 → CellBody)
 const ARROW = 5.0;                        // exe DIMSTYLE dimasz(41) = _ARCHTICK INSERT scale
 const PW = 0.6;                           // 이음판 선 폭(POLYLINE width) — 얇게(과다 굵기 방지)
 
@@ -645,7 +645,7 @@ const LMAP: Record<string, string> = {
 };
 const LY = (k: string): string => LMAP[k] ?? k;
 // 문자 스타일(참조도면): 한글 malgun TrueType — 라벨/주기 한글 렌더. 치수문자는 STANDARD 유지.
-const TEXT_STYLE = 'Cell Body';
+const TEXT_STYLE = 'CellBody';
 // _ARCHTICK 화살촉 블록(45° 단위 틱). INSERT scale로 크기 결정
 const ARCHTICK_BLOCK = ['0', 'BLOCK', '8', '0', '2', '_ARCHTICK', '70', '0', '10', '0', '20', '0', '30', '0', '3', '_ARCHTICK',
   '0', 'LINE', '8', '0', '10', '-0.5', '20', '-0.5', '30', '0', '11', '0.5', '21', '0.5', '31', '0',
@@ -662,12 +662,40 @@ const DIMSTYLE_TABLE = ['0', 'TABLE', '2', 'DIMSTYLE', '70', '1',
   '140', '2.5', '141', '2.5', '142', '0.0', '143', '0.03937007874', '144', '1.0', '145', '0.0', '146', '1.0', '147', '0.625',
   '71', '0', '72', '0', '73', '0', '74', '0', '75', '0', '76', '0', '77', '1', '78', '8',
   '170', '0', '171', '3', '172', '1', '173', '0', '174', '0', '175', '0', '176', '0', '177', '0', '178', '0'];
+
+// R12(AC1009) 엄격 검증 — 위반 시 즉시 throw(잘못된 파일 배포 차단).
+//   ① 섹션 순서 HEADER→TABLES→BLOCKS→ENTITIES  ② 0/TABLE ↔ 0/ENDTAB, 0/SECTION ↔ 0/ENDSEC 쌍
+//   ③ 테이블 엔트리명(LAYER·LTYPE·STYLE·DIMSTYLE·VPORT·APPID) 규칙: [A-Za-z0-9_$-], 공백·괄호 금지
+//   (DIMENSION은 엔티티 — 이 생성기는 분해치수라 ENTITIES에도 DIMENSION 엔티티가 없음)
+const R12_SYM = /^\*?[A-Za-z0-9_$][A-Za-z0-9_$-]*$/;   // 선두 '*'=R12 특수명(VPORT *ACTIVE 등) 허용, 공백·괄호 불가
+const R12_ENTRY = new Set(['LAYER', 'LTYPE', 'STYLE', 'DIMSTYLE', 'VPORT', 'APPID']);
+function assertR12(t: string[]): void {
+  let tbl = 0, endtab = 0, sec = 0, endsec = 0;
+  const order: string[] = [], bad: string[] = [];
+  for (let i = 0; i + 1 < t.length; i += 2) {
+    const code = t[i], val = t[i + 1];
+    if (code === '0') {
+      if (val === 'TABLE') tbl++; else if (val === 'ENDTAB') endtab++;
+      else if (val === 'SECTION') sec++; else if (val === 'ENDSEC') endsec++;
+    } else if (code === '2' && i >= 2 && t[i - 2] === '0') {
+      const owner = t[i - 1];
+      if (owner === 'SECTION') order.push(val);
+      else if (R12_ENTRY.has(owner) && !R12_SYM.test(val)) bad.push(`${owner} "${val}"`);
+    }
+  }
+  if (bad.length) throw new Error(`DXF R12 위반 — 부적합 테이블 엔트리명(공백·괄호 등): ${bad.join(', ')}`);
+  if (tbl !== endtab) throw new Error(`DXF R12 위반 — TABLE(${tbl}) ≠ ENDTAB(${endtab})`);
+  if (sec !== endsec) throw new Error(`DXF R12 위반 — SECTION(${sec}) ≠ ENDSEC(${endsec})`);
+  const want = 'HEADER,TABLES,BLOCKS,ENTITIES';
+  if (order.join(',') !== want) throw new Error(`DXF R12 위반 — 섹션 순서 ${order.join('→')} (기대 ${want.replace(/,/g, '→')})`);
+}
+
 function wrap(doc: Doc): string {
-  // STYLE(참조도면): STANDARD(micross)·Table Head(맑은고딕 Bold)·Cell Body(맑은고딕) — 한글 렌더.
+  // STYLE(참조도면): STANDARD(micross)·TableHead(맑은고딕 Bold)·CellBody(맑은고딕) — 한글 렌더. (R12 심볼명 공백 불가)
   const styleT = ['0', 'TABLE', '2', 'STYLE', '70', '3',
     '0', 'STYLE', '2', 'STANDARD', '70', '0', '40', '0.0', '41', '1.0', '50', '0.0', '71', '0', '42', '2.5', '3', 'romans', '4', '',
-    '0', 'STYLE', '2', 'Table Head', '70', '0', '40', '0.0', '41', '1.0', '50', '0.0', '71', '0', '42', '2.5', '3', 'malgunbd.ttf', '4', '',
-    '0', 'STYLE', '2', 'Cell Body', '70', '0', '40', '0.0', '41', '1.0', '50', '0.0', '71', '0', '42', '2.5', '3', 'malgun.ttf', '4', ''];
+    '0', 'STYLE', '2', 'TableHead', '70', '0', '40', '0.0', '41', '1.0', '50', '0.0', '71', '0', '42', '2.5', '3', 'malgunbd.ttf', '4', '',
+    '0', 'STYLE', '2', 'CellBody', '70', '0', '40', '0.0', '41', '1.0', '50', '0.0', '71', '0', '42', '2.5', '3', 'malgun.ttf', '4', ''];
   // VPORT: *ACTIVE 뷰포트(R12 필수 테이블) — 누락 시 엄격한 리더가 파일 거부
   const vportT = ['0', 'TABLE', '2', 'VPORT', '70', '1',
     '0', 'VPORT', '2', '*ACTIVE', '70', '0',
@@ -689,10 +717,12 @@ function wrap(doc: Doc): string {
   const relayer = (arr: string[]) => { for (let i = 0; i + 1 < arr.length; i += 2) if (arr[i] === '8') arr[i + 1] = LY(arr[i + 1]); };
   relayer(doc.e); relayer(doc.blk);
   // 헤더: $INSUNITS(R12 비표준) 제거, $DIMSTYLE=STANDARD 추가(치수스타일 참조 명시).
-  return ['0', 'SECTION', '2', 'HEADER', '9', '$ACADVER', '1', 'AC1009', '9', '$TEXTSTYLE', '7', 'STANDARD', '9', '$DIMSTYLE', '2', 'STANDARD', '0', 'ENDSEC',
+  const out: string[] = ['0', 'SECTION', '2', 'HEADER', '9', '$ACADVER', '1', 'AC1009', '9', '$TEXTSTYLE', '7', 'STANDARD', '9', '$DIMSTYLE', '2', 'STANDARD', '0', 'ENDSEC',
     '0', 'SECTION', '2', 'TABLES', ...vportT, '0', 'ENDTAB', ...ltT, '0', 'ENDTAB', ...layT, '0', 'ENDTAB', ...styleT, '0', 'ENDTAB', ...DIMSTYLE_TABLE, '0', 'ENDTAB', '0', 'ENDSEC',
     '0', 'SECTION', '2', 'BLOCKS', ...SPACE_BLOCKS, ...ARCHTICK_BLOCK, ...doc.blk, '0', 'ENDSEC',
-    '0', 'SECTION', '2', 'ENTITIES', ...doc.e, '0', 'ENDSEC', '0', 'EOF'].join('\r\n');   // CRLF: DXF 관례(엄격 파서 호환)
+    '0', 'SECTION', '2', 'ENTITIES', ...doc.e, '0', 'ENDSEC', '0', 'EOF'];
+  assertR12(out);   // R12 엄격 검증: 엔트리명·태그쌍·섹션순서 위반 시 즉시 throw
+  return out.join('\r\n');   // CRLF: DXF 관례(엄격 파서 호환)
 }
 
 export function toDXF(r: DesignResult, cond: DesignCondition): string {
