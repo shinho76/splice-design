@@ -95,7 +95,7 @@ function BlockCaseTable({ cases, lang }: { cases: BlockCase[]; lang: Lang }) {
           const phi = c.phiRn / 1e3, dem = (c.dcr ?? 0) * phi;
           return (
             <tr key={i} className={c.gov ? 'bs-gov' : ''}>
-              <td className="bs-lb">{caseLabel(c.label, lang)}</td>
+              <td className="bs-lb">{caseLabel(c.label, lang)}{c.mode ? ` · ${c.mode}` : ''}</td>
               <td>{c.Ubs.toFixed(1)}</td>
               <td>{nf(c.Agv, 0)}</td><td>{nf(c.Anv, 0)}</td><td>{nf(c.Ant, 0)}</td>
               <td>{nf(phi)}</td><td>×{c.frac.toFixed(2)}</td><td>{nf(dem)}</td>

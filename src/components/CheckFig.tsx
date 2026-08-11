@@ -27,55 +27,63 @@ function fracture(letter: string, cols: number[], halfWidth: number): { shearYs:
 }
 
 function BsPanel({ c, geom, lang }: { c: BlockCase; geom: BlockShearGeom; lang: Lang }) {
-  const W = 176, H = 116, pad = 12, aw = 16;   // aw=하중화살표 여백
+  const vertical = !!geom.vertical, stag = !!geom.staggered;   // 웨브=수직 전단, 엇모=지그재그
+  const W = 176, H = vertical ? 150 : 118, pad = 12, aw = 16;  // aw=하중화살표 여백
   const Lv = geom.edge + (geom.nrow - 1) * geom.pitch;
-  const lenTot = Lv + geom.edge;               // 자유단~마지막볼트 + 후단 여유
-  const widTot = 2 * geom.halfWidth;
-  const sc = Math.min((W - 2 * pad - aw) / lenTot, (H - 2 * pad) / widTot);
-  const ox = pad + aw, oy = H / 2;
-  const mx = (x: number) => ox + x * sc;       // 하중방향(자유단 x=0 → 우측)
-  const my = (y: number) => oy - y * sc;       // 폭방향(중심 y=0)
+  const stagLen = stag ? geom.pitch / 2 : 0;
+  const lenTot = Lv + geom.edge + stagLen;                     // u축: 자유단~후단
+  const widTot = 2 * geom.halfWidth;                           // v축: 폭
+  const sc = Math.min(((vertical ? H : W) - 2 * pad - aw) / lenTot, ((vertical ? W : H) - 2 * pad) / widTot);
+  const u0 = pad + aw, vc = (vertical ? W : H) / 2;
+  // u=전단선방향(자유단 0→), v=폭(중심 0). 수직이면 u=세로.
+  const map = (u: number, v: number): [number, number] => vertical ? [vc + v * sc, u0 + u * sc] : [u0 + u * sc, vc - v * sc];
   const letter = (c.label[0] || 'C').toUpperCase();
   const f = fracture(letter, geom.cols, geom.halfWidth);
-  const br = Math.max(1.4, geom.dh / 2 * sc);
+  const br = Math.max(1.3, geom.dh / 2 * sc);
   const pid = 'bsh' + (HID++);
+  const onShear = (v: number) => f.shearYs.some(s => Math.abs(s - v) < 0.1);
+  const uBolt = (i: number, ci: number) => geom.edge + i * geom.pitch + (stag ? (ci % 2) * stagLen : 0);
+  const rct = (u1: number, v1: number, u2: number, v2: number) => {
+    const [x1, y1] = map(u1, v1), [x2, y2] = map(u2, v2);
+    return { x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1) };
+  };
+  const plate = rct(0, -geom.halfWidth, lenTot, geom.halfWidth);
+  const block = rct(0, f.tenLo, Lv, f.tenHi);
 
-  const rows = Array.from({ length: geom.nrow }, (_, i) => geom.edge + i * geom.pitch);
+  // 인장면 — 엇모 U블록은 열별 마지막볼트 지그재그(대각 순단면 s²/4g)
+  const tenCols = geom.cols.filter(v => v >= f.tenLo - 0.1 && v <= f.tenHi + 0.1).sort((a, b) => a - b);
+  let tension: ReactNode;
+  if (stag && tenCols.length >= 2) {
+    const pts = tenCols.map(v => map(uBolt(geom.nrow - 1, geom.cols.indexOf(v)), v).join(',')).join(' ');
+    tension = <polyline points={pts} fill="none" stroke={TENSION} strokeWidth={1.7} strokeDasharray="4 3" strokeLinecap="round" strokeLinejoin="round" />;
+  } else {
+    const [tx1, ty1] = map(Lv, f.tenLo), [tx2, ty2] = map(Lv, f.tenHi);
+    tension = <line x1={tx1} y1={ty1} x2={tx2} y2={ty2} stroke={TENSION} strokeWidth={1.8} strokeDasharray="4 3" strokeLinecap="round" />;
+  }
+  const [la1x, la1y] = map(-1, 0), [la2x, la2y] = map(-13, 0);
+  const ahead = vertical ? `M${la2x},${la2y} l-3,5 h6 z` : `M${la2x},${la2y} l5,-3 v6 z`;
+  const modeTxt = c.mode ? ` · ${c.mode}` : '';
   return (
     <div style={{ textAlign: 'center' }}>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" style={{ width: '100%', maxWidth: W, height: 'auto' }}>
-        <title>{caseLabel(c.label, lang)}</title>
-        <defs>
-          <pattern id={pid} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <line x1="0" y1="0" x2="0" y2="5" stroke={BLOCKS} strokeWidth="0.6" opacity="0.55" />
-          </pattern>
-        </defs>
-        {/* 판 외곽 */}
-        <rect x={mx(0)} y={my(geom.halfWidth)} width={lenTot * sc} height={widTot * sc}
-          fill="none" stroke={c.gov ? BLOCKS : PLATE} strokeWidth={c.gov ? 1.6 : 1} />
-        {/* 탈락 블록(자유단~인장선, 전단열 사이) */}
-        <rect x={mx(0)} y={my(f.tenHi)} width={Lv * sc} height={(f.tenHi - f.tenLo) * sc}
-          fill={BLOCKF} stroke="none" />
-        <rect x={mx(0)} y={my(f.tenHi)} width={Lv * sc} height={(f.tenHi - f.tenLo) * sc}
-          fill={`url(#${pid})`} stroke={BLOCKS} strokeWidth="0.7" strokeDasharray="2 2" />
-        {/* 하중 Pf ← */}
-        <line x1={mx(0) - 3} y1={oy} x2={pad} y2={oy} stroke={LOAD} strokeWidth={1.4} />
-        <path d={`M${pad},${oy} l5,-3 v6 z`} fill={LOAD} />
-        {/* 볼트 */}
-        {geom.cols.map((cy, ci) => rows.map((rx, ri) => (
-          <circle key={`${ci}-${ri}`} cx={mx(rx)} cy={my(cy)} r={br} fill="none"
-            stroke={f.shearYs.some(s => Math.abs(s - cy) < 0.1) ? INK : HOLE}
-            strokeWidth={f.shearYs.some(s => Math.abs(s - cy) < 0.1) ? 1.2 : 0.9} />
-        )))}
-        {/* 전단면(하중방향 실선, 자유단→마지막볼트) */}
-        {f.shearYs.map((y, i) => (
-          <line key={i} x1={mx(0)} y1={my(y)} x2={mx(Lv)} y2={my(y)} stroke={SHEAR} strokeWidth={1.8} strokeLinecap="round" />
-        ))}
-        {/* 인장면(직각 점선, 마지막볼트열) */}
-        <line x1={mx(Lv)} y1={my(f.tenLo)} x2={mx(Lv)} y2={my(f.tenHi)} stroke={TENSION} strokeWidth={1.8} strokeDasharray="4 3" strokeLinecap="round" />
+        <title>{caseLabel(c.label, lang)}{modeTxt}</title>
+        <defs><pattern id={pid} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="5" stroke={BLOCKS} strokeWidth="0.6" opacity="0.55" /></pattern></defs>
+        <rect x={plate.x} y={plate.y} width={plate.w} height={plate.h} fill="none" stroke={c.gov ? BLOCKS : PLATE} strokeWidth={c.gov ? 1.6 : 1} />
+        <rect x={block.x} y={block.y} width={block.w} height={block.h} fill={BLOCKF} stroke="none" />
+        <rect x={block.x} y={block.y} width={block.w} height={block.h} fill={`url(#${pid})`} stroke={BLOCKS} strokeWidth="0.7" strokeDasharray="2 2" />
+        <line x1={la1x} y1={la1y} x2={la2x} y2={la2y} stroke={LOAD} strokeWidth={1.4} />
+        <path d={ahead} fill={LOAD} />
+        <text x={vertical ? la2x + 9 : la2x} y={vertical ? la2y + 3 : la2y - 4} fontSize="8" fill={LOAD} textAnchor="middle">{vertical ? 'Vu' : 'Pf'}</text>
+        {geom.cols.map((cv, ci) => Array.from({ length: geom.nrow }, (_, i) => {
+          const [bx, by] = map(uBolt(i, ci), cv);
+          return <circle key={`${ci}-${i}`} cx={bx} cy={by} r={br} fill="none" stroke={onShear(cv) ? INK : HOLE} strokeWidth={onShear(cv) ? 1.2 : 0.85} />;
+        }))}
+        {f.shearYs.map((v, i) => { const [sx1, sy1] = map(0, v), [sx2, sy2] = map(Lv, v); return <line key={i} x1={sx1} y1={sy1} x2={sx2} y2={sy2} stroke={SHEAR} strokeWidth={1.8} strokeLinecap="round" />; })}
+        {tension}
       </svg>
       <div style={{ fontSize: 10, color: c.gov ? BLOCKS : 'var(--sub,#6b7280)', fontWeight: c.gov ? 700 : 500, marginTop: -1 }}>
-        {caseLabel(c.label, lang)} · U<sub>bs</sub>{c.Ubs.toFixed(1)}{c.gov ? ' ◀' : ''}
+        {caseLabel(c.label, lang)}{modeTxt} · U<sub>bs</sub>{c.Ubs.toFixed(1)}{c.gov ? ' ◀' : ''}
       </div>
     </div>
   );
@@ -90,8 +98,8 @@ function BlockShearFig({ cases, geom, lang }: { cases: BlockCase[]; geom: BlockS
       </div>
       <div style={{ fontSize: 10.5, color: 'var(--sub,#6b7280)', marginTop: 3 }}>
         {lang === 'ko'
-          ? `실측 작도: 볼트 ${geom.cols.length}열 × ${geom.nrow}행, 피치 s=${geom.pitch}, 연단 e=${geom.edge}, 게이지 ${gauge}, 폭 ${Math.round(2 * geom.halfWidth)}mm${geom.plates === 2 ? ' (×2매)' : ''}. 빨강=전단면·파랑점선=인장면·해치=탈락블록.`
-          : `To scale: ${geom.cols.length} cols × ${geom.nrow} rows, pitch s=${geom.pitch}, edge e=${geom.edge}, gauge ${gauge}, width ${Math.round(2 * geom.halfWidth)}mm${geom.plates === 2 ? ' (×2)' : ''}. red=shear, blue-dash=tension, hatch=tear-out block.`}
+          ? `실측 작도: 볼트 ${geom.cols.length}열 × ${geom.nrow}행, 피치 s=${geom.pitch}, 연단 e=${geom.edge}, 게이지 ${gauge}, 폭 ${Math.round(2 * geom.halfWidth)}mm${geom.plates === 2 ? ' (×2매)' : ''}${geom.vertical ? ' · 수직 전단(웨브 Vu)' : ''}${geom.staggered ? ' · 엇모 지그재그(+s²/4g)' : ''}. 빨강=전단면·파랑점선=인장면·해치=탈락블록.`
+          : `To scale: ${geom.cols.length} cols × ${geom.nrow} rows, pitch s=${geom.pitch}, edge e=${geom.edge}, gauge ${gauge}, width ${Math.round(2 * geom.halfWidth)}mm${geom.plates === 2 ? ' (×2)' : ''}${geom.vertical ? ' · vertical shear (web Vu)' : ''}${geom.staggered ? ' · staggered zig-zag (+s²/4g)' : ''}. red=shear, blue-dash=tension, hatch=tear-out block.`}
       </div>
     </div>
   );
