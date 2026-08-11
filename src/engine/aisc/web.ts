@@ -93,7 +93,7 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
 
   // ── WP. 이음판 블록전단(×2, 수직 전단·수평 인장) Case A/B/C ──
   {
-    const bs = blockShearGovern({ t: tp, Fy: pFy, Fu: pFu, d, halfWidth: (wp.L ?? dp) / 2, cols: colsAxis, edge, pitch: Pc, nHi: nVert, nLo: nVert }, Vu, 2);
+    const bs = blockShearGovern({ t: tp, Fy: pFy, Fu: pFu, d, halfWidth: (wp.L ?? dp) / 2, cols: colsAxis, edge, pitch: Pc, nHi: nVert, nLo: nVert, region: 'web-plate' }, Vu, 2);
     checks.push(finalize({ id: 'WP1', region: 'web', group: g, label: '블록 전단(×2)', clause: 'J4.3',
       detail: bsDetail(bs), phiRn: kN(bs.phiRn), demand: kN(bs.demand), unit: 'kN', cases: bs.cases,
       bsGeom: { cols: colsAxis, nrow: nVert, pitch: Pc, edge, halfWidth: (wp.L ?? dp) / 2, dh, plates: 2, vertical: true } }));
@@ -152,7 +152,7 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
         S('Gross web area Aw', 'H·tw', `${H}·${tw}`, +Aw.toFixed(0), 'mm²'),
         S('Design shear yield φVn', 'φv·0.6·Fy·Aw', `1.0·0.6·${mFy}·${Aw.toFixed(0)}`, kN(PHI.SH * 0.6 * mFy * Aw), 'kN', 'G2.1'),
       ] }));
-    const bs = blockShearGovern({ t: tw, Fy: mFy, Fu: mFu, d, halfWidth: dp / 2, cols: colsAxis, edge, pitch: Pc, nHi: nVert, nLo: nVert }, Vu, 1);
+    const bs = blockShearGovern({ t: tw, Fy: mFy, Fu: mFu, d, halfWidth: dp / 2, cols: colsAxis, edge, pitch: Pc, nHi: nVert, nLo: nVert, region: 'member-web' }, Vu, 1);
     checks.push(finalize({ id: 'WM2', region: 'member', group: gm, label: '웨브 블록 전단', clause: 'J4.3',
       detail: bsDetail(bs), phiRn: kN(bs.phiRn), demand: kN(bs.demand), unit: 'kN', cases: bs.cases,
       bsGeom: { cols: colsAxis, nrow: nVert, pitch: Pc, edge, halfWidth: dp / 2, dh, plates: 1, vertical: true } }));

@@ -68,7 +68,7 @@ function BsPanel({ c, geom, lang }: { c: BlockCase; geom: BlockShearGeom; lang: 
   const plate = rct(0, -geom.halfWidth, lenTot, geom.halfWidth);
   const [la1x, la1y] = map(-1, 0), [la2x, la2y] = map(-13, 0);
   const ahead = vertical ? `M${la2x},${la2y} l-3,5 h6 z` : `M${la2x},${la2y} l5,-3 v6 z`;
-  const modeTxt = c.mode ? ` · ${c.mode}` : '';
+  const modeTxt = c.path ? ` · ${c.path}` : '';
   return (
     <div style={{ textAlign: 'center' }}>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" style={{ width: '100%', maxWidth: W, height: 'auto' }}>

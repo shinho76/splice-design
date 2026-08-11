@@ -5,7 +5,7 @@
 // 반환값은 별도 표기 없으면 N (힘) 단위.
 // ────────────────────────────────────────────────────────────────────────────
 import { PHI, E_STEEL, K_BUCKLE, UBS, holeDia, netDeductPerHole } from './constants.ts';
-import type { BlockCase } from './types.ts';
+import type { BlockCase, BsRegion } from './types.ts';
 
 /** 총단면적 (mm²) */
 export const grossArea = (width: number, t: number): number => width * t;
@@ -108,12 +108,22 @@ export interface BlockShearParams {
   nLo: number;           // 내측열 볼트수(=floor(n), 엇모)
   staggered?: boolean;   // 엇모배치 — 내측열 off=45·전열 90피치(3D/DXF 정합), U블록 인장면 s²/4g
   gauge?: number;        // 인접열 게이지 g(mm)
+  region?: BsRegion;     // 요소 컨텍스트 — Path 명명(AISIsplice Appendix C)용
 }
 
 // 엇모 3D/DXF 정합 상수(connParts stagOf): 내측열 응력방향 어긋남 45, 엇모 피치 90.
 export const BS_STAG_OFF = 45, BS_STAG_PITCH = 90;
-// 파단모드 병기(첨부 도판): A 외연L=Mode1 · B 중앙L=Mode1´ · C 전열U=Mode2 · D 내측페어=Mode3
-const BS_MODE: Record<string, string> = { A: 'Mode 1', B: "Mode 1´", C: 'Mode 2', D: 'Mode 3' };
+// ── AISIsplice Appendix C 파단경로(Path) 명명 — 요소×내부 케이스키 → Path 라벨 ──
+//   내부 케이스키: C 전열U · A 외연L · B 중앙/밴드L · D 내측페어U · single 단일열 양연U
+//   (엇모는 Path를 바꾸지 않고 인장 순단면만 s²/4g 보정 — §계획서 §3)
+const PATH_OF: Record<BsRegion, Record<string, string>> = {
+  'outer':         { C: 'Path 2a', A: 'Path 1', B: 'Path 2b', D: 'Path 3',   single: 'Path 2a' },
+  'inner':         { C: 'Path 5a', A: 'Path 4', B: 'Path 5b', D: 'Path 5b',  single: 'Path 4'  },
+  'member-flange': { C: 'Path 6·7', A: 'Path 6·7', B: 'Path 8·9', D: 'Path 8·9', single: 'Path 6·7' },
+  'web-plate':     { C: 'Path 1(V)', A: 'Path 1(V)', B: 'Path 1(V)', D: 'Path 1(V)', single: 'Path 1(V)' },
+  'member-web':    { C: 'Path(V)', A: 'Path(V)', B: 'Path(V)', D: 'Path(V)', single: 'Path(V)' },
+};
+const pathOf = (region: BsRegion | undefined, key: string): string => (PATH_OF[region ?? 'outer']?.[key]) ?? '';
 
 /** 열좌표 x → 그 열의 전단선 기하(외/내측 행수·오프셋, 3D/DXF stagOf 정합) */
 export function bsColGeom(x: number, p: BlockShearParams) {
@@ -151,21 +161,22 @@ export function blockShear(p: BlockShearParams): { cases: BlockCase[]; gov?: Blo
 
   const m = cols.length;
   const cs: BlockCase[] = [];
-  const mk = (label: string, mode: string, Ubs: number, Agv: number, Anv: number, Ant: number, frac: number): BlockCase =>
-    ({ label, mode, Ubs, Agv, Anv, Ant, frac, ...bsCapacity(Agv, Anv, Ant, Fu, Fy, Ubs) });
+  // caseKey → Path(요소별, PATH_OF). label은 블록 유형 서술(내부/영문화용) 유지.
+  const mk = (key: string, label: string, Ubs: number, Agv: number, Anv: number, Ant: number, frac: number): BlockCase =>
+    ({ label, path: pathOf(p.region, key), Ubs, Agv, Anv, Ant, frac, ...bsCapacity(Agv, Anv, Ant, Fu, Fy, Ubs) });
 
   if (m >= 2) {
-    // Case C: 전열 U블록 (외측 2전단선)  = Mode 2
-    cs.push(mk('C(전열 U블록)', BS_MODE.C, UBS.UNIFORM, 2 * outerG.Agv, 2 * outerG.Anv, antSpan(2 * xOut, m - 1), 1.0));
-    // Case A: 외연 L블록 (외측 1열)  = Mode 1
-    cs.push(mk('A(외연 L블록)', BS_MODE.A, UBS.NONUNIFORM, outerG.Agv, outerG.Anv, antLine(halfWidth - xOut), 1 / m));
-    // Case B: 중앙 L블록 (내측 1열)  = Mode 1´
-    if (xIn > 0.1) cs.push(mk('B(중앙 L블록)', BS_MODE.B, UBS.NONUNIFORM, innerG.Agv, innerG.Anv, antLine(xIn), 1 / m));
-    // Case D: 내측 페어 U블록 (내측 2전단선, m≥4)  = Mode 3(split)
-    if (m >= 4 && xIn > 0.1) cs.push(mk('D(내측 페어)', BS_MODE.D, UBS.UNIFORM, 2 * innerG.Agv, 2 * innerG.Anv, antSpan(2 * xIn, 1), 2 / m));
+    // C: 전열 U블록 (외측 2전단선)  → 외첨판 Path 2a
+    cs.push(mk('C', 'C(전열 U블록)', UBS.UNIFORM, 2 * outerG.Agv, 2 * outerG.Anv, antSpan(2 * xOut, m - 1), 1.0));
+    // A: 외연 L블록 (외측 1열)  → Path 1
+    cs.push(mk('A', 'A(외연 L블록)', UBS.NONUNIFORM, outerG.Agv, outerG.Anv, antLine(halfWidth - xOut), 1 / m));
+    // B: 중앙/밴드 L블록 (내측 1열)  → Path 2b
+    if (xIn > 0.1) cs.push(mk('B', 'B(중앙 L블록)', UBS.NONUNIFORM, innerG.Agv, innerG.Anv, antLine(xIn), 1 / m));
+    // D: 내측 페어 U블록 (내측 2전단선, m≥4=2열)  → Path 3
+    if (m >= 4 && xIn > 0.1) cs.push(mk('D', 'D(내측 페어)', UBS.UNIFORM, 2 * innerG.Agv, 2 * innerG.Anv, antSpan(2 * xIn, 1), 2 / m));
   } else {
-    // 단일열(1열): 양연 U블록 = Mode 1
-    cs.push(mk('C(양연 U블록)', BS_MODE.A, UBS.UNIFORM, 2 * outerG.Agv, 2 * outerG.Anv, antSpan(2 * xOut, 0), 1.0));
+    // 단일열(1열): 양연 U블록  → Path 2a
+    cs.push(mk('single', 'C(양연 U블록)', UBS.UNIFORM, 2 * outerG.Agv, 2 * outerG.Anv, antSpan(2 * xOut, 0), 1.0));
   }
   return { cases: cs };
 }

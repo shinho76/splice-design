@@ -5,6 +5,9 @@
 /** 검토 대상 부위 (계산서·도해 색인) */
 export type Region = 'bolt' | 'outer' | 'inner' | 'web' | 'member';
 
+/** 블록전단 파단경로 요소 컨텍스트 (AISIsplice Appendix C Path 명명용) */
+export type BsRegion = 'outer' | 'inner' | 'member-flange' | 'web-plate' | 'member-web';
+
 /**
  * 추적 가능한 계산 단계 (CalcStep).
  * 식 → 대입 → φ·공칭 → 판정을 모두 보존해 계산서/검증에 사용.
@@ -62,8 +65,8 @@ export interface BlockShearGeom {
 
 /** 블록전단 한 케이스 결과 (요소별 A/B/C/D) */
 export interface BlockCase {
-  label: string;      // "Case A(외연 L블록)"
-  mode?: string;      // 첨부 도판 파단모드 병기 "Mode 1|2|3"
+  label: string;      // "Case A(외연 L블록)" — 블록 유형 서술(내부용)
+  path?: string;      // AISIsplice Appendix C 파단경로 표기 "Path 1|2a|2b|3…"(요소별)
   Ubs: number;        // 0.5 | 1.0
   Agv: number;        // 총전단면적 mm²
   Anv: number;        // 순전단면적 mm²

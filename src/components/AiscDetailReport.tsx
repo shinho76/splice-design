@@ -85,7 +85,7 @@ function BlockCaseTable({ cases, lang }: { cases: BlockCase[]; lang: Lang }) {
     <table className="narr-bs">
       <thead>
         <tr>
-          <th>{L('케이스', 'Case')}</th><th>U<sub>bs</sub></th>
+          <th>{L('파단경로', 'Path')}</th><th>U<sub>bs</sub></th>
           <th>A<sub>gv</sub><br />mm²</th><th>A<sub>nv</sub><br />mm²</th><th>A<sub>nt</sub><br />mm²</th>
           <th>φR<sub>n</sub><br />kN</th><th>{L('분담', 'share')}</th><th>{L('소요', 'demand')}<br />kN</th><th>DCR</th>
         </tr>
@@ -95,7 +95,7 @@ function BlockCaseTable({ cases, lang }: { cases: BlockCase[]; lang: Lang }) {
           const phi = c.phiRn / 1e3, dem = (c.dcr ?? 0) * phi;
           return (
             <tr key={i} className={c.gov ? 'bs-gov' : ''}>
-              <td className="bs-lb">{caseLabel(c.label, lang)}{c.mode ? ` · ${c.mode}` : ''}</td>
+              <td className="bs-lb">{c.path ? <b>{c.path}</b> : null}{c.path ? ' · ' : ''}{caseLabel(c.label, lang)}</td>
               <td>{c.Ubs.toFixed(1)}</td>
               <td>{nf(c.Agv, 0)}</td><td>{nf(c.Anv, 0)}</td><td>{nf(c.Ant, 0)}</td>
               <td>{nf(phi)}</td><td>×{c.frac.toFixed(2)}</td><td>{nf(dem)}</td>
