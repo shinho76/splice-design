@@ -29,7 +29,7 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
   const isAisc = usesLimitState(cond.designStd);   // AISC·KDS = 한계상태 엔진(aiscCheck)
   // 원본 인덱스(i) 유지 — Custom 직경 지정(diaAt/onSetDia)은 카탈로그 순번 기준.
   // 최적화(자동보정) 기본 ON → 행별 옵티마이저를 memo로 캐시(선택 등 재렌더 시 재계산 방지).
-  const allRows = useMemo(() => catalogFor(cond.profile).map((s, i) => {
+  const allRows = useMemo(() => catalogFor(cond.profile, cond.sectionSet).map((s, i) => {
     const r = designConnection(cond, s, diaAt?.(i));
     const ac = (isAisc && autoFix) ? aiscAutoCorrect(r, cond) : null;
     const dr = ac ? ac.result : r;                       // 표시 형상(최적화 반영)

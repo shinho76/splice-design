@@ -27,6 +27,11 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
         <Seg label={L('형강', 'Profile')} value={cond.profile ?? 'H'} opts={['H', 'W']} optLabels={['H-Shape', 'W-Shape']} onPick={v => set('profile', v as 'H' | 'W')} />
       </div>
 
+      {/* Ⓐ-2 단면 범위 (전체 / 자주 쓰는 단면) */}
+      <div className="fgrp">
+        <Seg label={L('단면', 'Sections')} value={cond.sectionSet ?? 'all'} opts={['all', 'preferred']} optLabels={[L('전체', 'All'), 'Preferred']} onPick={v => set('sectionSet', v as 'all' | 'preferred')} />
+      </div>
+
       {/* ⓪ 설계기준 */}
       <div className="fgrp">
         <Seg label={L('설계기준', 'Std')} value={cond.designStd ?? 'AISC'} opts={['AISC', 'KDS', 'KBC']} optLabels={['AISC 16', 'KDS 22', 'KBC-09']} onPick={v => set('designStd', v as 'KBC' | 'KDS' | 'AISC')} />

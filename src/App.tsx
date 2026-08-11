@@ -82,7 +82,7 @@ export default function App() {
     let bolts = 0, wt = 0, boltWt = 0, ok = 0;
     const af = usesLimitState(cond.designStd) && autoFix;
     let total = 0;
-    catalogFor(cond.profile).forEach((s, i) => {
+    catalogFor(cond.profile, cond.sectionSet).forEach((s, i) => {
       if (hidden.has(s.name)) return;                 // 제거된 단면은 집계 제외
       total++;
       let r = designConnection(cond, s, diaAt(i)), okThis: boolean;
@@ -102,7 +102,7 @@ export default function App() {
   const addToProject = (r: DesignResult) => setProject(p => [...p, newItem(r.section, cond)]);
   const allRowsForDXF = () => {                                    // DXF는 테이블과 동일 형상(최적화 반영)으로 출력
     const af = usesLimitState(cond.designStd) && autoFix;
-    return catalogFor(cond.profile).map((s, i) => ({ s, i })).filter(({ s }) => !hidden.has(s.name))
+    return catalogFor(cond.profile, cond.sectionSet).map((s, i) => ({ s, i })).filter(({ s }) => !hidden.has(s.name))
       .map(({ s, i }) => { const r = designConnection(cond, s, diaAt(i)); return af ? aiscAutoCorrect(r, cond).result : r; });
   };
   const exportAllDXF = () =>

@@ -103,6 +103,34 @@ export const SECTIONS: HSection[] = RAW_NAMES.map(buildSection);
 
 // Profile 선택: H-Shape(편람 73종) / W-Shape(AISC v16.0 289종)
 export type Profile = 'H' | 'W';
-export const catalogFor = (profile?: Profile): HSection[] => (profile === 'W' ? WSECTIONS : SECTIONS);
+// ── 자주 쓰는(Preferred) 단면 목록 ──  W=AISC 지정(label, 대문자 X) / H=metric name
+const PREFERRED_W = new Set<string>([
+  'W36X135', 'W36X150', 'W36X182', 'W36X210', 'W36X230', 'W36X256',
+  'W30X90', 'W30X108', 'W30X116', 'W30X132', 'W30X148',
+  'W24X55', 'W24X68', 'W24X76', 'W24X84', 'W24X104', 'W24X131',
+  'W21X44', 'W21X50', 'W21X57', 'W21X62', 'W21X68', 'W21X83',
+  'W18X35', 'W18X40', 'W18X50', 'W18X55', 'W18X65', 'W18X76',
+  'W16X26', 'W16X31', 'W16X40', 'W16X45', 'W16X50', 'W16X67',
+  'W14X22', 'W14X30', 'W14X34', 'W14X48', 'W14X61', 'W14X90',
+  'W12X19', 'W12X26', 'W12X30', 'W12X40', 'W12X53', 'W12X65',
+  'W10X12', 'W10X15', 'W10X33', 'W8X10', 'W8X13', 'W8X18', 'W8X31',
+]);
+const PREFERRED_H = new Set<string>([
+  'H-100x100x6x8', 'H-125x125x6.5x9', 'H-150x150x7x10', 'H-200x200x8x12',
+  'H-250x250x9x14', 'H-300x300x10x15', 'H-350x350x12x19', 'H-400x400x13x21',
+  'H-300x150x6.5x9', 'H-350x175x7x11', 'H-400x200x8x13', 'H-400x200x9x14',
+  'H-450x200x9x14', 'H-500x200x10x16', 'H-500x200x11x17', 'H-600x200x11x17',
+  'H-600x200x12x20', 'H-700x300x13x24',
+  'H-148x100x6x9', 'H-198x99x4.5x7', 'H-200x100x5.5x8', 'H-248x124x5x8',
+  'H-250x125x6x9', 'H-298x149x5.5x8',
+]);
+const isPreferred = (s: HSection, profile?: Profile): boolean =>
+  profile === 'W' ? PREFERRED_W.has((s.label ?? '').toUpperCase()) : PREFERRED_H.has(s.name);
+
+/** 카탈로그 반환. sectionSet='preferred'면 자주 쓰는 단면만. */
+export const catalogFor = (profile?: Profile, sectionSet?: 'all' | 'preferred'): HSection[] => {
+  const all = profile === 'W' ? WSECTIONS : SECTIONS;
+  return sectionSet === 'preferred' ? all.filter(s => isPreferred(s, profile)) : all;
+};
 export const sectionByName = (name: string) =>
   SECTIONS.find(s => s.name === name) ?? WSECTIONS.find(s => s.name === name);

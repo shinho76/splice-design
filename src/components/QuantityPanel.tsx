@@ -18,7 +18,7 @@ export default function QuantityPanel({ cond, onClose, diaAt, autoFix }: { cond:
   const lang = useLang();
   const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
   const af = usesLimitState(cond.designStd) && !!autoFix;
-  const secs = catalogFor(cond.profile);
+  const secs = catalogFor(cond.profile, cond.sectionSet);
   const qs = secs.map((s, i) => {
     let r = designConnection(cond, s, diaAt?.(i));
     if (af) r = aiscAutoCorrect(r, cond).result;   // 자동보정 형상 기준 물량
