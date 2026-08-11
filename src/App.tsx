@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { DesignCondition, DesignResult } from './engine/types.ts';
 import FilterBar from './components/FilterBar.tsx';
 import ResultTable from './components/ResultTable.tsx';
@@ -28,6 +28,11 @@ const DEFAULT: DesignCondition = {
 };
 const nf = (v?: number) => v == null ? '—' : v.toLocaleString('en-US');
 const plate = (p?: { t: number; w: number; L: number }) => p ? `${p.t}×${p.w}×${p.L}` : '—';
+
+// 도움말 목차 아코디언 항목 — 제목(t) 클릭 시 상세(children) 펼침
+function HelpItem({ t, children }: { t: string; children: ReactNode }) {
+  return <details className="help-item"><summary>{t}</summary><div className="help-d">{children}</div></details>;
+}
 
 export default function App() {
   const [cond, setCond] = useState<DesignCondition>(DEFAULT);
@@ -146,27 +151,104 @@ export default function App() {
                     <button className="help-x" title={L('닫기', 'Close')} onClick={() => setShowHelp(false)}>✕</button>
                   </div>
                   <p className="help-lead">{L(
-                    'H·W형강 보/기둥 이음부(플랜지·웨브)를 KBC-09 / KDS 14 31 25 / AISC 360-16 기준으로 전 단면 자동 설계하고, 볼트 배열·이음판 치수·물량·상세도면을 만들어 주는 도구입니다.',
-                    'Auto-designs flange/web splices of H/W-shape beams & columns per KBC-09 / KDS 14 31 25 / AISC 360-16, producing bolt layouts, plate sizes, quantities and shop drawings for the whole section catalog.')}</p>
-                  <div className="help-sec">{L('① 사용 순서', '① How to use')}</div>
-                  <ol className="help-ol">
-                    <li>{L('좌측 「설계 조건」에서 형강(H/W)·설계기준·부재(보/기둥)·접합(마찰/지압)·강종·볼트·강도비 α를 설정', 'Set profile, design standard, member, joint type, steel, bolt and ratio α in the left panel.')}</li>
-                    <li>{L('중앙 결과표에서 전 단면의 적합/부적합·DCR·볼트·이음판을 확인 (조건 변경 시 즉시 갱신)', 'Review pass/fail, DCR, bolts and plates for every section in the center table (updates instantly).')}</li>
-                    <li>{L('행을 클릭하면 우측에 볼트·이음판·접합상세도가 표시됩니다.', 'Click a row to see bolts, plates and the detail drawing on the right.')}</li>
-                    <li>{L('우측 버튼으로 계산서·DXF·3D·IFC 내보내기, 프로젝트 담기가 가능합니다.', 'Export calc sheet, DXF, 3D, IFC or add to project from the right-side buttons.')}</li>
-                  </ol>
-                  <div className="help-sec">{L('② 결과물', '② What you get')}</div>
-                  <ul className="help-ul">
-                    <li>{L('볼트 배열(열×행)·이음판 치수(두께×폭×길이)·게이지·피치·연단거리', 'Bolt array (col×row), plate sizes (t×w×L), gauge, pitch, edge distance')}</li>
-                    <li>{L('강도검토(DCR) — 항목별 검토값 팝업(DCR 배지 클릭)', 'Strength check (DCR) with a per-item popup (click the DCR badge)')}</li>
-                    <li>{L('물량 — 고력볼트 본수·중량, 강판 중량(좌측 ▦)', 'Quantities — bolt count/weight, plate weight (▦ on the left rail)')}</li>
-                    <li>{L('상세도면 DXF(개별/전체·사무소 표준 포맷 ⤓²)·3D·IFC·계산서', 'Detail DXF (single/all · office format ⤓²), 3D, IFC and calc sheets')}</li>
-                  </ul>
-                  <div className="help-sec">{L('③ 참고', '③ Tips')}</div>
-                  <ul className="help-ul">
-                    <li>{L('AISC/KDS 기준에서 「⚙ 최적화」가 켜져 있으면 철판 물량 최소로 DCR≤1.0을 맞춥니다(부재지배는 부분강도로 최대비율 표시).', 'With ⚙ Optimize on (AISC/KDS), plates are minimized to reach DCR≤1.0; member-governed cases show the partial-strength ratio.')}</li>
-                    <li>{L('각 버튼에 마우스를 올리면 기능 설명이 표시됩니다.', 'Hover any button to see what it does.')}</li>
-                  </ul>
+                    'H·W형강 보/기둥 이음부를 KBC-09 / KDS 14 31 25 / AISC 360-16으로 전 단면 자동 설계 — 볼트배열·이음판·물량·상세도면(DXF)·계산서를 생성합니다. 아래 목차(화면 좌→우)를 클릭하면 상세 설명이 열립니다.',
+                    'Auto-designs H/W beam & column splices per KBC-09 / KDS 14 31 25 / AISC 360-16 — bolt layout, plates, quantities, shop DXF and calc sheets. Click a topic below (screen left→right) to expand.')}</p>
+
+                  <div className="help-sec">{L('◱ 좌측 레일', '◱ Left rail')}</div>
+                  <HelpItem t={L('▤ 검토결과 · ▦ 물량산정 · ◫ 프로젝트', '▤ Results · ▦ Quantities · ◫ Project')}>
+                    {L('▤ 결과표 화면. ▦ 고력볼트 본수·중량과 강판 중량 집계(CSV 내보내기). ◫ 담아 둔 단면들의 프로젝트 목록(집계·저장).',
+                       '▤ Results table. ▦ Bolt count/weight and plate weight totals (CSV export). ◫ Project list of saved sections (totals, persistence).')}
+                  </HelpItem>
+                  <HelpItem t={L('⤓ 전체 DXF · ⤓² 사무소 표준포맷', '⤓ All DXF · ⤓² Office format')}>
+                    {L('현재 조건의 전 단면 상세도면을 한 파일로 내보냅니다. ⤓²는 사무소 종합도 포맷. 모두 R12(AC1009)로 저장돼 AutoCAD·뷰어에서 열립니다.',
+                       'Exports detail drawings for all sections at once. ⤓² uses the office master-sheet format. Saved as R12 (AC1009) for AutoCAD and viewers.')}
+                  </HelpItem>
+
+                  <div className="help-sec">{L('▤ 상단 바', '▤ Top bar')}</div>
+                  <HelpItem t={L('? 도움말 · 한/EN 언어 · ☾/☀ 테마', '? Help · KO/EN · ☾/☀ Theme')}>
+                    {L('이 창(?)·한/영 전환·다크/화이트 테마. 모든 버튼은 마우스를 올리면 기능 설명(툴팁)이 나옵니다.',
+                       'This panel (?), KO/EN toggle, dark/light theme. Hover any button for a tooltip.')}
+                  </HelpItem>
+
+                  <div className="help-sec">{L('☰ 설계 조건 (좌측 패널)', '☰ Design conditions (left)')}</div>
+                  <HelpItem t={L('형강(H/W) · 단면(전체/Preferred)', 'Profile (H/W) · Sections (All/Preferred)')}>
+                    {L('H-Shape=KS·편람 73종, W-Shape=AISC v16.0 289종. 「Preferred」는 자주 쓰는 단면만(H 21·W 53) 추립니다.',
+                       'H-Shape = KS 73 sections, W-Shape = AISC v16.0 289. “Preferred” narrows to common sections (H 21 / W 53).')}
+                  </HelpItem>
+                  <HelpItem t={L('설계기준 (AISC 16 / KDS 22 / KBC-09)', 'Standard (AISC 16 / KDS 22 / KBC-09)')}>
+                    {L('AISC·KDS=한계상태설계(KDS는 AISC 360-16 준용). KBC-09=편람 방식. 기준에 따라 검토·계산서 형식이 달라집니다.',
+                       'AISC/KDS = LRFD limit-state (KDS follows AISC 360-16). KBC-09 = manual method. Checks and calc-sheet format vary by standard.')}
+                  </HelpItem>
+                  <HelpItem t={L('부재(보/기둥) · 접합(마찰/지압)', 'Member (Beam/Col) · Joint (Slip/Bearing)')}>
+                    {L('마찰접합은 미끄럼과 함께 볼트전단·지압도 검토하고, 지압접합은 미끄럼을 생략합니다(AISC).',
+                       'Slip-critical checks slip plus bolt shear/bearing; bearing-type skips the slip check (AISC).')}
+                  </HelpItem>
+                  <HelpItem t={L('재질 (H형강 · 이음판)', 'Steel (H-shape · plate)')}>
+                    {L('KS/ASTM 드롭다운. H형강 재질을 고르면 이음판 재질이 자동 선택됩니다(예 A992→A572 Gr50).',
+                       'KS/ASTM dropdowns. Choosing the H-shape grade auto-selects the plate grade (e.g. A992 → A572 Gr50).')}
+                  </HelpItem>
+                  <HelpItem t={L('볼트 · 나사부(N/X)', 'Bolt · Thread (N/X)')}>
+                    {L('KS(F10T·S10T·F13T)·ASTM(A325·F1852·A490·F2280). 나사부 N=전단면 통과(0.45Fu)·X=제외(0.563Fu) — AISC/KDS에서만 표시.',
+                       'KS (F10T/S10T/F13T), ASTM (A325/F1852/A490/F2280). Thread N = included (0.45Fu), X = excluded (0.563Fu) — shown for AISC/KDS.')}
+                  </HelpItem>
+                  <HelpItem t={L('볼트직경(표준/지정) · 엇모 · 이음판두께', 'Bolt Ø · Stagger · Plate t')}>
+                    {L('「지정」은 행별 직경을 직접 선택. 엇모=지그재그 배치(순단면 B4.3b). 이음판두께 「동일」=내·외 동일두께 설계.',
+                       '“Custom” sets diameter per row. Stagger = zig-zag layout (net section B4.3b). Plate t “Equal” = same inner/outer thickness.')}
+                  </HelpItem>
+                  <HelpItem t={L('강도비 α · 갭', 'Ratio α · Gap')}>
+                    {L('α=발현시킬 부재강도 비율(부분강도접합). 갭=이음 이격(0·5·10mm).',
+                       'α = fraction of member strength to develop (partial-strength). Gap = splice opening (0/5/10 mm).')}
+                  </HelpItem>
+                  <HelpItem t={L('⚙ 최적화 (AISC/KDS)', '⚙ Optimize (AISC/KDS)')}>
+                    {L('켜면 철판 물량 최소로 DCR≤1.0을 맞춥니다. 볼트로 전강도를 못 내는 초대형 단면은 부분강도(%)로 표시.',
+                       'On: minimizes plate steel to reach DCR≤1.0. Jumbo sections that cannot develop full strength show a partial-strength ratio (%).')}
+                  </HelpItem>
+
+                  <div className="help-sec">{L('◧ 중앙 결과표', '◧ Center results')}</div>
+                  <HelpItem t={L('상단 지표(KPI)', 'Top KPIs')}>
+                    {L('검토부재 수·적합/부적합·고력볼트 총본수·강재 물량을 실시간 집계.',
+                       'Live totals: sections checked, pass/fail, total bolts, steel quantity.')}
+                  </HelpItem>
+                  <HelpItem t={L('단면치수 열 (● 상태 · % 부분강도 · ⚠ 간섭)', 'Section column (● status · % · ⚠ clash)')}>
+                    {L('● 초록=적합·빨강=재검토. % 배지=발현 가능한 최대 강도비(부분강도). ⚠=내부 이음판↔웨브 이음판 간섭(초대형 W단면).',
+                       '● green = OK, red = review. % badge = max developable ratio. ⚠ = inner↔web plate clash (jumbo W sections).')}
+                  </HelpItem>
+                  <HelpItem t={L('DCR 열 (클릭 → 항목별)', 'DCR column (click → by item)')}>
+                    {L('지배 DCR(소요/설계). 클릭하면 검토항목별 DCR과 우측 상세가 함께 열립니다.',
+                       'Governing DCR. Click to open per-item DCR and the right-side detail.')}
+                  </HelpItem>
+                  <HelpItem t={L('설계강도·볼트·이음판 열', 'Strength · bolts · plates')}>
+                    {L('휨/전단 설계강도, 볼트 배열(m×n), 게이지 g1·g2, 외부·내부 이음판/웨브 이음판(두께×폭×길이).',
+                       'Moment/shear strength, bolt array (m×n), gauges g1/g2, outer/inner/web plates (t×w×L).')}
+                  </HelpItem>
+
+                  <div className="help-sec">{L('▧ 우측 상세 (행 클릭 시)', '▧ Right detail (on row click)')}</div>
+                  <HelpItem t={L('접합 상세도(SVG) · 3D 형상', 'Detail drawing (SVG) · 3D')}>
+                    {L('평면·입면·단면 접합상세와 3D 형상(볼트·이음판·필렛).',
+                       'Plan/elevation/section detail and 3D shape (bolts, plates, fillet).')}
+                  </HelpItem>
+                  <HelpItem t={L('요약계산서 · 상세계산서', 'Summary · Detailed calc')}>
+                    {L('요약=검토항목별 φRn·소요·DCR·판정. 상세=수식 전개 + 블록전단 Case A~D의 실측 파단선 도해.',
+                       'Summary = per-item φRn/demand/DCR. Detailed = full formulas + block-shear Case A–D fracture-line figures drawn to actual geometry.')}
+                  </HelpItem>
+                  <HelpItem t={L('DXF · IFC · 프로젝트 담기', 'DXF · IFC · Add to project')}>
+                    {L('개별 단면 상세 DXF(R12), BIM 연동 IFC, 프로젝트 목록 담기.',
+                       'Single-section detail DXF (R12), BIM IFC, add to project list.')}
+                  </HelpItem>
+
+                  <div className="help-sec">{L('ⓘ 알아두기', 'ⓘ Good to know')}</div>
+                  <HelpItem t={L('부분강도접합', 'Partial-strength splice')}>
+                    {L('점보/초대형 단면은 볼트 이음으로 부재 전강도를 낼 수 없어 소요를 부재강도로 캡핑합니다(발현비 %).',
+                       'Jumbo sections cannot develop full member strength through a bolted splice, so demand is capped (% ratio).')}
+                  </HelpItem>
+                  <HelpItem t={L('블록전단 Case A/B/C/D', 'Block shear Case A/B/C/D')}>
+                    {L('볼트군이 U자(전열/내측쌍)·L자(외연/중앙)로 뜯기는 후보 파단을 모두 검토해 최소 지배값 채택. 상세계산서에 실측 파단선으로 도시.',
+                       'Evaluates U-shaped (full/inner-pair) and L-shaped (outer/central) tear-out patterns, taking the minimum. Drawn to scale in the detailed calc.')}
+                  </HelpItem>
+                  <HelpItem t={L('DXF 버전 (R12 / AC1009)', 'DXF version (R12 / AC1009)')}>
+                    {L('AutoCAD·모든 뷰어 호환을 위해 R12로 저장하며, 생성 시 구조(테이블·엔트리명·섹션순서)를 엄격 검증합니다.',
+                       'Saved as R12 for AutoCAD and all viewers, with strict structure validation (tables, entry names, section order) at export.')}
+                  </HelpItem>
                 </div>
               </>
             )}

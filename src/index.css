@@ -409,6 +409,16 @@ body {
 .help-ol, .help-ul { margin: 0; padding-left: 18px; }
 .help-ol li, .help-ul li { margin: 3px 0; }
 .help-ol li::marker { color: var(--accent); font-weight: 700; }
+/* 도움말 목차 아코디언 — 목차 클릭 시 상세 펼침 */
+.help-item { border-top: 1px solid var(--line-soft); }
+.help-item summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px;
+  padding: 6px 2px; font-weight: 600; color: var(--fg); user-select: none; }
+.help-item summary::-webkit-details-marker { display: none; }
+.help-item summary::before { content: '▸'; color: var(--accent); font-size: 10px; transition: transform .12s; flex: 0 0 auto; }
+.help-item[open] > summary::before { transform: rotate(90deg); }
+.help-item summary:hover { color: var(--accent); }
+.help-d { color: var(--muted); padding: 0 2px 9px 16px; font-size: 11.5px; line-height: 1.5; }
+.help-d b { color: var(--fg); }
 
 .kpi-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: var(--line); border-bottom: 1px solid var(--line); flex-shrink: 0; }
 .kpi { background: var(--bg2); padding: 9px 16px; }
