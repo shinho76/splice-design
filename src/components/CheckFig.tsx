@@ -68,7 +68,17 @@ function BsPanel({ c, geom, lang }: { c: BlockCase; geom: BlockShearGeom; lang: 
   const plate = rct(0, -geom.halfWidth, lenTot, geom.halfWidth);
   const [la1x, la1y] = map(-1, 0), [la2x, la2y] = map(-13, 0);
   const ahead = vertical ? `M${la2x},${la2y} l-3,5 h6 z` : `M${la2x},${la2y} l5,-3 v6 z`;
+  const loadLbl = vertical ? 'Vu' : 'Pf';
   const modeTxt = c.path ? ` · ${c.path}` : '';
+  // 전단(S)·인장(T) 인라인 라벨 위치 — 첫 전단열 중앙 / 인장면 중앙
+  const sv0 = f.shearYs[0];
+  const [sLx, sLy] = map(stagOf(sv0).Lv * 0.42, sv0);
+  const tMidV = (f.tenLo + f.tenHi) / 2, [tLx, tLy] = map(uAt(tMidV) + 6, tMidV);
+  // 자유단(파단 이탈측 = 이음 갭 단부, u=0) 눈금 — PDF 체크무늬 대응
+  const freeEdge = Array.from({ length: 7 }, (_, i) => {
+    const v = -geom.halfWidth + i * (geom.halfWidth * 2 / 6), [ex, ey] = map(0, v);
+    return <line key={'fe' + i} x1={ex} y1={ey} x2={vertical ? ex : ex - 4} y2={vertical ? ey - 4 : ey} stroke={HOLE} strokeWidth={0.8} />;
+  });
   return (
     <div style={{ textAlign: 'center' }}>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" style={{ width: '100%', maxWidth: W, height: 'auto' }}>
@@ -81,7 +91,7 @@ function BsPanel({ c, geom, lang }: { c: BlockCase; geom: BlockShearGeom; lang: 
         <polygon points={blockPts} fill={`url(#${pid})`} stroke={BLOCKS} strokeWidth="0.7" strokeDasharray="2 2" />
         <line x1={la1x} y1={la1y} x2={la2x} y2={la2y} stroke={LOAD} strokeWidth={1.4} />
         <path d={ahead} fill={LOAD} />
-        <text x={vertical ? la2x + 9 : la2x} y={vertical ? la2y + 3 : la2y - 4} fontSize="8" fill={LOAD} textAnchor="middle">{vertical ? 'Vu' : 'Pf'}</text>
+        <text x={vertical ? la2x + 9 : la2x} y={vertical ? la2y + 3 : la2y - 4} fontSize="8" fill={LOAD} textAnchor="middle">{loadLbl}</text>
         {/* 볼트 — 열별 행수·오프셋(3D/DXF stagOf 동일) */}
         {geom.cols.map((cv, ci) => { const { rows, off, pit } = stagOf(cv); return Array.from({ length: rows }, (_, i) => {
           const [bx, by] = map(geom.edge + off + i * pit, cv);
@@ -91,9 +101,14 @@ function BsPanel({ c, geom, lang }: { c: BlockCase; geom: BlockShearGeom; lang: 
         {f.shearYs.map((v, i) => { const L = stagOf(v).Lv; const [x1, y1] = map(0, v), [x2, y2] = map(L, v); return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={SHEAR} strokeWidth={1.8} strokeLinecap="round" />; })}
         {/* 인장면 — 엇모면 지그재그 폴리라인 */}
         <polyline points={tenPts} fill="none" stroke={TENSION} strokeWidth={1.8} strokeDasharray="4 3" strokeLinecap="round" strokeLinejoin="round" />
+        {/* 자유단(이음 갭 단부) · 전단(S)/인장(T) 라벨 · Path 배지 */}
+        {freeEdge}
+        <text x={sLx} y={sLy - 4} fontSize="7.5" fontWeight={700} fill={SHEAR} textAnchor="middle">S</text>
+        <text x={tLx} y={tLy} fontSize="7.5" fontWeight={700} fill={TENSION} textAnchor="middle">T</text>
+        {c.path ? <text x={4} y={11} fontSize="9" fontWeight={700} fill={c.gov ? BLOCKS : INK}>{c.path}</text> : null}
       </svg>
       <div style={{ fontSize: 10, color: c.gov ? BLOCKS : 'var(--sub,#6b7280)', fontWeight: c.gov ? 700 : 500, marginTop: -1 }}>
-        {caseLabel(c.label, lang)}{modeTxt} · U<sub>bs</sub>{c.Ubs.toFixed(1)}{c.gov ? ' ◀' : ''}
+        {c.path ? <b>{c.path}</b> : null}{c.path ? ' · ' : ''}{caseLabel(c.label, lang)} · U<sub>bs</sub>{c.Ubs.toFixed(1)}{c.gov ? ' ◀' : ''}
       </div>
     </div>
   );
@@ -108,8 +123,8 @@ function BlockShearFig({ cases, geom, lang }: { cases: BlockCase[]; geom: BlockS
       </div>
       <div style={{ fontSize: 10.5, color: 'var(--sub,#6b7280)', marginTop: 3 }}>
         {lang === 'ko'
-          ? `실측 작도: 볼트 ${geom.cols.length}열 × ${geom.nrow}행, 피치 s=${geom.pitch}, 연단 e=${geom.edge}, 게이지 ${gauge}, 폭 ${Math.round(2 * geom.halfWidth)}mm${geom.plates === 2 ? ' (×2매)' : ''}${geom.vertical ? ' · 수직 전단(웨브 Vu)' : ''}${geom.staggered ? ' · 엇모 지그재그(+s²/4g)' : ''}. 빨강=전단면·파랑점선=인장면·해치=탈락블록.`
-          : `To scale: ${geom.cols.length} cols × ${geom.nrow} rows, pitch s=${geom.pitch}, edge e=${geom.edge}, gauge ${gauge}, width ${Math.round(2 * geom.halfWidth)}mm${geom.plates === 2 ? ' (×2)' : ''}${geom.vertical ? ' · vertical shear (web Vu)' : ''}${geom.staggered ? ' · staggered zig-zag (+s²/4g)' : ''}. red=shear, blue-dash=tension, hatch=tear-out block.`}
+          ? `실측 작도(AISIsplice Path): 볼트 ${geom.cols.length}열 × ${geom.nrow}행, 피치 s=${geom.pitch}, 연단 e=${geom.edge}, 게이지 ${gauge}, 폭 ${Math.round(2 * geom.halfWidth)}mm${geom.plates === 2 ? ' (×2매)' : ''}${geom.vertical ? ' · 수직 전단(웨브 Vu)' : ''}${geom.staggered ? ' · 엇모 지그재그(+s²/4g)' : ''}. 빨강=전단면(S)·파랑점선=인장면(T)·해치=탈락블록·회색눈금=자유단(이음 갭 단부).`
+          : `To scale (AISIsplice Path): ${geom.cols.length} cols × ${geom.nrow} rows, pitch s=${geom.pitch}, edge e=${geom.edge}, gauge ${gauge}, width ${Math.round(2 * geom.halfWidth)}mm${geom.plates === 2 ? ' (×2)' : ''}${geom.vertical ? ' · vertical shear (web Vu)' : ''}${geom.staggered ? ' · staggered zig-zag (+s²/4g)' : ''}. red=shear(S), blue-dash=tension(T), hatch=tear-out block, grey ticks=free edge.`}
       </div>
     </div>
   );
