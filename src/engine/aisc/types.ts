@@ -57,6 +57,7 @@ export interface BlockShearGeom {
   dh: number;        // 볼트구멍 지름(mm)
   plates: number;    // 판수(외/부재=1, 내부·웨브 이음판=2)
   vertical?: boolean;  // 도해 방향: true=수직 전단(웨브 이음판 — Vu 수직)
+  loadDir?: 'H' | 'V'; // 하중 방향(웨브 H블록=축방향 H / 기존 V블록=수직) — 도해 라벨용
   staggered?: boolean; // 엇모배치 — 파단선 지그재그 + s²/4g 표기
   gauge?: number;      // 인접 볼트열 게이지(mm) — 엇모 s²/4g·도해용
   nHi?: number;        // 외측열 행수(엇모, 3D/DXF 정합)

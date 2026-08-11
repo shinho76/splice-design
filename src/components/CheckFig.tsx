@@ -68,7 +68,7 @@ function BsPanel({ c, geom, lang }: { c: BlockCase; geom: BlockShearGeom; lang: 
   const plate = rct(0, -geom.halfWidth, lenTot, geom.halfWidth);
   const [la1x, la1y] = map(-1, 0), [la2x, la2y] = map(-13, 0);
   const ahead = vertical ? `M${la2x},${la2y} l-3,5 h6 z` : `M${la2x},${la2y} l5,-3 v6 z`;
-  const loadLbl = vertical ? 'Vu' : 'Pf';
+  const loadLbl = geom.loadDir === 'H' ? 'Hu' : vertical ? 'Vu' : 'Pf';
   const modeTxt = c.path ? ` · ${c.path}` : '';
   // 전단(S)·인장(T) 인라인 라벨 위치 — 첫 전단열 중앙 / 인장면 중앙
   const sv0 = f.shearYs[0];

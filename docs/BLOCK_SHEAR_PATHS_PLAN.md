@@ -212,26 +212,108 @@ PDF는 파단 경로를 **2개 시스템**으로 나누고, 각 시스템 내에
 
 ---
 
-## 7. Phase C — 엔진 신설 (수치 변동 O)
+## 7. Phase C — 엔진 신설 (수치 변동 O) — **확정 스펙**
 
-### C-1. 웨브 이음판 H 블록 (Path 2·3) — **신설**
-- 현재 `web.ts::WP1`은 **수직전단(V)** 기준(`vertical:true`)만 산정.
-- 추가: **수평(H) 블록전단** — 웨브가 분담하는 **모멘트/축력의 수평성분**에 대한 block shear.
-  - Path 2 = U(전단 수평 상·하 + 인장 수직 중앙열), Path 3 = L(외측 수평 전단 + 외측열 수직 인장).
-  - 기하: 웨브판 볼트 `colsAxis`(수직 볼트열)·`nVert`(열당 볼트수)로 `blockShear` 재사용하되 **하중축 90° 회전**(현 `vertical` 플래그의 반대).
-- **소요력(H) 정의 — 확인 필요 1건**: `DemandSet`의 웨브 성분(`Vu`, `MuxWeb`, `e`)으로부터 수평 블록 소요를 정의.
-  - 후보(권장): 모멘트 분담 `MuxWeb`에 의한 **수평 짝힘** `H_web ≈ MuxWeb / (수직 볼트군 유효깊이)` 또는 최외곽 볼트 탄성 수평분력.
-  - → **엔진 착수 직전 steel-connection-engineer 검토로 확정** 후 반영.
+> 좌표계(웨브): x = 축방향(보 길이, 하중 H 방향), y = 춤방향(수직, 하중 V 방향).
+> 웨브 볼트격자 = `nVert`행(춤방향, 피치 `Pc`) × `nHoriz`열(축방향, 피치 `webP`),
+> 전체 `nb = nVert·nHoriz`. 판 춤 `dp`, 두께 `tp`(판당), 이음판 2매(`plates=2`), 부재웨브 `tw`(`plates=1`).
+> **전단면 ∥ 하중, 인장면 ⊥ 하중.** V 블록(기존 WP1/WM2)은 전단 ∥ V(수직), H 블록(신설)은 전단 ∥ H(축방향).
 
-### C-2. 거더 플랜지 전폭 블록 (Path 6/7) — 신설/확인
-- 부재 플랜지 **전폭 인장 + 양 연단 전단** 블록을 `FM5`에서 별도 산정(현재 `halfWidth=B/2` U블록이 이를 포함하는지 확인 후 보완).
+### C-1. 웨브 이음판/부재웨브 H 블록 (Path 2·3, 4/5) — **신설, 소요력 확정**
 
-### C-3. a/b 대체 순단면 (Path 2b/5b) — 명시화
-- "어느 볼트열을 인장 순단선으로 보는가"의 **대안 2종을 각각 산정 → min 지배**로 명시(현 `D/B` 로직 일반화).
+**(1) 소요력 정의 — §10 미결 해소 (확정)**
 
-### C-4. 지배·표시
-- 신설 Path도 `blockShearGovern`의 DCR 비교에 편입(요소별 `plates` 배율·`frac` 유지).
-- 신설로 지배가 바뀔 수 있으므로 **대표 단면 회귀 스냅샷 재검토**(골든 KBC 경로는 불변).
+웨브 볼트군은 `Vu`(수직) + 편심모멘트 `MuxWeb = Vu·e`(면내, `demand.ts`)만 받는다(축력 `N_u`는 현재 0,
+`axialP_N` 확장 필드). 모멘트가 유발하는 **수평(축방향) 볼트력**을 **탄성법(ICR 미적용, PLAN §2·프로젝트 원칙)**
+으로 산정한다. 볼트군 극관성모멘트
+
+```
+J = Σ_i Σ_j (x_j² + y_i²) = nVert·Σ_j x_j² + nHoriz·Σ_i y_i²      // x_j=colsAxis, y_i=(i−(nVert−1)/2)·Pc
+```
+
+탄성볼트력: 모멘트에 의한 볼트 i의 힘 = (MuxWeb/J)·(−y_i, x_i) → **수평성분 = MuxWeb·y_i/J**(x_i 무관).
+최외곽행(y_max = (nVert−1)/2·Pc)에서 최대. 축력분담 `H_ax = N_u`(현재 0).
+
+두 소요는 **물리적으로 다른 블록을 구동**하므로 케이스별로 분리 정의(단일 `demandN` 미사용):
+
+| Path | 블록 | 소요력 `demand` | 근거 |
+|---|---|---|---|
+| **Path 2 (U, 전깊이)** | 전단 수평 상·하 + 인장 수직 전깊이 | `H_U = H_ax = N_u` **(순수휨 → 0, 명시 출력)** | 순수모멘트는 전깊이 U에서 수평합력 = 0(자기평형). 축력만 구동 |
+| **Path 3 (L, 외곽행)** | 전단 수평 1(외곽행) + 인장 수직(외곽행→판연단) | `H_L = nHoriz·MuxWeb·y_max/J + H_ax/nVert` | 최외곽행 볼트 수평 탄성분력 합력(+축력 분담). 순수휨에서도 ≠0 |
+
+> **왜 `frac·demandN`(기존 governor)을 안 쓰는가:** 순수모멘트에서 전깊이 U(Path 2)의 순수평력은 0인데
+> `frac=1.0`이면 과대 소요가 되어 비물리적으로 지배·판두께를 강제한다. **소요를 케이스별로 명시 대입**한다.
+> `H_U`(=0)도 **0으로 출력**(프로젝트 원칙: 0인 항 은닉 금지 — 미검토와 구분).
+>
+> **후보 (a) `MuxWeb/d_eff` 관계:** `d_eff=(nVert−1)·Pc`로 두면 (a)는 확정식 (c)의 **닫힌형 상계**다
+> (nVert=2·3에서 (a)=(c), nVert≥4에서 (a)≳(c)). 확정식은 일반성·탄성법 정합을 위해 **(c) `MuxWeb·y_max/J`**,
+> (a)는 손검산용 보수적 상계로 병기 가능. 후보 (b) `N_u`는 **Path 2 축력항**으로 이미 편입.
+> **edge case:** `nVert=1`(춤방향 1행) → `y_max=0` → H 블록 전체 `SKIPPED`(사유: 모멘트 지렛대 없음).
+
+**(2) 기하 — `blockShear` 파라미터 90° 회전 (전단 ∥ H)**
+
+기존 V 블록은 `cols=colsAxis(축열)·pitch=Pc·nHi=nVert`. H 블록은 **역할 교환**:
+
+```
+cols_H     = yPos = [(i−(nVert−1)/2)·Pc, i=0..nVert−1]   // 춤방향 행좌표 (전단면이 여기서 ±y_out에 생성)
+pitch_H    = webP                                          // 전단선은 축방향으로 진행
+nHi=nLo    = nHoriz                                        // 전단선 위 볼트수 = 축열수
+edge_H     = r.web.edge                                    // 축방향 연단(갭측 자유단)
+halfWidth_H= dp/2                                          // 인장면(수직)이 판 상·하연까지
+region     = 'web-plate'(이음판, plates=2) / 'member-web'(부재, plates=1)
+```
+
+이 파라미터로 `blockShear` 호출 시 산출식(판당, ×`plates`):
+
+- `Lv = edge_H + (nHoriz−1)·webP`,  `Agv1 = Lv·t`,  `Anv1 = (Lv − (nHoriz−0.5)·dh)·t`
+- **Path 2 (Case C, U):** `Agv=2·Agv1`, `Anv=2·Anv1`, `Ant = (2·y_max − (nVert−1)·dh)·t`, `Ubs=1.0`
+- **Path 3 (Case A, L):** `Agv=Agv1`, `Anv=Anv1`, `Ant = (dp/2 − y_max − 0.5·dh)·t`, `Ubs=0.5`
+- 용량 `φRn = 0.75·[min(0.6·Fu·Anv, 0.6·Fy·Agv) + Ubs·Fu·Ant]·plates` (기존 `bsCapacity`·φ=`PHI.R`)
+
+**(3) 부재웨브(Path 4/5)** — 동일 `cols_H/pitch_H/nHoriz/halfWidth=dp/2`, `t=tw`, `plates=1`, `Fu=mFu`, `Fy=mFy`.
+소요력 `H_U`/`H_L`은 이음판과 **동일**(부재웨브 1매가 전 웨브력 부담 vs 이음판 2매 분담 = `plates` 배율로 구분).
+`dp/2`(이음판 춤) 사용은 부재웨브 실제 춤보다 작아 **인장면 보수적**(안전측). Path 4=좌거더, 5=우거더(대칭).
+
+**(4) 구현 위치:** `web.ts`에 WP2(이음판 H)·WM3(부재웨브 H) 신설. 용량은 `blockShear`(회전 파라미터)로,
+**소요는 케이스별 명시 대입** 후 `finalize`(DCR·ok). `loadDir:'H'`를 `bsGeom`에 부여(도해 방향).
+
+### C-2. 거더 플랜지 전폭 블록 (Path 6/7) — **별도 신설 불필요 (확정)**
+- 현 `FM5` Case C는 전단면을 **외측 볼트열 ±xOut**에, 인장면을 `antSpan(2·xOut, m−1)`(외측열 사이)에 둔다.
+  이는 J4.3 정합(전단면은 볼트선 통과 필수)이며 **Path 6/7의 실제 폐합 블록**이다.
+- PDF "전폭(full width B)" 표현은 서술적. 전폭 인장선(폭 B)은 **외측열 밖 오버행까지 인장면을 확장**하여
+  `Ant`↑ → 용량↑ → **비보수(위험측)**. 반대로 현 Case C(`2·xOut`)는 `Ant`가 작아 **이미 안전측**.
+  → **전폭 edge-shear 블록은 신설하지 않는다**(J4.3 부적합 + 비보수). `member-flange` Case C = Path 6/7로 매핑 유지.
+
+### C-3. a/b 대체 순단면 (Path 2b/5b) — **케이스 열거로 이미 실현 (확정)**
+- 2a/2b, 5a/5b는 **동일 U블록의 인장 순단선 위치 대안**이며, "min 용량(=max DCR) 지배"가 규준 취지.
+- 현 엔진은 Case C(외곽선=2a/5a)와 Case B(1선 안쪽=2b), Case D(내측 페어=5b)를 **모두 열거**하고
+  `blockShearGovern`이 **max DCR = 지배**를 취함 → a/b min 지배가 **이미 자동 실현**. **별도 min() 로직 불요.**
+- 활성 확인: 외첨판 m=2 → Case B 생성(`xIn=g1/2>0.1`)=Path 2b ✔. 내첨판 m=4 → Case B=Path 5b ✔.
+  Phase A `PATH_OF` 매핑(§4·§8)만 정확하면 됨.
+
+### C-4. 부재 클러스터(8/9) · 내첨판 1열 L(Path 4) — **판정**
+- **Path 8/9(거더플랜지 클러스터 U):** `member-flange` **Case D(내측 페어 U, m≥4)** 가 이미 이를 산정
+  (내측열 ±xIn 2전단면). Phase A에서 `PATH_OF['member-flange'].D='Path 8·9'`로 매핑됨 → **신설 불요**.
+- **내첨판 1열 L(Path 4) — 신설 권고(안전측):** 현 `FI5`는 `nHalf<2`(내판 1열=판당 1열)에서 **SKIP**하나,
+  단일 볼트열도 **L블록 tearout이 성립**(전단선 1(열 ∥ H, 축방향) + 인장 1(열→인접 판연단, ⊥ H)).
+  기존 `blockShear`의 `single` 분기는 **양연 U**(±xOut 2전단면)를 생성 — 내첨판은 −xOut에 볼트가 없어 **부적합**.
+  → 별도 L 케이스 산정(판당):
+  ```
+  Lv   = edge + (nrow−1)·pitch          // 축방향 전단선(볼트열 따라)
+  Agv  = Lv·iT ;  Anv = (Lv − (nrow−0.5)·dh)·iT
+  Ant  = (min(연단_CL측, 연단_팁측) − 0.5·dh)·iT     // 열 → 가까운 판연단(폭방향)
+  Ubs  = 0.5(=UBS.NONUNIFORM) ;  φRn = PHI.R·[min(0.6FuAnv,0.6FyAgv)+Ubs·Fu·Ant]·2(plates)
+  demand = halfInner
+  ```
+  인장파단(FI2, 전폭 순단)과 **다른 한계상태**이므로 병렬 검토(연단 작을 때 지배 가능). SKIP 대신 산정.
+
+### C-5. 지배·표시·회귀
+- 신설 Path(웨브 H 2·3/4·5, 내첨판 Path 4)를 각 요소 검토목록에 편입. **소요 정의가 케이스별로 다른 웨브 H는
+  `blockShearGovern`의 단일 `demandN` 대신 케이스별 명시 소요**로 DCR 산정(C-1 (1)).
+- **골든(KBC 경로) 불변:** 본 변경은 `engine/aisc/` 전용, KBC 엔진(`validate.ts` 골든)과 완전 독립 → **영향 없음**.
+- **AISC 대표단면:** 순수휨(N=0)에서 웨브 Path 2(U)=0(비지배), **Path 3(L)=`nHoriz·Vu·e·y_max/J`(≠0)** 은
+  판두께 얇거나 축연단 작으면 웨브영역 지배 가능. 내첨판 Path 4도 CL측 연단 작으면 지배 가능.
+  → AISC 스냅샷 `govId/govDcr` **변동 가능**. 대표단면(1열/2열·정렬/엇모·보/기둥) 재베이스라인 필요.
 
 ---
 
@@ -265,5 +347,11 @@ const PATH_OF: Record<BsRegion, Record<string, string>> = {
 5. **검증**: `tsc`, 골든(`validate.ts`) 불변 확인, 대표 단면(정렬/2열/엇모, 보/기둥) 도해·수치 스냅샷 대조, 브라우저 육안 확인.
 6. **산출**: 상세계산서 Path 표기 + Path 도해, DXF/3D 볼트배치 정합 유지.
 
-## 10. 미결(착수 전 1건)
-- **웨브 H 블록 소요력 정의**(C-1) — `MuxWeb` 기반 수평 블록 소요의 정식화. steel-connection-engineer 검토로 확정.
+## 10. 미결 — **해소(2026-08-12, steel-connection-engineer 확정)**
+- ~~웨브 H 블록 소요력 정의(C-1)~~ → **확정**(§7 C-1 (1)):
+  - **Path 3(L, 외곽행) 소요 `H_L = nHoriz·MuxWeb·y_max/J + N_u/nVert`** (탄성법, 극관성 `J`, `y_max=(nVert−1)Pc/2`).
+  - **Path 2(U, 전깊이) 소요 `H_U = N_u`** (순수휨 → 0, **명시 출력**).
+  - 케이스별 소요가 상이하므로 `blockShearGovern` 단일 `demandN` 대신 **케이스별 명시 대입**.
+  - 손검산 상계: `H_L ≤ MuxWeb/((nVert−1)·Pc)` (후보 (a), nVert=2·3에서 등호).
+- **잔여 확인(구현 시, 규준값 아님):** WP2/WM3 신설 id·그룹명, `bsGeom.loadDir:'H'` 도해 방향, 내첨판 Path 4
+  연단(CL측/팁측) 취득 경로 — 코드 구조 사항으로 구현자 재량(규준값 추측 아님).

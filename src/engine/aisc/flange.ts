@@ -202,7 +202,21 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
         bsGeom: { cols: iCols, nrow, pitch, edge, halfWidth: iW / 2, dh, plates: 2, staggered: stagF, gauge: g2 || g1, nHi, nLo },
       }));
     } else {
-      checks.push({ id: 'FI5', region: 'inner', group: g, label: '블록 전단', clause: 'J4.3', detail: '단일열 → 인장파단(FI2)이 지배', note: '단일열' });
+      // 내판 1열 = 판당 단일 게이지선 → L-tearout(전단 1열 ∥ H + 인장 열→인접 판연단) 별도 산정 (PLAN §7 C-4).
+      //  기존 single 분기(양연 U)는 −xOut에 볼트 없어 부적합 → 편측 L로 직접 산정.
+      const Lv = edge + Math.max(0, nrow - 1) * pitch;
+      const Agv = Lv * iT, Anv = Math.max(0, Lv - (nrow - 0.5) * dh) * iT;
+      const Ant = Math.max(0, iW / 2 - 0.5 * dh) * iT;              // 중앙 단일선 → 인접 판연단(iW/2)
+      const Rn = Math.min(0.6 * pFu * Anv, 0.6 * pFy * Agv) + 0.5 * pFu * Ant;
+      const phiRnN = PHI.R * Rn * 2;                                 // ×2매
+      const dcr = phiRnN > 0 ? +(halfIn / phiRnN).toFixed(3) : 0;
+      checks.push(finalize({
+        id: 'FI5', region: 'inner', group: g, label: '블록 전단(×2)', clause: 'J4.3',
+        detail: `Path 4(외연 L) · φ[min(0.6·Fu·Anv, 0.6·Fy·Agv)+0.5·Fu·Ant]×2 = ${kN(phiRnN)} kN`,
+        phiRn: kN(phiRnN), demand: kN(halfIn), unit: 'kN',
+        cases: [{ label: 'A(외연 L블록)', path: 'Path 4', Ubs: 0.5, Agv, Anv, Ant, Rn: Rn * 2, phiRn: phiRnN, frac: 1, dcr, gov: true }],
+        bsGeom: { cols: [0], nrow, pitch, edge, halfWidth: iW / 2, dh, plates: 2, nHi: nrow, nLo: nrow },
+      }));
     }
   }
 

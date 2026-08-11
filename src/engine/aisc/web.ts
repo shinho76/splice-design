@@ -10,9 +10,9 @@ import { parseName } from '../sections.ts';
 import { Fy as FySteel, Fu as FuSteel, BOLT_MAT } from '../materials.ts';
 import { Ab, To_kN } from '../bolts.ts';
 import { PHI, FNV_FACTOR, SLIP, holeDia, kN, kNm } from './constants.ts';
-import { bearing, blockShearGovern } from './geometry.ts';
+import { bearing, blockShearGovern, blockShear } from './geometry.ts';
 import { bsDetail } from './flange.ts';
-import type { AiscCheck, AiscStep, DemandSet } from './types.ts';
+import type { AiscCheck, AiscStep, BlockCase, DemandSet } from './types.ts';
 
 const S = (label: string, formula?: string, subst?: string, value?: number, unit?: string, ref?: string): AiscStep =>
   ({ label, formula, subst, value, unit, ref });
@@ -52,6 +52,39 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
   const colsAxis = Array.from({ length: nHoriz }, (_, i) => (i - (nHoriz - 1) / 2) * webP); // 축방향 열 x
 
   const g = `E. 웨브 이음판 PL-${tp}×${dp}×2`;
+
+  // ── 웨브 H(모멘트·축력 수평) 블록전단 소요 — 케이스별 명시 (PLAN §7 C-1) ──
+  //  전단 ∥ H(축방향), 인장 ⊥(수직). 볼트군 탄성법: 모멘트 유발 수평분력 = Mux·y/J.
+  const yPosH = Array.from({ length: nVert }, (_, i) => (i - (nVert - 1) / 2) * Pc);   // 춤방향 행좌표
+  const yMaxH = (nVert - 1) / 2 * Pc;                                                  // 최외곽행
+  const Jbolt = nVert * colsAxis.reduce((a, x) => a + x * x, 0) + nHoriz * yPosH.reduce((a, y) => a + y * y, 0);
+  const H_U = 0;                                                     // 전깊이 U(Path 2/4): 순수휨 수평합력 0 (축력 N=0)
+  const H_L = Jbolt > 0 ? nHoriz * Mux * yMaxH / Jbolt : 0;          // 외곽행 L(Path 3/5): Σ 수평 탄성분력
+  // 용량은 blockShear(90° 회전 파라미터)로, 소요는 케이스별 명시 대입(단일 governor 미사용).
+  const hBlock = (id: string, group: string, reg2: 'web' | 'member', t: number, Fy: number, Fu: number,
+    plates: number, region: 'web-plate' | 'member-web', pathU: string, pathL: string): AiscCheck | null => {
+    if (nVert < 2 || yMaxH < 0.1) return null;                       // 춤 1행 → 모멘트 지렛대 없음 → H 블록 없음
+    const { cases } = blockShear({ t, Fy, Fu, d, halfWidth: dp / 2, cols: yPosH, edge, pitch: webP, nHi: nHoriz, nLo: nHoriz, region });
+    const pick: BlockCase[] = [];
+    for (const c of cases) {
+      const key = c.label[0];
+      if (key !== 'C' && key !== 'A') continue;                     // Path 2/4(전깊이 U)=C · Path 3/5(외곽 L)=A
+      const dem = key === 'C' ? H_U : H_L;
+      c.phiRn *= plates; c.Rn *= plates; c.frac = 1;
+      c.path = key === 'C' ? pathU : pathL;
+      c.dcr = c.phiRn > 0 ? +(dem / c.phiRn).toFixed(3) : 0;
+      pick.push(c);
+    }
+    if (!pick.length) return null;
+    const gov = pick.reduce((a, b) => ((b.dcr ?? 0) > (a.dcr ?? 0) ? b : a));
+    gov.gov = true;
+    return finalize({
+      id, region: reg2, group, label: 'H 블록 전단' + (plates === 2 ? '(×2)' : ''), clause: 'J4.3',
+      detail: `${gov.path} 지배 · H_L=${kN(H_L)}·H_U=${kN(H_U)} kN (Mux·y_out/J, J=${Math.round(Jbolt)}mm²)`,
+      phiRn: kN(gov.phiRn), demand: kN((gov.dcr ?? 0) * gov.phiRn), unit: 'kN', cases: pick,
+      bsGeom: { cols: yPosH, nrow: nHoriz, pitch: webP, edge, halfWidth: dp / 2, dh, plates, vertical: false, loadDir: 'H' },
+    });
+  };
 
   // ── WB. 볼트 (동심, 이중전단) ──
   {
@@ -96,7 +129,10 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
     const bs = blockShearGovern({ t: tp, Fy: pFy, Fu: pFu, d, halfWidth: (wp.L ?? dp) / 2, cols: colsAxis, edge, pitch: Pc, nHi: nVert, nLo: nVert, region: 'web-plate' }, Vu, 2);
     checks.push(finalize({ id: 'WP1', region: 'web', group: g, label: '블록 전단(×2)', clause: 'J4.3',
       detail: bsDetail(bs), phiRn: kN(bs.phiRn), demand: kN(bs.demand), unit: 'kN', cases: bs.cases,
-      bsGeom: { cols: colsAxis, nrow: nVert, pitch: Pc, edge, halfWidth: (wp.L ?? dp) / 2, dh, plates: 2, vertical: true } }));
+      bsGeom: { cols: colsAxis, nrow: nVert, pitch: Pc, edge, halfWidth: (wp.L ?? dp) / 2, dh, plates: 2, vertical: true, loadDir: 'V' } }));
+    // WP2: 이음판 H 블록(모멘트 수평 — Path 2 U / Path 3 L)
+    const wp2 = hBlock('WP2', g, 'web', tp, pFy, pFu, 2, 'web-plate', 'Path 2', 'Path 3');
+    if (wp2) checks.push(wp2);
   }
 
   // ── WI. 이음판 항복/파단 상호작용 (2매 합성단면, Mux+Vu) ──
@@ -155,7 +191,10 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
     const bs = blockShearGovern({ t: tw, Fy: mFy, Fu: mFu, d, halfWidth: dp / 2, cols: colsAxis, edge, pitch: Pc, nHi: nVert, nLo: nVert, region: 'member-web' }, Vu, 1);
     checks.push(finalize({ id: 'WM2', region: 'member', group: gm, label: '웨브 블록 전단', clause: 'J4.3',
       detail: bsDetail(bs), phiRn: kN(bs.phiRn), demand: kN(bs.demand), unit: 'kN', cases: bs.cases,
-      bsGeom: { cols: colsAxis, nrow: nVert, pitch: Pc, edge, halfWidth: dp / 2, dh, plates: 1, vertical: true } }));
+      bsGeom: { cols: colsAxis, nrow: nVert, pitch: Pc, edge, halfWidth: dp / 2, dh, plates: 1, vertical: true, loadDir: 'V' } }));
+    // WM3: 부재 웨브 H 블록(모멘트 수평 — Path 4/5, 좌·우 거더 대칭)
+    const wm3 = hBlock('WM3', gm, 'member', tw, mFy, mFu, 1, 'member-web', 'Path 4/5', 'Path 4/5');
+    if (wm3) checks.push(wm3);
   }
 
   return checks;
