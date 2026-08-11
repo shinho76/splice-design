@@ -314,7 +314,7 @@ export function layout(r: DesignResult, isCol: boolean) {
   const boxRow = 54;
   if (!isCol) {
     // 보: 평면(상단) → 입면+단면(중단) → 규격표(하단). 참조도면 [나의아저씨] BOLT CONNECTION DETAIL 배치.
-    const rowH = 125, nRows = 4;                  // 표: 제목 + WEB + FLG(EXT.) + FLG(INT.)
+    const rowH = 125, nRows = 3;                  // 표: WEB + FLG(EXT.) + FLG(INT.) (제목행은 도면 상단으로 이동)
     const boxHalf = Math.max(memHalf, 500) + 20;
     const secB = Math.max(B, outerW);
     const yW = 0;                                 // 입면(중단) 중심
@@ -324,7 +324,7 @@ export function layout(r: DesignResult, isCol: boolean) {
     const secCx = boxHalf + 40 + secB / 2 + 60;   // 입면 우측 단면
     const frameRC = secCx + secB / 2 + 235;       // 단면 우측 치수(춤 H·문자) 여백
     const frameTop = yF + hf + 220;               // 평면 위(상단 타이틀 배너 밴드 130 포함)
-    const frameBot = tableBot - 40;               // 표 아래
+    const frameBot = tableBot;                    // 표 아래 빈 밴드 제거(표 하단 = 프레임 하단)
     return {
       H, B, tw, tf, oT, Lpf, outerW, webWid, contentHalf, hf, hw, gap, base, yF, yW, memHalf, boxRow, secCx,
       rowH, nRows, tableBot, tableTop,
@@ -379,20 +379,23 @@ function drawSheetCell(p: Pen, F: UniFrame, secLbl: string, outerLbl: string, in
 
 // ── 규격표(중단 밴드) : 참조도면 [나의아저씨] 셀. 제목행(전폭) + WEB/FLG(EXT.)/FLG(INT.) 3행(라벨|값). ──
 function drawSpecTable(p: Pen, x0: number, x1: number, tableBot: number, rowH: number,
-  title: string, webS: string, flgExtS: string, flgIntS: string) {
-  const TT = 50;                                         // 표 문자높이(참조도면 Cell Head=50)
-  const rows = [0, 1, 2, 3, 4].map(i => tableBot + i * rowH);   // 하→상, rows[4]=상단
-  p.rect(x0, tableBot, x1 - x0, rowH * 4, 'MINI_BOX');
-  for (let i = 1; i < 4; i++) p.line(x0, rows[i], x1, rows[i], 'MINI_BOX');   // 행 구분선
-  const lw = Math.min(360, (x1 - x0) * 0.2);             // 라벨열 폭
-  p.line(x0 + lw, rows[0], x0 + lw, rows[3], 'MINI_BOX'); // 라벨|값 구분(하위 3행)
-  const midY = (i: number) => (rows[i] + rows[i + 1]) / 2 - TT / 2;
-  p.text((x0 + x1) / 2, midY(3), TT, title, 'MINI_HEAD', { align: 'c' });     // 제목(최상단 전폭)
+  webS: string, flgExtS: string, flgIntS: string) {
+  const rows = [0, 1, 2, 3].map(i => tableBot + i * rowH);   // 하→상, 3행(제목행 없음)
+  p.rect(x0, tableBot, x1 - x0, rowH * 3, 'MINI_BOX');
+  for (let i = 1; i < 3; i++) p.line(x0, rows[i], x1, rows[i], 'MINI_BOX');   // 행 구분선
+  const lw = Math.min(360, (x1 - x0) * 0.22);           // 라벨열 폭
+  p.line(x0 + lw, rows[0], x0 + lw, rows[3], 'MINI_BOX'); // 라벨|값 구분(전 3행)
   const labels = ['FLG(INT.)', 'FLG(EXT.)', 'WEB'];      // rows 0·1·2 (하→상)
   const vals = [flgIntS, flgExtS, webS];
+  // 값 문자높이 적응형(malgun 폭 여유 포함) — 셀 폭 초과 시 축소해 넘침 방지
+  const CW = 0.62, pad = 40;
+  const valW = (x1 - x0) - lw - 2 * pad;
+  const maxLen = Math.max(...vals.map(v => v.length), 1);
+  const vTT = Math.max(28, Math.min(50, valW / (maxLen * CW)));
+  const midY = (i: number, h: number) => (rows[i] + rows[i + 1]) / 2 - h / 2;
   for (let i = 0; i < 3; i++) {
-    p.text(x0 + lw / 2, midY(i), TT, labels[i], 'TEXT', { align: 'c' });
-    p.text(x0 + lw + 40, midY(i), TT, vals[i], 'TEXT', { align: 'l' });
+    p.text(x0 + lw / 2, midY(i, 50), 50, labels[i], 'TEXT', { align: 'c' });
+    p.text(x0 + lw + pad, midY(i, vTT), vTT, vals[i], 'TEXT', { align: 'l' });
   }
 }
 
@@ -421,7 +424,12 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   // ── 참조도면 [나의아저씨] 규격표 문자열 : "{n}-M{d}(등급) / {L}x{w}x{t}t(재질, nEA)" (값은 현 앱 계산) ──
   const mat = cond.plateSteel ?? cond.steel;
   const plRef = (pl: Plate | undefined) => pl ? `${pl.L}x${pl.w}x${pl.t}t` : '';
-  const titleS = `보-H-${H}x${B}x${tw}/${tf} (GIRDER SPLICE)`;
+  // 도면 상단 단면 지정 — W형강: "W8X10(H-…, 강종)" / H형강: "H-… (강종)"
+  const secObj = sectionByName(r.section);
+  const wlab = secObj?.label ? secObj.label.toUpperCase() : '';
+  const desigTop = wlab
+    ? `${wlab}(H-${H}X${B}X${tw}X${tf}, ${cond.steel})`
+    : `H-${H}X${B}X${tw}X${tf} (${cond.steel})`;
   const webS = r.web.webPlate ? `${wCount}-M${dia}(${cond.bolt}) / ${plRef(r.web.webPlate)}(${mat}, 2EA)` : '-';
   const flgExtS = r.flange.outerPlate ? `${flCount}-M${dia}(${cond.bolt}) / ${plRef(r.flange.outerPlate)}(${mat}, 2EA)` : '-';
   const flgIntS = r.flange.innerPlate ? `${plRef(r.flange.innerPlate)}(${mat}, 4EA)` : '-';
@@ -517,12 +525,18 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
     const posCy = colY.filter(c => c > 0);
     const innerCxAbs = inner && posCy.length ? Math.abs(posCy.reduce((a, b) => a + b, 0) / posCy.length) : 0;
     drawSection(doc, tM, L.secCx, yW, r, { H, B, tw, tf, oT, outerW, chum, colY, webRowY, innerCxAbs, dia, inner });
-    // ── 상단 타이틀 배너 "BOLT CONNECTION DETAIL" (참조도면 [나의아저씨]) — 상단 밴드 중앙(마젠타) ──
+    if (sheet) {
+      // ── 사무소 종합도(office) 셀: 좌상단 타이틀 + 우측 콜아웃 (BEAM SPLICE DETAIL) — 배너·규격표 없음 ──
+      drawSheetCell(pff, F, secLbl, outerLbl, innerLbl, webLbl, flBoltSheet, wBoltLbl);
+      return;
+    }
+    // ── 상단 타이틀 배너 "BOLT CONNECTION DETAIL" + 단면 지정 텍스트(평면·입면·단면 상단) ──
     const bandY = F.frameTop - 130;                                    // 배너 밴드 하단(도면과 구분선)
     pff.line(F.frameL, bandY, F.frameRC, bandY, 'MINI_BOX');           // 배너↔도면 구분선(황)
     pff.text((F.frameL + F.frameRC) / 2, (F.frameTop + bandY) / 2 - 35, 70, 'BOLT CONNECTION DETAIL', 'MINI_HEAD', { align: 'c' });
-    // ── 규격표(중단) + 외곽 테두리 : 참조도면 [나의아저씨] 셀. 지시선·하단표 없음. ──
-    drawSpecTable(pff, F.frameL, F.frameRC, L.tableBot + cdy, L.rowH, titleS, webS, flgExtS, flgIntS);
+    pff.text((F.frameL + F.frameRC) / 2, bandY - 62, TH * 1.5, desigTop, 'FLG_PL', { align: 'c' });   // 단면 지정(도면 상단)
+    // ── 규격표(하단, 3행: WEB/FLG(EXT.)/FLG(INT.)) + 외곽 테두리 ──
+    drawSpecTable(pff, F.frameL, F.frameRC, L.tableBot + cdy, L.rowH, webS, flgExtS, flgIntS);
     pff.rect(F.frameL, F.frameBot, F.frameRC - F.frameL, F.frameTop - F.frameBot, 'MINI_BOX');
     return;
   }
@@ -856,9 +870,9 @@ export function toDXFSheet(rows: DesignResult[], cond: DesignCondition): string 
   p.rect(GAP / 4, sheetBot, sheetW - GAP / 2, sheetTop + 320 - sheetBot, 'MINI_BOX');
   return wrap(doc);
 }
-/** 사무소 표준 포맷 별칭 — 앱 "전체 DXF 다운로드(사무소 표준 포맷)" 버튼.
- *  보: 참조도면 [나의아저씨] 시리즈-열 전부재도(toDXFAll)와 동일. */
-export const toDXFAll2 = (rows: DesignResult[], cond: DesignCondition): string => toDXFAll(rows, cond);
+/** 사무소 표준 포맷 — 앱 "전체 DXF 다운로드(사무소 표준 포맷)" 버튼.
+ *  참조도면 BEAM-SPLICE.dwg: "BEAM SPLICE DETAIL" 셀 + FLANGE/WEB PLATE SIZE 콜아웃 그리드. */
+export const toDXFAll2 = (rows: DesignResult[], cond: DesignCondition): string => toDXFSheet(rows, cond);
 export function downloadFile(filename: string, content: string | ArrayBuffer, mime: string) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
