@@ -323,7 +323,7 @@ export function layout(r: DesignResult, isCol: boolean) {
     const tableBot = tableTop - rowH * nRows;
     const secCx = boxHalf + 40 + secB / 2 + 60;   // 입면 우측 단면
     const frameRC = secCx + secB / 2 + 235;       // 단면 우측 치수(춤 H·문자) 여백
-    const frameTop = yF + hf + 130;               // 평면 위
+    const frameTop = yF + hf + 220;               // 평면 위(상단 타이틀 배너 밴드 130 포함)
     const frameBot = tableBot - 40;               // 표 아래
     return {
       H, B, tw, tf, oT, Lpf, outerW, webWid, contentHalf, hf, hw, gap, base, yF, yW, memHalf, boxRow, secCx,
@@ -421,7 +421,7 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   // ── 참조도면 [나의아저씨] 규격표 문자열 : "{n}-M{d}(등급) / {L}x{w}x{t}t(재질, nEA)" (값은 현 앱 계산) ──
   const mat = cond.plateSteel ?? cond.steel;
   const plRef = (pl: Plate | undefined) => pl ? `${pl.L}x${pl.w}x${pl.t}t` : '';
-  const titleS = `보-H ${H}x${B}x${tw}/${tf} (GIRDER SPLICE)`;
+  const titleS = `보-H-${H}x${B}x${tw}/${tf} (GIRDER SPLICE)`;
   const webS = r.web.webPlate ? `${wCount}-M${dia}(${cond.bolt}) / ${plRef(r.web.webPlate)}(${mat}, 2EA)` : '-';
   const flgExtS = r.flange.outerPlate ? `${flCount}-M${dia}(${cond.bolt}) / ${plRef(r.flange.outerPlate)}(${mat}, 2EA)` : '-';
   const flgIntS = r.flange.innerPlate ? `${plRef(r.flange.innerPlate)}(${mat}, 4EA)` : '-';
@@ -517,7 +517,11 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
     const posCy = colY.filter(c => c > 0);
     const innerCxAbs = inner && posCy.length ? Math.abs(posCy.reduce((a, b) => a + b, 0) / posCy.length) : 0;
     drawSection(doc, tM, L.secCx, yW, r, { H, B, tw, tf, oT, outerW, chum, colY, webRowY, innerCxAbs, dia, inner });
-    // ── 규격표(중단) + 외곽 테두리 : 참조도면 [나의아저씨] 셀. 지시선·상단제목·하단표 없음. ──
+    // ── 상단 타이틀 배너 "BOLT CONNECTION DETAIL" (참조도면 [나의아저씨]) — 상단 밴드 중앙(마젠타) ──
+    const bandY = F.frameTop - 130;                                    // 배너 밴드 하단(도면과 구분선)
+    pff.line(F.frameL, bandY, F.frameRC, bandY, 'MINI_BOX');           // 배너↔도면 구분선(황)
+    pff.text((F.frameL + F.frameRC) / 2, (F.frameTop + bandY) / 2 - 35, 70, 'BOLT CONNECTION DETAIL', 'MINI_HEAD', { align: 'c' });
+    // ── 규격표(중단) + 외곽 테두리 : 참조도면 [나의아저씨] 셀. 지시선·하단표 없음. ──
     drawSpecTable(pff, F.frameL, F.frameRC, L.tableBot + cdy, L.rowH, titleS, webS, flgExtS, flgIntS);
     pff.rect(F.frameL, F.frameBot, F.frameRC - F.frameL, F.frameTop - F.frameBot, 'MINI_BOX');
     return;
