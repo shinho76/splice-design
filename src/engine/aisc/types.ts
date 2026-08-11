@@ -40,7 +40,19 @@ export interface AiscCheck {
   detail?: string;    // 한 줄 요약(식·치수)
   steps?: AiscStep[]; // 세부 추적 단계
   cases?: BlockCase[];// 블록전단 요소별 케이스(있으면)
+  bsGeom?: BlockShearGeom; // 블록전단 실제 기하(도해용) — 있으면 파단선 실측 작도
   note?: string;
+}
+
+/** 블록전단 실제 기하 — 상세계산서 파단선 도해가 실 볼트배치로 작도 */
+export interface BlockShearGeom {
+  cols: number[];    // 전단선 직각방향 볼트열 위치(mm, 판/부재 중심 기준)
+  nrow: number;      // 전단선 방향 볼트수(열당)
+  pitch: number;     // 전단선 방향 볼트피치(mm)
+  edge: number;      // 자유단 연단거리(mm)
+  halfWidth: number; // 판/부재 반폭(mm)
+  dh: number;        // 볼트구멍 지름(mm)
+  plates: number;    // 판수(외/부재=1, 내부·웨브 이음판=2)
 }
 
 /** 블록전단 한 케이스 결과 (요소별 A/B/C/D) */

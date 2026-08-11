@@ -96,7 +96,8 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
   {
     const bs = blockShearGovern({ t: tp, Fy: pFy, Fu: pFu, d, nrow: nVert, Lv: LvVert, halfWidth: (wp.L ?? dp) / 2, cols: colsAxis }, Vu, 2);
     checks.push(finalize({ id: 'WP1', region: 'web', group: g, label: '블록 전단(×2)', clause: 'J4.3',
-      detail: bsDetail(bs), phiRn: kN(bs.phiRn), demand: kN(bs.demand), unit: 'kN', cases: bs.cases }));
+      detail: bsDetail(bs), phiRn: kN(bs.phiRn), demand: kN(bs.demand), unit: 'kN', cases: bs.cases,
+      bsGeom: { cols: colsAxis, nrow: nVert, pitch: Pc, edge, halfWidth: (wp.L ?? dp) / 2, dh, plates: 2 } }));
   }
 
   // ── WI. 이음판 항복/파단 상호작용 (2매 합성단면, Mux+Vu) ──
@@ -154,7 +155,8 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
       ] }));
     const bs = blockShearGovern({ t: tw, Fy: mFy, Fu: mFu, d, nrow: nVert, Lv: LvVert, halfWidth: dp / 2, cols: colsAxis }, Vu, 1);
     checks.push(finalize({ id: 'WM2', region: 'member', group: gm, label: '웨브 블록 전단', clause: 'J4.3',
-      detail: bsDetail(bs), phiRn: kN(bs.phiRn), demand: kN(bs.demand), unit: 'kN', cases: bs.cases }));
+      detail: bsDetail(bs), phiRn: kN(bs.phiRn), demand: kN(bs.demand), unit: 'kN', cases: bs.cases,
+      bsGeom: { cols: colsAxis, nrow: nVert, pitch: Pc, edge, halfWidth: dp / 2, dh, plates: 1 } }));
   }
 
   return checks;

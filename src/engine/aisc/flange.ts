@@ -146,6 +146,7 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
     checks.push(finalize({
       id: 'FP5', region: 'outer', group: g, label: '블록 전단', clause: 'J4.3',
       detail: bsDetail(bs), phiRn: kN(bs.phiRn), demand: kN(bs.demand), unit: 'kN', cases: bs.cases,
+      bsGeom: { cols, nrow, pitch, edge, halfWidth: oW / 2, dh, plates: 1 },
     }));
   }
 
@@ -198,6 +199,7 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
       checks.push(finalize({
         id: 'FI5', region: 'inner', group: g, label: '블록 전단(×2)', clause: 'J4.3',
         detail: bsDetail(bs), phiRn: kN(bs.phiRn), demand: kN(bs.demand), unit: 'kN', cases: bs.cases,
+        bsGeom: { cols: iCols, nrow, pitch, edge, halfWidth: iW / 2, dh, plates: 2 },
       }));
     } else {
       checks.push({ id: 'FI5', region: 'inner', group: g, label: '블록 전단', clause: 'J4.3', detail: '단일열 → 인장파단(FI2)이 지배', note: '단일열' });
@@ -263,6 +265,7 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
     checks.push(finalize({
       id: 'FM5', region: 'member', group: g, label: '부재 블록 전단', clause: 'J4.3',
       detail: bsDetail(bs), phiRn: kN(bs.phiRn), demand: kN(bs.demand), unit: 'kN', cases: bs.cases,
+      bsGeom: { cols, nrow, pitch, edge, halfWidth: B / 2, dh, plates: 1 },
     }));
   }
 
