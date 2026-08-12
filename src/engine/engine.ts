@@ -231,18 +231,22 @@ function designWeb(cond: DesignCondition, sec: HSection, bolt: BoltName, fy: num
   }
   if (mW === 1) Pc = null;   // 춤방향 단일볼트 → 피치 무의미(표·도면 혼동 방지)
   const dpw = chum;
+  // KBC-09 [그림3.4] : l = 웨브첨판 상단 ~ 플랜지 내부 이음판 수직간격. H<200 & l<60 이면 렌치(체결공구)
+  //   간섭 → 웨브볼트를 플랜지볼트 대비 절반피치(30mm) 바깥 엇갈림(첨판폭 +60로 연단 40 유지).
+  const lWeb = H / 2 - tf - dpw / 2;
+  const webBoltStag = H < 200 && lWeb < 60;
   const webP = Math.max(60, Math.ceil(2.667 * boltDiaOf(bolt) / 5) * 5);   // C안: 웨브 가로피치
-  const wpw = 2*((nW-1)*webP + 2*40) + (cond.gap ?? 10);   // 웨브볼트 이음부 연단 40(플랜지와 동일)
+  const wpw = 2*((nW-1)*webP + 2*40) + (cond.gap ?? 10) + (webBoltStag ? 60 : 0);   // 엇갈림 시 +60(30mm 이동분)
   // 보=전단(0.6Fy), 기둥=압축(Fy). 양면 이음판이 소요력의 절반씩 분담.
   const nomFactor = cond.member === '기둥' ? 1.0 : 0.6;
   const tpw = roundUpThickness(Math.max(0.5*(soryeok*1e3)/(0.9*nomFactor*pfy*dpw), 6), WEB_PLATE_T);   // 웨브 이음판 강종(pfy)
   steps.push(
     { group:'바) 웨브 볼트 · 이음판', label:`설계${bearing?'지압':'미끄럼'}강도 φRn (2면)`, value:+phiRnW.toFixed(0), unit:'kN', ref:bearing?'6.8':'5.7' },
     { group:'바) 웨브 볼트 · 이음판', label:'요구 볼트개수', formula:'⌈소요력/φRn⌉', substitution:`⌈${soryeok.toFixed(0)}/${phiRnW.toFixed(0)}⌉`, value:Nreq, unit:'개', ref:'5.8.1' },
-    { group:'바) 웨브 볼트 · 이음판', label:'웨브 볼트 배열', value:mW, unit:`(춤)×${nW}(축), Pc=${Pc ?? '—'}${stagger?' · 엇모':''}`, ref:'5.8.2' },
+    { group:'바) 웨브 볼트 · 이음판', label:'웨브 볼트 배열', value:mW, unit:`(춤)×${nW}(축), Pc=${Pc ?? '—'}${webBoltStag?' · 엇모(l<60)':''}`, ref:'5.8.2' },
     { group:'바) 웨브 볼트 · 이음판', label:'웨브 이음판 (두께×춤×너비)', value:tpw, unit:`× ${dpw} × ${wpw}`, ref:'5.9' },
   );
   // stagger=웨브 춤≤200: 웨브볼트를 플랜지볼트 대비 절반피치(30mm) 바깥으로 엇갈림(체결 간섭 회피, [그림 3.4]).
   //   → 이음판폭 +60(=2×30)이 이 이동분을 이미 포함 → 도면에서 실제 이동해야 연단거리 40 유지.
-  return { bolt:{ m:mW, n:nW, count:mW*nW }, Pc:Pc ?? undefined, webPlate:{ t:tpw, w:dpw, L:wpw }, staggered: stagger, pitch: webP, edge: 40 };
+  return { bolt:{ m:mW, n:nW, count:mW*nW }, Pc:Pc ?? undefined, webPlate:{ t:tpw, w:dpw, L:wpw }, staggered: webBoltStag, pitch: webP, edge: 40 };
 }
