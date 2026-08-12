@@ -13,6 +13,9 @@ const nf = (n?: number, d = 1) => n == null ? '—' : n.toLocaleString('en-US', 
 
 // step 라벨 한글 대응(영문은 엔진 원문)
 const SL_KO: Record<string, string> = {
+  'Bearing limit φ·2.4dtFu (all bolts)': '지압 상한 φ·2.4dtFu (전 볼트)', 'Bearing limit φ·2.4dtf·Fu (all bolts)': '지압 상한 φ·2.4·d·tf·Fu (전 볼트)',
+  'Slip coefficient μ (Class B)': '미끄럼계수 μ (Class B)', 'Pretension factor Du': '장력계수 Du', 'Filler factor hf': '필러계수 hf', 'Shear planes ns': '전단면수 ns',
+  'Per-bolt design slip φrₙ': '볼트 1개 설계미끄럼 φrₙ', 'Total φRn = φrₙ·n': '총 φRn = φrₙ·n',
   'Bolt group': '볼트군', 'Bolt shear area Ab': '볼트 전단면적 Ab', 'Critical stress Fcr': '임계응력 Fcr',
   'Design compression φRn': '설계압축강도 φRn', 'Design flexural rupture φMn': '설계휨파단강도 φMn', 'Design flexural φMn': '설계휨강도 φMn',
   'Design rupture φRn': '설계파단강도 φRn', 'Design shear rupture φVn': '설계전단파단강도 φVn', 'Design shear yield φVn': '설계전단항복강도 φVn',

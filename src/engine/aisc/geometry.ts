@@ -64,7 +64,7 @@ export interface BearingResult {
   tearEdge: number;    // 찢김항 φ·1.2·Lc,edge·t·Fu (N)
   tearPitch: number;   // 찢김항 φ·1.2·Lc,pitch·t·Fu (N)
   LcEdge: number; LcPitch: number; dh: number;
-  govEdge: '지압' | '찢김'; govPitch: '지압' | '찢김';
+  govEdge: 'bearing' | 'tearout'; govPitch: 'bearing' | 'tearout';
 }
 export function bearing(
   t: number, Fu: number, d: number, m: number, nrow: number,
@@ -82,7 +82,7 @@ export function bearing(
   return {
     edge, spaced, total: nEdge * edge + nSpaced * spaced, nEdge, nSpaced,
     brg, tearEdge, tearPitch, LcEdge, LcPitch, dh,
-    govEdge: brg <= tearEdge ? '지압' : '찢김', govPitch: brg <= tearPitch ? '지압' : '찢김',
+    govEdge: brg <= tearEdge ? 'bearing' : 'tearout', govPitch: brg <= tearPitch ? 'bearing' : 'tearout',
     detail: `연단 ${(edge / 1e3).toFixed(1)}×${nEdge} + 간격 ${(spaced / 1e3).toFixed(1)}×${nSpaced} kN`,
   };
 }

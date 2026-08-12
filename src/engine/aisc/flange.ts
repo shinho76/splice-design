@@ -137,8 +137,9 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
     checks.push(finalize({
       id: 'FP4', region: 'outer', group: g, label: '지압·찢김', clause: 'J3.10', detail: br.detail, phiRn: kN(br.total), demand: kN(halfOut), unit: 'kN',
       steps: [
-        S('Edge bolt (tearout/bearing)', 'φ·min(2.4dtFu, 1.2·Lc,edge·t·Fu)', `min(2.4dtFu=${kN(br.brg)}, 1.2·Lc,e·tFu=${kN(br.tearEdge)}); Lc,e=edge−dₕ/2=${edge}−${dh}/2=${br.LcEdge.toFixed(1)}mm`, kN(br.edge), 'kN', 'J3.10'),
-        S('Interior bolt', 'φ·min(2.4dtFu, 1.2·Lc,pitch·t·Fu)', `min(2.4dtFu=${kN(br.brg)}, 1.2·Lc,p·tFu=${kN(br.tearPitch)}); Lc,p=s−dₕ=${pitch}−${dh}=${br.LcPitch.toFixed(1)}mm`, kN(br.spaced), 'kN'),
+        S('Bearing limit φ·2.4dtFu (all bolts)', 'φ·2.4·d·t·Fu', `0.75·2.4·${d}·${oT}·${pFu}`, kN(br.brg), 'kN', 'J3.10'),
+        S('Edge bolt (tearout/bearing)', 'min(bearing, φ·1.2·Lc,e·t·Fu)', `tear=0.75·1.2·${br.LcEdge.toFixed(1)}·${oT}·${pFu}=${kN(br.tearEdge)} (Lc,e=${edge}−${dh}/2); min→${kN(br.edge)} [${br.govEdge}]`, kN(br.edge), 'kN'),
+        S('Interior bolt', 'min(bearing, φ·1.2·Lc,p·t·Fu)', `tear=0.75·1.2·${br.LcPitch.toFixed(1)}·${oT}·${pFu}=${kN(br.tearPitch)} (Lc,p=${pitch}−${dh}); min→${kN(br.spaced)} [${br.govPitch}]`, kN(br.spaced), 'kN'),
         S('Total (m edge + m(n−1) interior)', 'nₑ·edge + nᵢ·interior', `${br.nEdge}·${kN(br.edge)} + ${br.nSpaced}·${kN(br.spaced)}`, kN(br.total), 'kN'),
       ],
     }));
@@ -188,8 +189,9 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
     checks.push(finalize({
       id: 'FI4', region: 'inner', group: g, label: '지압·찢김', clause: 'J3.10', detail: br.detail, phiRn: kN(br.total), demand: kN(halfIn), unit: 'kN',
       steps: [
-        S('Edge bolt', 'φ·min(2.4dtFu, 1.2·Lc,edge·t·Fu)', `min(2.4dtFu=${kN(br.brg)}, 1.2·Lc,e·tFu=${kN(br.tearEdge)}); Lc,e=edge−dₕ/2=${edge}−${dh}/2=${br.LcEdge.toFixed(1)}mm`, kN(br.edge), 'kN', 'J3.10'),
-        S('Interior bolt', 'φ·min(2.4dtFu, 1.2·Lc,pitch·t·Fu)', `min(2.4dtFu=${kN(br.brg)}, 1.2·Lc,p·tFu=${kN(br.tearPitch)}); Lc,p=s−dₕ=${pitch}−${dh}=${br.LcPitch.toFixed(1)}mm`, kN(br.spaced), 'kN'),
+        S('Bearing limit φ·2.4dtFu (all bolts)', 'φ·2.4·d·t·Fu', `0.75·2.4·${d}·${iT}·${pFu}`, kN(br.brg), 'kN', 'J3.10'),
+        S('Edge bolt', 'min(bearing, φ·1.2·Lc,e·t·Fu)', `tear=0.75·1.2·${br.LcEdge.toFixed(1)}·${iT}·${pFu}=${kN(br.tearEdge)} (Lc,e=${edge}−${dh}/2); min→${kN(br.edge)} [${br.govEdge}]`, kN(br.edge), 'kN'),
+        S('Interior bolt', 'min(bearing, φ·1.2·Lc,p·t·Fu)', `tear=0.75·1.2·${br.LcPitch.toFixed(1)}·${iT}·${pFu}=${kN(br.tearPitch)} (Lc,p=${pitch}−${dh}); min→${kN(br.spaced)} [${br.govPitch}]`, kN(br.spaced), 'kN'),
         S('Total', 'nₑ·edge + nᵢ·interior', `${br.nEdge}·${kN(br.edge)} + ${br.nSpaced}·${kN(br.spaced)}`, kN(br.total), 'kN'),
       ],
     }));
@@ -227,8 +229,9 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
       id: 'FM1', region: 'member', group: g, label: '부재 지압·찢김', clause: 'J3.10',
       detail: `플랜지 tf=${tf}, ${br.detail}`, phiRn: kN(br.total), demand: kN(Pf), unit: 'kN',
       steps: [
-        S('Edge bolt on flange (t=tf)', 'φ·min(2.4dtFu, 1.2·Lc,edge·tf·Fu)', `tf=${tf}; min(2.4dtFu=${kN(br.brg)}, 1.2·Lc,e·tfFu=${kN(br.tearEdge)}); Lc,e=${br.LcEdge.toFixed(1)}mm`, kN(br.edge), 'kN', 'J3.10'),
-        S('Interior bolt', 'φ·min(2.4dtFu, 1.2·Lc,pitch·tf·Fu)', `min(2.4dtFu=${kN(br.brg)}, 1.2·Lc,p·tfFu=${kN(br.tearPitch)}); Lc,p=${br.LcPitch.toFixed(1)}mm`, kN(br.spaced), 'kN'),
+        S('Bearing limit φ·2.4dtf·Fu (all bolts)', 'φ·2.4·d·tf·Fu', `0.75·2.4·${d}·${tf}·${mFu}`, kN(br.brg), 'kN', 'J3.10'),
+        S('Edge bolt on flange (t=tf)', 'min(bearing, φ·1.2·Lc,e·tf·Fu)', `tear=0.75·1.2·${br.LcEdge.toFixed(1)}·${tf}·${mFu}=${kN(br.tearEdge)} (Lc,e=${edge}−${dh}/2); min→${kN(br.edge)} [${br.govEdge}]`, kN(br.edge), 'kN'),
+        S('Interior bolt', 'min(bearing, φ·1.2·Lc,p·tf·Fu)', `tear=0.75·1.2·${br.LcPitch.toFixed(1)}·${tf}·${mFu}=${kN(br.tearPitch)} (Lc,p=${pitch}−${dh}); min→${kN(br.spaced)} [${br.govPitch}]`, kN(br.spaced), 'kN'),
         S('Total', 'nₑ·edge + nᵢ·interior', `${br.nEdge}·${kN(br.edge)} + ${br.nSpaced}·${kN(br.spaced)}`, kN(br.total), 'kN'),
       ],
     }));

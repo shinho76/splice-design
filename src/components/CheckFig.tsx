@@ -32,7 +32,7 @@ function fracture(key: string, cols: number[], halfWidth: number): { shearYs: nu
 function BsPanel({ c, geom }: { c: BlockCase; geom: BlockShearGeom }) {
   const vertical = !!geom.vertical, stag = !!geom.staggered;   // 웨브=수직 전단, 엇모=지그재그
   const nHi = geom.nHi ?? geom.nrow, nLo = geom.nLo ?? geom.nrow;
-  const W = 200, H = vertical ? 168 : 130, pad = 12, aw = 32;  // aw=하중화살표 여백(확대)
+  const W = 236, H = vertical ? 196 : 152, pad = 12, aw = 50;  // aw=하중화살표 여백(2단계 추가 확대)
   const maxAbs = Math.max(...geom.cols.map(v => Math.abs(v)));
   // 3D/DXF connParts stagOf 정합: 내측열 off=45·nLo행, 외측열 off=0·nHi행, 엇모 피치 90.
   const stagOf = (cv: number) => {
@@ -69,8 +69,8 @@ function BsPanel({ c, geom }: { c: BlockCase; geom: BlockShearGeom }) {
     return { x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1) };
   };
   const plate = rct(0, -geom.halfWidth, lenTot, geom.halfWidth);
-  const [la1x, la1y] = map(-2, 0), [la2x, la2y] = map(-26, 0);   // 하중 화살표(확대)
-  const ahead = vertical ? `M${la2x},${la2y} l-6,11 h12 z` : `M${la2x},${la2y} l11,-6 v12 z`;
+  const [la1x, la1y] = map(-3, 0), [la2x, la2y] = map(-42, 0);   // 하중 화살표(2단계 추가 확대)
+  const ahead = vertical ? `M${la2x},${la2y} l-9,17 h18 z` : `M${la2x},${la2y} l17,-9 v18 z`;
   const loadLbl = geom.loadDir === 'H' ? 'Hu' : vertical ? 'Vu' : 'Pf';
   // 전단(S)·인장(T) 인라인 라벨 위치 — 첫 전단열 중앙 / 인장면 중앙
   const sv0 = f.shearYs[0];
@@ -91,9 +91,9 @@ function BsPanel({ c, geom }: { c: BlockCase; geom: BlockShearGeom }) {
         {/* 탈락 블록(폴리곤) — 엇모 경사 s²/4g 삼각부까지 해치 포함 */}
         <polygon points={blockPts} fill={BLOCKF} stroke="none" />
         <polygon points={blockPts} fill={`url(#${pid})`} stroke={BLOCKS} strokeWidth="0.7" strokeDasharray="2 2" />
-        <line x1={la1x} y1={la1y} x2={la2x} y2={la2y} stroke={LOAD} strokeWidth={3} strokeLinecap="round" />
+        <line x1={la1x} y1={la1y} x2={la2x} y2={la2y} stroke={LOAD} strokeWidth={4.5} strokeLinecap="round" />
         <path d={ahead} fill={LOAD} />
-        <text x={vertical ? la2x + 14 : la2x} y={vertical ? la2y + 4 : la2y - 7} fontSize="13" fontWeight={700} fill={LOAD} textAnchor="middle">{loadLbl}</text>
+        <text x={vertical ? la2x + 18 : la2x} y={vertical ? la2y + 5 : la2y - 10} fontSize="17" fontWeight={800} fill={LOAD} textAnchor="middle">{loadLbl}</text>
         {/* 볼트 — 열별 행수·오프셋(3D/DXF stagOf 동일) */}
         {geom.cols.map((cv, ci) => { const { rows, off, pit } = stagOf(cv); return Array.from({ length: rows }, (_, i) => {
           const [bx, by] = map(geom.edge + off + i * pit, cv);

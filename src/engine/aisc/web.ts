@@ -76,7 +76,16 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
       const slip1 = PHI.SL * SLIP.MU * SLIP.DU * SLIP.HF * Tb * Ns;   // 볼트 1개 설계미끄럼강도(이중면)
       const slip = slip1 * nb;                                         // 총 = 1개 강도 × 본수
       checks.push(finalize({ id: 'WB2', region: 'web', group: 'A. 볼트(웨브)', label: '볼트 미끄럼(Class B)', clause: 'J3.8',
-        detail: `φrₙ = 1.0·0.5·1.13·${Tb}·2 = ${slip1.toFixed(1)} kN/EA ×${nb} = ${slip.toFixed(1)} kN`, phiRn: +slip.toFixed(1), demand: kN(Vu), unit: 'kN' }));
+        detail: `φrₙ = φ·μ·Du·hf·Tb·ns = 1.0·0.5·1.13·1.0·${Tb}·2 = ${slip1.toFixed(1)} kN/EA ×${nb} = ${slip.toFixed(1)} kN`, phiRn: +slip.toFixed(1), demand: kN(Vu), unit: 'kN',
+        steps: [
+          S('Slip coefficient μ (Class B)', 'blast-cleaned faying surface', `μ = 0.50`, SLIP.MU, '', 'J3.8'),
+          S('Pretension factor Du', 'mean-to-specified pretension ratio', `Du = 1.13`, SLIP.DU, '', 'J3.8'),
+          S('Filler factor hf', 'no fillers → 1.0', `hf = 1.0`, SLIP.HF, '', 'J3.8'),
+          S('Min. bolt pretension Tb', 'KS design bolt tension', `M${d} ${cond.bolt}`, Tb, 'kN', 'J3.8'),
+          S('Shear planes ns', 'two side plates → double slip surface', `ns = 2`, Ns),
+          S('Per-bolt design slip φrₙ', 'φ·μ·Du·hf·Tb·ns (φ=1.0)', `1.0·${SLIP.MU}·${SLIP.DU}·${SLIP.HF}·${Tb}·${Ns}`, +slip1.toFixed(1), 'kN', 'J3.8'),
+          S('Total φRn = φrₙ·n', 'φrₙ · n', `${slip1.toFixed(1)}·${nb}`, +slip.toFixed(1), 'kN'),
+        ] }));
     } else {
       checks.push({ id: 'WB2', region: 'web', group: 'A. 볼트(웨브)', label: '볼트 미끄럼', clause: 'J3.8', detail: '지압접합 → 해당 없음', note: '지압' });
     }
