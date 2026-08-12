@@ -120,22 +120,22 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
     // 항복 상호작용 (φ=0.9 휨, φv=1.0 전단항복)
     const phiMnY = PHI.F * pFy * Zpl, phiVnY = PHI.SH * 0.6 * pFy * Awpl;
     const yLHS = (Mux / phiMnY) ** 2 + (Vu / phiVnY) ** 2;
-    checks.push(finalize({ id: 'WI1', region: 'web', group: g, label: '항복 상호작용', clause: 'J4.4/G2',
+    checks.push(finalize({ id: 'WI1', region: 'web', group: g, label: '항복 상호작용', clause: 'J4.2(a)/F1',
       detail: `√[(Mux/φMn)²+(Vu/φVn)²] = √[(${kNm(Mux)}/${kNm(phiMnY)})²+(${kN(Vu)}/${kN(phiVnY)})²]`,
-      phiRn: 1.0, demand: +Math.sqrt(yLHS).toFixed(2), unit: 'ratio', note: `e=${e.toFixed(0)}mm`,
+      phiRn: 1.0, demand: +Math.sqrt(yLHS).toFixed(2), unit: 'ratio', note: `e=${e.toFixed(0)}mm · 관용 상호작용식(AISC Manual Pt.9·12)`,
       steps: [
         S('Eccentricity e', 'gap/2 + edge + (n−1)·pitch/2', `bolt group centroid → splice CL`, +e.toFixed(0), 'mm'),
         S('Eccentric moment Mux', 'Vu·e', `${kN(Vu)}·${e.toFixed(0)}`, kNm(Mux), 'kN·m'),
         S('Plastic modulus Zpl (2 plates)', '2·(t·dp²/4)', `2·${tp}·${dp}²/4`, +Zpl.toFixed(0), 'mm³'),
         S('Gross shear area Aw (2 plates)', '2·dp·t', `2·${dp}·${tp}`, +Awpl.toFixed(0), 'mm²'),
         S('Design flexural φMn', 'φ·Fy·Zpl', `0.90·${pFy}·${Zpl.toFixed(0)}`, kNm(phiMnY), 'kN·m'),
-        S('Design shear φVn', 'φv·0.6·Fy·Aw', `1.0·0.6·${pFy}·${Awpl.toFixed(0)}`, kN(phiVnY), 'kN', 'G2.1'),
-        S('Interaction', '√[(Mux/φMn)² + (Vu/φVn)²] ≤ 1', `√[(${kNm(Mux)}/${kNm(phiMnY)})²+(${kN(Vu)}/${kN(phiVnY)})²]`, +Math.sqrt(yLHS).toFixed(2), 'ratio', 'J4.4'),
+        S('Design shear φVn (connecting element)', 'φv·0.6·Fy·Aw (φv=1.0)', `1.0·0.6·${pFy}·${Awpl.toFixed(0)}`, kN(phiVnY), 'kN', 'J4.2(a)'),
+        S('Interaction (Manual convention, not a Spec eq.)', '√[(Mux/φMn)² + (Vu/φVn)²] ≤ 1', `√[(${kNm(Mux)}/${kNm(phiMnY)})²+(${kN(Vu)}/${kN(phiVnY)})²]`, +Math.sqrt(yLHS).toFixed(2), 'ratio', 'Manual Pt.9'),
       ] }));
     // 파단 상호작용 (φ=0.75)
     const phiMnR = PHI.V * pFu * Snet, phiVnR = PHI.V * 0.6 * pFu * Anv;
     const rLHS = (Mux / phiMnR) ** 2 + (Vu / phiVnR) ** 2;
-    checks.push(finalize({ id: 'WI2', region: 'web', group: g, label: '파단 상호작용', clause: 'J4.2/J4.3',
+    checks.push(finalize({ id: 'WI2', region: 'web', group: g, label: '파단 상호작용', clause: 'J4.2(b)',
       detail: `√[(Mux/φMnₙₑₜ)²+(Vu/φVnₙₑₜ)²] = √[(${kNm(Mux)}/${kNm(phiMnR)})²+(${kN(Vu)}/${kN(phiVnR)})²]`,
       phiRn: 1.0, demand: +Math.sqrt(rLHS).toFixed(2), unit: 'ratio',
       steps: [

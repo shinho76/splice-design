@@ -137,8 +137,8 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
     checks.push(finalize({
       id: 'FP4', region: 'outer', group: g, label: '지압·찢김', clause: 'J3.10', detail: br.detail, phiRn: kN(br.total), demand: kN(halfOut), unit: 'kN',
       steps: [
-        S('Edge bolt (tearout/bearing)', 'φ·min(2.4dtFu, 1.2·Lc,edge·t·Fu)', `Lc,edge=${(edge - dh / 2).toFixed(1)}`, kN(br.edge), 'kN', 'J3.10'),
-        S('Interior bolt', 'φ·min(2.4dtFu, 1.2·Lc,pitch·t·Fu)', `Lc,pitch=${(pitch - dh).toFixed(1)}`, kN(br.spaced), 'kN'),
+        S('Edge bolt (tearout/bearing)', 'φ·min(2.4dtFu, 1.2·Lc,edge·t·Fu)', `min(2.4dtFu=${kN(br.brg)}, 1.2·Lc,e·tFu=${kN(br.tearEdge)}); Lc,e=edge−dₕ/2=${edge}−${dh}/2=${br.LcEdge.toFixed(1)}mm`, kN(br.edge), 'kN', 'J3.10'),
+        S('Interior bolt', 'φ·min(2.4dtFu, 1.2·Lc,pitch·t·Fu)', `min(2.4dtFu=${kN(br.brg)}, 1.2·Lc,p·tFu=${kN(br.tearPitch)}); Lc,p=s−dₕ=${pitch}−${dh}=${br.LcPitch.toFixed(1)}mm`, kN(br.spaced), 'kN'),
         S('Total (m edge + m(n−1) interior)', 'nₑ·edge + nᵢ·interior', `${br.nEdge}·${kN(br.edge)} + ${br.nSpaced}·${kN(br.spaced)}`, kN(br.total), 'kN'),
       ],
     }));
@@ -169,7 +169,7 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
       detail: `φFu·Ae, Ae=${Ae.toFixed(0)}`, phiRn: kN(PHI.V * pFu * Ae), demand: kN(halfIn), unit: 'kN',
       steps: [
         S('Gross area (2 plates) Ag', '2·w·t', `2·${iW}·${iT}`, +Ag.toFixed(0), 'mm²'),
-        S('Net area An (deduct holes/plate)', stagF ? '2·(w − nHalf·(dₕ+2) + Σs²/4g)·t' : '2·(w − nHalf·(dₕ+2))·t', stagF ? `2·(${iW} − ${nHalf}·${ndp} + ${nsI.gain.toFixed(1)})·${iT}` : `2·(${iW} − ${nHalf}·${ndp})·${iT}`, +An.toFixed(0), 'mm²', 'B4.3b'),
+        S('Net area An (deduct n holes/plate)', stagF ? '2·(w − n·(dₕ+2mm) + Σs²/4g)·t' : '2·(w − n·(dₕ+2mm))·t', stagF ? `2·(${iW} − ${nHalf}·${ndp} + ${nsI.gain.toFixed(1)})·${iT}` : `2·(${iW} − ${nHalf}·${ndp})·${iT} (n=${nHalf}열, dₕ=${dh}=d+2, +2mm B4.3b → ${ndp})`, +An.toFixed(0), 'mm²', 'B4.3b'),
         S('Effective area Ae', 'min(An, 0.85·Ag)', `min(${An.toFixed(0)}, ${(0.85 * Ag).toFixed(0)})`, +Ae.toFixed(0), 'mm²'),
         S('Design rupture φRn', 'φ·Fu·Ae', `0.75·${pFu}·${Ae.toFixed(0)}`, kN(PHI.V * pFu * Ae), 'kN', 'J4.2'),
       ],
@@ -188,8 +188,8 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
     checks.push(finalize({
       id: 'FI4', region: 'inner', group: g, label: '지압·찢김', clause: 'J3.10', detail: br.detail, phiRn: kN(br.total), demand: kN(halfIn), unit: 'kN',
       steps: [
-        S('Edge bolt', 'φ·min(2.4dtFu, 1.2·Lc,edge·t·Fu)', `Lc,edge=${(edge - dh / 2).toFixed(1)}`, kN(br.edge), 'kN', 'J3.10'),
-        S('Interior bolt', 'φ·min(2.4dtFu, 1.2·Lc,pitch·t·Fu)', `Lc,pitch=${(pitch - dh).toFixed(1)}`, kN(br.spaced), 'kN'),
+        S('Edge bolt', 'φ·min(2.4dtFu, 1.2·Lc,edge·t·Fu)', `min(2.4dtFu=${kN(br.brg)}, 1.2·Lc,e·tFu=${kN(br.tearEdge)}); Lc,e=edge−dₕ/2=${edge}−${dh}/2=${br.LcEdge.toFixed(1)}mm`, kN(br.edge), 'kN', 'J3.10'),
+        S('Interior bolt', 'φ·min(2.4dtFu, 1.2·Lc,pitch·t·Fu)', `min(2.4dtFu=${kN(br.brg)}, 1.2·Lc,p·tFu=${kN(br.tearPitch)}); Lc,p=s−dₕ=${pitch}−${dh}=${br.LcPitch.toFixed(1)}mm`, kN(br.spaced), 'kN'),
         S('Total', 'nₑ·edge + nᵢ·interior', `${br.nEdge}·${kN(br.edge)} + ${br.nSpaced}·${kN(br.spaced)}`, kN(br.total), 'kN'),
       ],
     }));
@@ -227,8 +227,8 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
       id: 'FM1', region: 'member', group: g, label: '부재 지압·찢김', clause: 'J3.10',
       detail: `플랜지 tf=${tf}, ${br.detail}`, phiRn: kN(br.total), demand: kN(Pf), unit: 'kN',
       steps: [
-        S('Edge bolt on flange (t=tf)', 'φ·min(2.4dtFu, 1.2·Lc,edge·tf·Fu)', `tf=${tf}, Lc,edge=${(edge - dh / 2).toFixed(1)}`, kN(br.edge), 'kN', 'J3.10'),
-        S('Interior bolt', 'φ·min(2.4dtFu, 1.2·Lc,pitch·tf·Fu)', `Lc,pitch=${(pitch - dh).toFixed(1)}`, kN(br.spaced), 'kN'),
+        S('Edge bolt on flange (t=tf)', 'φ·min(2.4dtFu, 1.2·Lc,edge·tf·Fu)', `tf=${tf}; min(2.4dtFu=${kN(br.brg)}, 1.2·Lc,e·tfFu=${kN(br.tearEdge)}); Lc,e=${br.LcEdge.toFixed(1)}mm`, kN(br.edge), 'kN', 'J3.10'),
+        S('Interior bolt', 'φ·min(2.4dtFu, 1.2·Lc,pitch·tf·Fu)', `min(2.4dtFu=${kN(br.brg)}, 1.2·Lc,p·tfFu=${kN(br.tearPitch)}); Lc,p=${br.LcPitch.toFixed(1)}mm`, kN(br.spaced), 'kN'),
         S('Total', 'nₑ·edge + nᵢ·interior', `${br.nEdge}·${kN(br.edge)} + ${br.nSpaced}·${kN(br.spaced)}`, kN(br.total), 'kN'),
       ],
     }));

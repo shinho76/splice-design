@@ -65,6 +65,16 @@ export default function App() {
   }, [dark]);
   useEffect(() => { localStorage.setItem('splice_lang', lang); }, [lang]);
   useEffect(() => { persistProject(project); }, [project]);
+  // 인쇄(PDF) 시 브라우저 머리글의 문서제목('고력볼트 표준접합 설계표')을 비운다. 인쇄 후 복원.
+  //  ※ 날짜·URL·페이지번호(바닥글)는 브라우저 인쇄설정('머리글 및 바닥글')에서만 제거 가능.
+  useEffect(() => {
+    let saved = '';
+    const clear = () => { saved = document.title; document.title = ' '; };
+    const restore = () => { if (saved) document.title = saved; };
+    window.addEventListener('beforeprint', clear);
+    window.addEventListener('afterprint', restore);
+    return () => { window.removeEventListener('beforeprint', clear); window.removeEventListener('afterprint', restore); };
+  }, []);
   // 도움말·확대·모달 열림 시 Esc로 닫기
   useEffect(() => {
     if (!showHelp) return;

@@ -59,20 +59,30 @@ export interface BearingResult {
   total: number;   // 편측 전체 설계강도 (N)
   nEdge: number; nSpaced: number;
   detail: string;
+  // ── 항별 값(계산서 표기용, 모두 설계값=φ·항) ──
+  brg: number;         // 지압항 φ·2.4·d·t·Fu (N) — 연단·간격 공통 상한
+  tearEdge: number;    // 찢김항 φ·1.2·Lc,edge·t·Fu (N)
+  tearPitch: number;   // 찢김항 φ·1.2·Lc,pitch·t·Fu (N)
+  LcEdge: number; LcPitch: number; dh: number;
+  govEdge: '지압' | '찢김'; govPitch: '지압' | '찢김';
 }
 export function bearing(
   t: number, Fu: number, d: number, m: number, nrow: number,
   edgeDist: number, pitch: number,
 ): BearingResult {
   const dh = holeDia(d);
-  const upper = 2.4 * d * t * Fu;
   const LcEdge = edgeDist - dh / 2;      // 연단 순거리
   const LcPitch = pitch - dh;            // 간격 순거리
-  const edge = PHI.V * Math.min(upper, 1.2 * Math.max(0, LcEdge) * t * Fu);
-  const spaced = PHI.V * Math.min(upper, 1.2 * Math.max(0, LcPitch) * t * Fu);
+  const brg = PHI.V * 2.4 * d * t * Fu;                                  // 지압 상한(φ·2.4dtFu)
+  const tearEdge = PHI.V * 1.2 * Math.max(0, LcEdge) * t * Fu;           // 찢김(φ·1.2·Lc,e·t·Fu)
+  const tearPitch = PHI.V * 1.2 * Math.max(0, LcPitch) * t * Fu;         // 찢김(φ·1.2·Lc,p·t·Fu)
+  const edge = Math.min(brg, tearEdge);
+  const spaced = Math.min(brg, tearPitch);
   const nEdge = m, nSpaced = m * (nrow - 1);
   return {
     edge, spaced, total: nEdge * edge + nSpaced * spaced, nEdge, nSpaced,
+    brg, tearEdge, tearPitch, LcEdge, LcPitch, dh,
+    govEdge: brg <= tearEdge ? '지압' : '찢김', govPitch: brg <= tearPitch ? '지압' : '찢김',
     detail: `연단 ${(edge / 1e3).toFixed(1)}×${nEdge} + 간격 ${(spaced / 1e3).toFixed(1)}×${nSpaced} kN`,
   };
 }

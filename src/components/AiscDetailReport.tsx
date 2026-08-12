@@ -25,6 +25,9 @@ const SL_KO: Record<string, string> = {
   'Hole-reduction test': '구멍감소 판정', 'Interaction': '상호작용', 'Interior bolt': '내부볼트',
   'Member web (t = tw)': '부재웨브 (t=tw)', 'Min. bolt pretension Tb': '최소 볼트장력 Tb', 'Net WT area (holes in flange)': '순 WT면적 (플랜지 구멍공제)',
   'Net area An (deduct holes/plate)': '순단면적 An (매당 구멍공제)', 'Net area An (deduct m holes)': '순단면적 An (m구멍 공제)',
+  'Net area An (deduct n holes/plate)': '순단면적 An (n열 구멍공제/매)',
+  'Design shear φVn (connecting element)': '설계전단강도 φVn (이음요소 J4.2a)',
+  'Interaction (Manual convention, not a Spec eq.)': '상호작용 (Manual 관용식)',
   'Net elastic modulus Snet': '순 탄성단면계수 Snet', 'Net flange area Afn': '플랜지 순단면적 Afn', 'Net shear area Anv (2 plates)': '순전단면적 Anv(2매)',
   'Net shear width': '순전단폭', 'Nominal moment Mn': '공칭휨강도 Mn', 'Nominal shear stress Fnv': '공칭전단강도 Fnv',
   'Plastic modulus Zpl (2 plates)': '소성단면계수 Zpl(2매)', 'Radius of gyration r': '회전반경 r', 'Shear planes / bolts': '전단면·볼트수',
@@ -49,16 +52,16 @@ const INTRO: Record<string, [string, string]> = {
   FI4: ['내부 이음판의 지압·찢김을 전 볼트에 대해 합산한다.', 'Bearing and tear-out of the inner plates, summed over all bolts.'],
   FI5: ['내부 이음판(2매)의 블록전단 뜯김을 첨부 도해의 모든 파단경로(Path 4·5a·5b)에 대해 검토한다.', 'Block-shear tear-out of the inner plates (two plates), every rupture path (Path 4, 5a, 5b).'],
   FM1: ['볼트는 H형강 플랜지 자체에도 지압한다.', 'The bolts also bear against the H-beam flange itself.'],
-  FM2: ['구멍으로 약화된 인장플랜지의 휨파단(F13.1)을 검토한다.', 'The tension flange, weakened by holes, is checked for flexural rupture (F13.1).'],
-  FM3: ['이음 플랜지를 WT(플랜지+웨브 스템)로 이상화하여 인장항복을 검토한다.', 'The spliced flange is idealised as a WT (flange + web stem) and checked for tension yielding.'],
-  FM4: ['동일 WT를 전단지연을 포함해 인장파단으로 검토한다.', 'The same WT is checked for tension rupture, including the shear-lag effect.'],
+  FM2: ['구멍으로 약화된 인장플랜지의 휨파단(F13.1)을 검토한다. 부재 소요휨 Mu=α·φ·Mn(콤팩트 Mn=Fy·Zx, Zx=단면표 소성단면계수). 구멍감소 판정: Fu·Afn ≥ Yt·Fy·Afg이면 감소없이 Mp 유지, 미달이면 Mn=(Fu·Afn/Afg)·Sx. Yt=Fy/Fu≤0.8?1.0:1.1.', 'The tension flange, weakened by holes, is checked for flexural rupture (F13.1). Member moment Mu=α·φ·Mn (compact Mn=Fy·Zx, Zx = tabulated plastic modulus). Hole-reduction test: if Fu·Afn ≥ Yt·Fy·Afg no reduction (Mp), else Mn=(Fu·Afn/Afg)·Sx. Yt=1.0 if Fy/Fu≤0.8 else 1.1.'],
+  FM3: ['이음 플랜지를 WT(플랜지+웨브 스템, Awt=B·tf+(H/2−tf)·tw)로 이상화하여 인장항복을 검토한다.', 'The spliced flange is idealised as a WT (flange + web stem, Awt=B·tf+(H/2−tf)·tw) and checked for tension yielding.'],
+  FM4: ['동일 WT를 전단지연(U)을 포함해 인장파단으로 검토한다. U는 Table D3.1 Case 7(플랜지접합 W형강, 열당 볼트 3개↑): bf≥⅔d → 0.90, 미만 → 0.85.', 'The same WT is checked for tension rupture with shear lag U. Per Table D3.1 Case 7 (W-shape connected by flanges, ≥3 bolts/line): U=0.90 if bf≥⅔d, else 0.85.'],
   FM5: ['볼트군 주위 H형강(거더) 플랜지의 블록전단 뜯김을 파단경로(Path 6·7, 8·9)에 대해 검토한다.', 'Block-shear tear-out of the H-beam (girder) flange around the bolt group (Path 6·7, 8·9).'],
-  WB1: ['웨브 볼트는 전단 Vu 전체를 부담한다. 볼트군은 동심(C=n)으로 보고 편심모멘트는 이음판이 부담한다.', 'The web bolts carry the full shear Vu; the group is taken as concentric — the plates absorb the eccentric moment.'],
+  WB1: ['웨브 볼트는 전단 Vu 전체를 부담한다. ns=전단면수(양면 이음판 → 이중전단 ns=2), n=볼트수(춤×축). 볼트군은 동심(C=n)으로 보고 편심모멘트는 이음판이 부담한다.', 'The web bolts carry the full shear Vu. ns = shear planes (two side plates → double shear, ns=2), n = bolt count (depth×long.). The group is taken as concentric; the plates absorb the eccentric moment.'],
   WB2: ['마찰 웨브에서 볼트는 Vu 하에서 미끄러지지 않아야 한다.', 'For a slip-critical web the bolts must not slip under Vu.'],
   WR1: ['웨브 볼트는 부재웨브와 이음판 2매에 지압하며, 약한 쪽이 지배한다.', 'The web bolts bear on the beam web and on the two splice plates; the weaker of the two governs.'],
   WP1: ['웨브 이음판(Web Splice Plate)이 수직전단 V로 뜯길 수 있어 Path 1을 검토한다. 수평력 H=0이므로 H블록은 제외.', 'The web splice plate could tear out under the vertical shear V (Path 1); horizontal H=0, so H-blocks are excluded.'],
-  WI1: ['웨브 이음판은 전단 Vu와 편심모멘트 Mux를 함께 받으며, 항복을 상호작용으로 검토한다.', 'The web plates carry shear Vu together with the eccentric moment Mux; yielding is checked by an interaction.'],
-  WI2: ['동일 전단+휨 조합을 웨브 이음판 순단면 파단에 대해 검토한다.', 'The same shear + moment combination is checked against rupture of the net web-plate section.'],
+  WI1: ['웨브 이음판은 전단 Vu와 편심모멘트 Mux를 함께 받으며, 항복을 상호작용으로 검토한다. 이용률 √[(Mux/φMn)²+(Vu/φVn)²]≤1 — 두 작용의 조합비로, 1.0이 한계(원점~단위원 안이면 안전). 이음판(connecting element) 전단항복 φv=1.0은 J4.2(a). ※ AISC 단일 규정식이 아닌 Manual(Pt.9·12) 관용 조합식.', 'The web plates carry shear Vu with the eccentric moment Mux; yielding is checked by an interaction. Utilisation √[(Mux/φMn)²+(Vu/φVn)²]≤1 combines the two actions (1.0 = limit). Shear yield of the connecting element uses φv=1.0 per J4.2(a). Note: a Manual (Pt.9·12) convention, not a single Spec equation.'],
+  WI2: ['동일 전단+휨 조합을 웨브 이음판 순단면 파단으로 검토한다(φ=0.75, J4.2(b)). 이용률의 의미는 WI1과 동일.', 'The same shear+moment combination is checked against net-section rupture (φ=0.75, J4.2(b)); utilisation meaning as in WI1.'],
   WM1: ['부재 웨브 자체의 전단항복을 검토한다.', 'The beam web itself is checked for shear yielding.'],
   WM2: ['거더 웨브(Girder Web)의 수직전단 V에 대한 블록전단 뜯김을 Path 4·5(좌·우 거더)로 검토한다.', 'Block-shear tear-out of the girder web under vertical shear V (Path 4·5, left/right girder).'],
 };
@@ -220,7 +223,7 @@ export default function AiscDetailReport({ result, cond, onClose }: { result: De
         ))}
 
         <p className="note">
-          {L('AISC 360-16(15판) LRFD. φ = 0.90(항복)·0.75(파단/볼트전단/지압/블록전단)·0.90(압축). 순단면은 표준구멍 d+2mm에 손상여유 2mm를 더해 공제(B4.3b). 블록전단은 요소별 케이스마다 ',
+          {L('AISC 360-16(15판) LRFD. φ = 0.90(항복)·0.75(파단/볼트전단/지압/블록전단)·0.90(압축)·1.00(이음판 전단항복 J4.2(a)). 순단면 공제폭 = 표준구멍 dₕ(=d+2mm, Table J3.3; M20→22) + 손상여유 2mm(B4.3b) = d+4mm. 블록전단은 요소별 케이스마다 ',
             'Prepared to AISC 360-16 (15th ed.), LRFD. φ = 0.90 (yielding), 0.75 (rupture / bolt shear / bearing / block shear), 0.90 (compression). Net areas use the effective-hole allowance d + 2 mm for standard holes plus 2 mm damage (B4.3b). Block shear evaluates ')}
           φR<sub>n</sub> = 0.75·[min(0.6F<sub>u</sub>A<sub>nv</sub>, 0.6F<sub>y</sub>A<sub>gv</sub>) + U<sub>bs</sub>F<sub>u</sub>A<sub>nt</sub>]{L('를 산정한다.', ' for every element case.')}
         </p>
