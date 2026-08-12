@@ -215,8 +215,11 @@ export default function AiscDetailReport({ result, cond, onClose }: { result: De
                 {INTRO[c.id] && <p className="narr-intro">{L(INTRO[c.id][0], INTRO[c.id][1])}</p>}
                 {c.steps && c.steps.length > 0 && <Steps steps={c.steps} lang={lang} />}
                 {c.cases && c.cases.length > 0 && <>
-                  <p className="narr-p narr-bs-note">{L('양측 파단선 U블록(Path 2a·2b·3, 5a·5b, 6·7·8·9, 웨브 V)은 요소 전체 소요력(분담 1.0)과, 단일 파단선 L블록(Path 1·4)은 그 열이 분담하는 하중과 비교한다. DCR이 가장 큰 Path가 지배한다.',
-                    'Two-sided U-blocks (Path 2a/2b/3, 5a/5b, 6·7/8·9, web V) are compared with the full element force (share 1.0); single-line L-blocks (Path 1/4) with the share carried by that gauge line. The path with the highest DCR governs.')}</p>
+                  <p className="narr-p narr-bs-note">{cond.bsShare === 'full'
+                    ? L('[전체력] 모든 Path를 요소 전체 소요력(분담 1.0)과 비교한다(AISIsplice 방식·보수적). 단일 파단선 L블록도 전체력으로 검토되어 과다보수일 수 있다. DCR이 가장 큰 Path가 지배한다.',
+                        '[Full] Every path is compared with the full element force (share 1.0, AISIsplice-style, conservative); single-line L-blocks are also checked at full force (may be over-conservative). The path with the highest DCR governs.')
+                    : L('[균형] 양측 파단선 U블록(Path 2a·2b·3, 5a·5b, 6·7·8·9, 웨브 V)은 요소 전체 소요력(분담 1.0)과, 단일 파단선 L블록(Path 1·4)은 그 열이 분담하는 하중과 비교한다. DCR이 가장 큰 Path가 지배한다.',
+                        '[Balanced] Two-sided U-blocks (Path 2a/2b/3, 5a/5b, 6·7/8·9, web V) are compared with the full element force (share 1.0); single-line L-blocks (Path 1/4) with the share carried by that gauge line. The path with the highest DCR governs.')}</p>
                   <BlockCaseTable cases={c.cases} lang={lang} />
                 </>}
                 <Conclusion c={c} lang={lang} />

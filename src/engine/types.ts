@@ -46,6 +46,7 @@ export interface DesignCondition {
   profile?: 'H' | 'W';         // 형강 카탈로그. H=편람 73종(기본) / W=AISC v16.0 289종
   sectionSet?: 'all' | 'preferred';   // 단면 범위. all=전체(기본) / preferred=자주 쓰는 단면만
   plateShare?: '5050' | 'area';   // 외/내부 이음판 소요분담. 50:50(각 파이잉면 Pf/2, 기본·정역학) / area(판 총단면적 비례)
+  bsShare?: 'balanced' | 'full';  // 블록전단 분담. balanced(기본: U블록 1.0·단일 L블록 tributary) / full(전 Path 1.0)
 }
 
 /** 이음판 치수 (두께 × 폭[or 춤] × 길이[or 너비]) */

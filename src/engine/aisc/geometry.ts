@@ -119,6 +119,7 @@ export interface BlockShearParams {
   staggered?: boolean;   // 엇모배치 — 내측열 off=45·전열 90피치(3D/DXF 정합), U블록 인장면 s²/4g
   gauge?: number;        // 인접열 게이지 g(mm)
   region?: BsRegion;     // 요소 컨텍스트 — Path 명명(AISIsplice Appendix C)용
+  fullShare?: boolean;   // 분담식: true=전 Path 요소 전체력(1.0), false=단일 L블록만 tributary(1/m)
 }
 
 // 엇모 3D/DXF 정합 상수(connParts stagOf): 내측열 응력방향 어긋남 45, 엇모 피치 90.
@@ -198,8 +199,8 @@ export function blockShear(p: BlockShearParams): { cases: BlockCase[]; gov?: Blo
     else mk('webV', UBS.UNIFORM, outerG.Agv, outerG.Anv, antEdge(halfWidth - xOut, 1), 1.0);
     return { cases: cs };
   }
-  // 플랜지 요소 — Path 1 / 2a / 2b / 3
-  mk('L1', UBS.NONUNIFORM, outerG.Agv, outerG.Anv, antEdge(halfWidth - xOut, 1), 1 / m);            // Path 1 (L, 외측열 분담)
+  // 플랜지 요소 — Path 1 / 2a / 2b / 3.  L1 분담: 균형=1/m(외측열 tributary), 전체력=1.0.
+  mk('L1', UBS.NONUNIFORM, outerG.Agv, outerG.Anv, antEdge(halfWidth - xOut, 1), p.fullShare ? 1.0 : 1 / m);
   mk('U2a', UBS.UNIFORM, 2 * outerG.Agv, 2 * outerG.Anv, antAcross(2 * xOut, m - 1), 1.0);          // Path 2a (U 내부인장)
   mk('U2b', UBS.UNIFORM, 2 * innerG.Agv, 2 * innerG.Anv, 2 * antEdge(halfWidth - xIn, hasInner ? 2 : 1), 1.0); // Path 2b (U 외측인장 ×2)
   if (hasInner) {                                                                                   // Path 3 (밴드분할 U, m≥4)
