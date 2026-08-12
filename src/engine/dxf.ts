@@ -8,6 +8,9 @@ import { standardLength, gripFlange, gripWeb } from './bolt_spec.ts';
 import { Fy } from './materials.ts';
 import { nominalOf } from './hbeam_catalog.ts';
 
+/** 강종 도면 표기 라벨 — 콤보 value 'A572' → 'A572 Gr. 50'(도면 표기). 그 외 원문 유지. */
+const steelLabel = (s: string): string => (s === 'A572' ? 'A572 Gr. 50' : s);
+
 /** 시리즈 키 — W형강: 호칭 접두(W12 등) / H형강: 공칭치수(400×300 등). 전체도면 그룹핑용. */
 function seriesKey(r: DesignResult): string {
   const sec = sectionByName(r.section);
@@ -422,14 +425,14 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   const B = parseName(r.section).B;
   const secLbl = `H-${H}x${B}x${tw}x${tf}`;
   // ── 참조도면 [나의아저씨] 규격표 문자열 : "{n}-M{d}(등급) / {L}x{w}x{t}t(재질, nEA)" (값은 현 앱 계산) ──
-  const mat = cond.plateSteel ?? cond.steel;
+  const mat = steelLabel(cond.plateSteel ?? cond.steel);
   const plRef = (pl: Plate | undefined) => pl ? `${pl.L}x${pl.w}x${pl.t}t` : '';
   // 도면 상단 단면 지정 — W형강: "W8X10(H-…, 강종)" / H형강: "H-… (강종)"
   const secObj = sectionByName(r.section);
   const wlab = secObj?.label ? secObj.label.toUpperCase() : '';
   const desigTop = wlab
-    ? `${wlab}(H-${H}X${B}X${tw}X${tf}, ${cond.steel})`
-    : `H-${H}X${B}X${tw}X${tf} (${cond.steel})`;
+    ? `${wlab}(H-${H}X${B}X${tw}X${tf}, ${steelLabel(cond.steel)})`
+    : `H-${H}X${B}X${tw}X${tf} (${steelLabel(cond.steel)})`;
   const webS = r.web.webPlate ? `${wCount}-M${dia}(${cond.bolt}) / ${plRef(r.web.webPlate)}(${mat}, 2EA)` : '-';
   const flgExtS = r.flange.outerPlate ? `${flCount}-M${dia}(${cond.bolt}) / ${plRef(r.flange.outerPlate)}(${mat}, 2EA)` : '-';
   const flgIntS = r.flange.innerPlate ? `${plRef(r.flange.innerPlate)}(${mat}, 4EA)` : '-';
@@ -626,7 +629,7 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   // 사무소 포맷 주기(romans 폰트 호환 영문)
   if (office) {
     const nx = F.frameL + 10, ny = F.frameTop - 30;
-    ['STEEL : ' + cond.steel + ' (U.N.O)', 'BOLT : ' + cond.bolt + ' H.T.B', 'SCALE : 1/20'].forEach((s, i) =>
+    ['STEEL : ' + steelLabel(cond.steel) + ' (U.N.O)', 'BOLT : ' + cond.bolt + ' H.T.B', 'SCALE : 1/20'].forEach((s, i) =>
       pff.text(nx, ny - i * TH * 1.7, TH, s, 'DIM', { align: 'l' }));
   }
   // 라벨 열폭·문자높이를 프레임 폭에 적응(좁은 도곽에서도 겹치지 않도록)
@@ -640,7 +643,7 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   for (let i = 1; i < 4; i++) pff.line(bl2, rw[i], br2, rw[i], 'MINI_BOX');
   [bl2 + Lw, midX, midX + Lw].forEach(x => pff.line(x, rw[4], x, rw[0], 'MINI_BOX'));
   const tx = (x: number, ri: number, s: string) => pff.text(x + 8, (rw[ri] + rw[ri + 1]) / 2 - tbe / 2, tbe, s, 'DIM');
-  tx(bl2, 0, 'Title'); tx(bl2 + Lw, 0, secLbl); tx(midX, 0, 'Steel'); tx(midX + Lw, 0, cond.steel);
+  tx(bl2, 0, 'Title'); tx(bl2 + Lw, 0, secLbl); tx(midX, 0, 'Steel'); tx(midX + Lw, 0, steelLabel(cond.steel));
   tx(bl2, 1, 'Web PL.'); tx(bl2 + Lw, 1, gplT(r.web.webPlate, 2)); tx(midX, 1, 'O-Flg PL.'); tx(midX + Lw, 1, gplT(r.flange.outerPlate, 2));
   tx(bl2, 2, 'Web Bolt'); tx(bl2 + Lw, 2, btbT(wCount)); tx(midX, 2, 'I-Flg PL.'); tx(midX + Lw, 2, inner ? gplT(inner, 4) : '-');
   tx(bl2, 3, 'Joint'); tx(bl2 + Lw, 3, jointLbl); tx(midX, 3, 'Flg Bolt'); tx(midX + Lw, 3, btbT(flCount));
@@ -863,8 +866,8 @@ export function toDXFSheet(rows: DesignResult[], cond: DesignCondition): string 
   const sheetW = COLS * cellW, sheetTop = -GAP / 2 + 40, sheetBot = -nRows * cellH - GAP / 2 + (cellH - fh) / 2 - 60;
   const fy = Fy(cond.steel, 20);
   const notes = [
-    '*. STEEL : ' + cond.steel + '  BOLT : ' + cond.bolt + ' H.T.B  SCALE : 1/20',
-    '*. 철골의 강도 (' + cond.steel + ')   Fy = ' + fy + ' N/mm^2',
+    '*. STEEL : ' + steelLabel(cond.steel) + '  BOLT : ' + cond.bolt + ' H.T.B  SCALE : 1/20',
+    '*. 철골의 강도 (' + steelLabel(cond.steel) + ')   Fy = ' + fy + ' N/mm^2',
   ];
   notes.forEach((s, i) => p.text(GAP / 2, sheetTop + 220 - i * TH * 1.8, TH * 1.2, s, i === 0 ? 'MAIN' : 'NOTE', { align: 'l' }));
   p.rect(GAP / 4, sheetBot, sheetW - GAP / 2, sheetTop + 320 - sheetBot, 'MINI_BOX');
