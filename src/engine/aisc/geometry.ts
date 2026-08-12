@@ -113,15 +113,21 @@ export interface BlockShearParams {
 
 // 엇모 3D/DXF 정합 상수(connParts stagOf): 내측열 응력방향 어긋남 45, 엇모 피치 90.
 export const BS_STAG_OFF = 45, BS_STAG_PITCH = 90;
-// ── AISIsplice Appendix C 파단경로(Path) 명명 — 요소×내부 케이스키 → Path 라벨 ──
-//   내부 케이스키: C 전열U · A 외연L · B 중앙/밴드L · D 내측페어U · single 단일열 양연U
+// ── AISIsplice Appendix C 파단경로(Path) 명명 — 요소×기하키 → Path 라벨 ──
+//   기하키(BlockCase.key):
+//     L1  외연 L블록  : 최외곽 게이지선 1전단면 + 그 선→연단 인장 (Ubs 0.5)
+//     U2a 전열 U블록  : 최외곽 2게이지선 전단(2면) + 두 선 사이 전폭 인장 (Ubs 1.0)
+//     U2b 외측 U블록  : 내측(m=2면 외측과 동일) 2게이지선 전단 + 각 선→외측 연단 인장 (Ubs 1.0)
+//     B3  밴드분할 U  : m≥4, 상·하 2밴드(각 [xIn,xOut]) U블록 ×2 (Ubs 1.0)
+//     webV 웨브 V블록 : 수직전단(볼트열 방향) + 최하단 수평 인장 (Ubs 0.5)
 //   (엇모는 Path를 바꾸지 않고 인장 순단면만 s²/4g 보정 — §계획서 §3)
+//   빈 문자열('') 매핑은 그 요소에서 해당 Path 미검토(첨부 도해에 없음).
 const PATH_OF: Record<BsRegion, Record<string, string>> = {
-  'outer':         { C: 'Path 2a', A: 'Path 1', B: 'Path 2b', D: 'Path 3',   single: 'Path 2a' },
-  'inner':         { C: 'Path 5a', A: 'Path 4', B: 'Path 5b', D: 'Path 5b',  single: 'Path 4'  },
-  'member-flange': { C: 'Path 6·7', A: 'Path 6·7', B: 'Path 8·9', D: 'Path 8·9', single: 'Path 6·7' },
-  'web-plate':     { C: 'Path 1(V)', A: 'Path 1(V)', B: 'Path 1(V)', D: 'Path 1(V)', single: 'Path 1(V)' },
-  'member-web':    { C: 'Path(V)', A: 'Path(V)', B: 'Path(V)', D: 'Path(V)', single: 'Path(V)' },
+  'outer':         { L1: 'Path 1', U2a: 'Path 2a', U2b: 'Path 2b', B3: 'Path 3' },
+  'inner':         { L1: 'Path 4', U2a: 'Path 5a', U2b: 'Path 5b', B3: '' },
+  'member-flange': { L1: '', U2a: 'Path 6·7', U2b: '', B3: 'Path 8·9' },
+  'web-plate':     { webV: 'Path 1' },
+  'member-web':    { webV: 'Path 4·5' },
 };
 const pathOf = (region: BsRegion | undefined, key: string): string => (PATH_OF[region ?? 'outer']?.[key]) ?? '';
 
@@ -137,46 +143,58 @@ export function bsColGeom(x: number, p: BlockShearParams) {
 }
 
 /**
- * 요소별 블록전단 후보 케이스 열거.
- *   Case C  : 전열 U블록 — 최외곽 2전단면 + 전열간 인장 (Ubs=1.0, 전체볼트 분리 frac=1)
- *   Case A  : 외연 L블록 — 1전단면 + 최외곽열→판단 인장 (Ubs=0.5, 1열 분리 frac=1/m)
- *   Case B  : 중앙 L블록 — 1전단면 + 최내곽열→CL 인장 (Ubs=0.5, 1열 frac=1/m)
- *   Case D  : 내측 페어 U블록 — 내측 2전단면 + 내측쌍 인장 (Ubs=1.0, 2열 frac=2/m, m≥4)
- * 각 케이스는 분리 볼트수에 비례하는 하중분담 frac 을 가진다(부분블록은 tributary 하중과 비교).
- * 단일열(cols.length=1) 요소는 C(양연 U블록)만 산정.
+ * 요소별 블록전단 후보 Path 열거 (AISIsplice Appendix C).
+ *   플랜지(outer/inner/member-flange): 축력 인장 — 전단면 ∥ 하중, 인장면 ⊥ 하중.
+ *     L1  외연 L블록  — 최외곽선 1전단 + 그 선→연단 인장           (Ubs 0.5)
+ *     U2a 전열 U블록  — 최외곽 2전단 + 두 선 사이 전폭 인장         (Ubs 1.0)
+ *     U2b 외측 U블록  — 내측(m=2면 외측=내측) 2전단 + 각 선→외측연단 인장 (Ubs 1.0)
+ *     B3  밴드분할 U  — m≥4, 상·하 2밴드 각 [xIn,xOut] U ×2         (Ubs 1.0)
+ *   웨브(web-plate/member-web): 수직전단 V — 전단면 = 볼트열(수직), 인장면 = 최하단행(수평).
+ *     webV  cols≥2 → U(2전단+하단인장) · cols=1 → 전체볼트군 (Ubs 1.0, frac 1.0)
+ *   분담(frac): U블록(양측 파단선)=1.0(요소 전체 소요력), 단일 파단선 L블록(Path 1·4)=그 열 tributary(1/m).
+ *   미검토 Path(요소 도해에 없음)는 PATH_OF에서 ''로 매핑되어 자동 제외.
  */
 export function blockShear(p: BlockShearParams): { cases: BlockCase[]; gov?: BlockCase } {
-  const { t, Fy, Fu, d, halfWidth, cols } = p;
+  const { t, Fy, Fu, d, halfWidth, cols, region } = p;
   const dh = holeDia(d);
+  const web = region === 'web-plate' || region === 'member-web';
   // 열별 전단면(3D/DXF stagOf 정합): 외측열 nHi행·off0, 내측열 nLo행·off45.
-  const g1 = (x: number) => { const g = bsColGeom(x, p); const nSh = g.rows - 0.5; return { Agv: g.Lv * t, Anv: Math.max(0, g.Lv - nSh * dh) * t }; };
-  const xOut = Math.max(...cols.map(Math.abs));
-  const xIn = Math.min(...cols.map(Math.abs));
-  const outerG = g1(xOut), innerG = g1(xIn);
+  const gLine = (x: number) => { const g = bsColGeom(x, p); const nSh = g.rows - 0.5; return { Agv: g.Lv * t, Anv: Math.max(0, g.Lv - nSh * dh) * t }; };
+  const absC = cols.map(Math.abs);
+  const xOut = Math.max(...absC);
+  const posAbs = absC.filter(v => v > 0.1);
+  const xIn = posAbs.length ? Math.min(...posAbs) : xOut;
+  const hasInner = xOut - xIn > 0.5;                                 // 실질 내측열 존재(=m≥4)
+  const outerG = gLine(xOut), innerG = gLine(xIn);
   // 엇모 순단면 보정(B4.3b): U블록 대각 인장면은 gap당 s²/4g 회복(s=45=내측 어긋남).
   const gg = p.gauge ?? 0;
   const stagAdd = (p.staggered && gg > 0) ? (BS_STAG_OFF * BS_STAG_OFF) / (4 * gg) : 0;
-  const antLine = (w: number) => Math.max(0, w - 0.5 * dh) * t;                       // 단일 인장선(L블록)
-  const antSpan = (w: number, nGap: number) => Math.max(0, w - nGap * dh + nGap * stagAdd) * t; // 열간 인장(U블록)
+  const antAcross = (w: number, nGap: number) => Math.max(0, w - nGap * dh + nGap * stagAdd) * t;  // 열간 전폭 인장(U)
+  const antEdge = (w: number, nCross: number) => Math.max(0, w - nCross * 0.5 * dh) * t;           // 연단측 인장(nCross 게이지선 반홀)
 
   const m = cols.length;
   const cs: BlockCase[] = [];
-  // caseKey → Path(요소별, PATH_OF). label은 블록 유형 서술(내부/영문화용) 유지.
-  const mk = (key: string, label: string, Ubs: number, Agv: number, Anv: number, Ant: number, frac: number): BlockCase =>
-    ({ label, path: pathOf(p.region, key), Ubs, Agv, Anv, Ant, frac, ...bsCapacity(Agv, Anv, Ant, Fu, Fy, Ubs) });
+  // key → Path(요소별, PATH_OF). path=''(미검토)면 생략.
+  // 분담(frac): U블록(양측 파단선)=1.0(전체 소요력), 단일 파단선 L블록=그 열 tributary(1/m).
+  const mk = (key: string, Ubs: number, Agv: number, Anv: number, Ant: number, frac: number): void => {
+    const path = pathOf(region, key);
+    if (!path) return;
+    cs.push({ key, path, Ubs, Agv, Anv, Ant, frac, ...bsCapacity(Agv, Anv, Ant, Fu, Fy, Ubs) });
+  };
 
-  if (m >= 2) {
-    // C: 전열 U블록 (외측 2전단선)  → 외첨판 Path 2a
-    cs.push(mk('C', 'C(전열 U블록)', UBS.UNIFORM, 2 * outerG.Agv, 2 * outerG.Anv, antSpan(2 * xOut, m - 1), 1.0));
-    // A: 외연 L블록 (외측 1열)  → Path 1
-    cs.push(mk('A', 'A(외연 L블록)', UBS.NONUNIFORM, outerG.Agv, outerG.Anv, antLine(halfWidth - xOut), 1 / m));
-    // B: 중앙/밴드 L블록 (내측 1열)  → Path 2b
-    if (xIn > 0.1) cs.push(mk('B', 'B(중앙 L블록)', UBS.NONUNIFORM, innerG.Agv, innerG.Anv, antLine(xIn), 1 / m));
-    // D: 내측 페어 U블록 (내측 2전단선, m≥4=2열)  → Path 3
-    if (m >= 4 && xIn > 0.1) cs.push(mk('D', 'D(내측 페어)', UBS.UNIFORM, 2 * innerG.Agv, 2 * innerG.Anv, antSpan(2 * xIn, 1), 2 / m));
-  } else {
-    // 단일열(1열): 양연 U블록  → Path 2a
-    cs.push(mk('single', 'C(양연 U블록)', UBS.UNIFORM, 2 * outerG.Agv, 2 * outerG.Anv, antSpan(2 * xOut, 0), 1.0));
+  if (web) {
+    // 웨브 V 블록(수직 전단) — 대칭 양면 이음판·동심 볼트군 → 인장 균등(Ubs 1.0). 블록=전체 볼트군 → frac 1.0.
+    if (cols.length >= 2) mk('webV', UBS.UNIFORM, 2 * outerG.Agv, 2 * outerG.Anv, antAcross(2 * xOut, cols.length - 1), 1.0);
+    else mk('webV', UBS.UNIFORM, outerG.Agv, outerG.Anv, antEdge(halfWidth - xOut, 1), 1.0);
+    return { cases: cs };
+  }
+  // 플랜지 요소 — Path 1 / 2a / 2b / 3
+  mk('L1', UBS.NONUNIFORM, outerG.Agv, outerG.Anv, antEdge(halfWidth - xOut, 1), 1 / m);            // Path 1 (L, 외측열 분담)
+  mk('U2a', UBS.UNIFORM, 2 * outerG.Agv, 2 * outerG.Anv, antAcross(2 * xOut, m - 1), 1.0);          // Path 2a (U 내부인장)
+  mk('U2b', UBS.UNIFORM, 2 * innerG.Agv, 2 * innerG.Anv, 2 * antEdge(halfWidth - xIn, hasInner ? 2 : 1), 1.0); // Path 2b (U 외측인장 ×2)
+  if (hasInner) {                                                                                   // Path 3 (밴드분할 U, m≥4)
+    const bandAgv = outerG.Agv + innerG.Agv, bandAnv = outerG.Anv + innerG.Anv;                     // 밴드 2전단선(xIn,xOut)
+    mk('B3', UBS.UNIFORM, 2 * bandAgv, 2 * bandAnv, 2 * antAcross(xOut - xIn, 1), 1.0);
   }
   return { cases: cs };
 }

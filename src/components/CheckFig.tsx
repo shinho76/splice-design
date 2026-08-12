@@ -1,35 +1,38 @@
 // 상세계산서 검토별 파단선/검토선 도해.
-//   블록전단: 실제 볼트배치(열·피치·연단·폭)로 Case A/B/C/D 파단선을 실측 작도 —
-//     전단면(빨강 실선, 하중방향)·인장면(파랑 점선, 직각)·탈락 블록(앰버 해치), 지배 케이스 강조.
-//     참조: Thornton Tomasetti Flange Plate&Bar(15th) Case A~D / AISC J4.3 U자형·분할 파단.
+//   블록전단: 실제 볼트배치(열·피치·연단·폭)로 AISIsplice Appendix C Path 파단선을 실측 작도 —
+//     전단면(빨강 실선, 하중방향)·인장면(파랑 점선, 직각)·탈락 블록(앰버 해치), 지배 Path 강조.
+//     Path 1 외연L · 2a 전열U(내부인장) · 2b 외측U(연단인장) · 3 밴드분할U · webV 웨브 수직전단.
 //   기타 한계상태: 조항(clause)별 검토 글리프.
 import type { ReactNode } from 'react';
 import type { AiscCheck, BlockCase, BlockShearGeom } from '../engine/aisc/types.ts';
 import type { Lang } from '../i18n.ts';
-import { caseLabel } from './aiscI18n.ts';
 
 const SHEAR = '#d1495b', TENSION = '#2c6fbb', BLOCKF = 'rgba(245,184,71,.18)', BLOCKS = '#e0a92e',
   HOLE = '#8b93a0', PLATE = '#9aa1ab', LOAD = '#12a794', INK = '#333';
 
 let HID = 0;   // 해치 pattern 고유 id
 
-// 케이스 문자 → 파단 기하(전단열 y[], 인장구간 [lo,hi]). cols·halfWidth(mm) 기준.
-function fracture(letter: string, cols: number[], halfWidth: number): { shearYs: number[]; tenLo: number; tenHi: number } {
-  const maxC = Math.max(...cols.map(v => Math.abs(v)));
-  const innerAbs = cols.map(v => Math.abs(v)).filter(v => v > 0.1);
-  const minC = innerAbs.length ? Math.min(...innerAbs) : maxC;
-  switch (letter) {
-    case 'A': return { shearYs: [maxC], tenLo: maxC, tenHi: halfWidth };        // 외연 L: 1전단 + 최외곽열→판단 인장
-    case 'B': return { shearYs: [minC], tenLo: 0, tenHi: minC };                // 중앙 L: 1전단 + 최내곽열→CL 인장
-    case 'D': return { shearYs: [-minC, minC], tenLo: -minC, tenHi: minC };     // 내측 페어 U: 2전단 + 내측쌍 인장
-    default:  return { shearYs: [-maxC, maxC], tenLo: -maxC, tenHi: maxC };     // C 전열 U: 2전단 + 전폭 인장
+// 기하키(BlockCase.key) → 파단 기하(전단열 y[], 인장구간 [lo,hi]). cols·halfWidth(mm) 기준.
+function fracture(key: string, cols: number[], halfWidth: number): { shearYs: number[]; tenLo: number; tenHi: number } {
+  const absC = cols.map(v => Math.abs(v));
+  const xOut = Math.max(...absC);
+  const posAbs = absC.filter(v => v > 0.1);
+  const xIn = posAbs.length ? Math.min(...posAbs) : xOut;
+  switch (key) {
+    case 'U2a': return { shearYs: [-xOut, xOut], tenLo: -xOut, tenHi: xOut };                // 전열 U: 2전단 + 전폭 인장
+    case 'U2b': return { shearYs: xIn > 0.1 ? [-xIn, xIn] : [-xOut, xOut], tenLo: -halfWidth, tenHi: halfWidth }; // 외측 U: 2전단 + 연단 인장
+    case 'B3':  return { shearYs: [-xOut, -xIn, xIn, xOut], tenLo: -xOut, tenHi: xOut };      // 밴드분할 U: 4전단
+    case 'webV': return cols.length >= 2
+      ? { shearYs: [-xOut, xOut], tenLo: -xOut, tenHi: xOut }                                 // 웨브 U(수직전단)
+      : { shearYs: [xOut], tenLo: xOut, tenHi: halfWidth };                                   // 웨브 L(단일열)
+    default:    return { shearYs: [xOut], tenLo: xOut, tenHi: halfWidth };                    // L1 외연 L: 1전단 + 연단 인장
   }
 }
 
-function BsPanel({ c, geom, lang }: { c: BlockCase; geom: BlockShearGeom; lang: Lang }) {
+function BsPanel({ c, geom }: { c: BlockCase; geom: BlockShearGeom }) {
   const vertical = !!geom.vertical, stag = !!geom.staggered;   // 웨브=수직 전단, 엇모=지그재그
   const nHi = geom.nHi ?? geom.nrow, nLo = geom.nLo ?? geom.nrow;
-  const W = 176, H = vertical ? 150 : 118, pad = 12, aw = 16;  // aw=하중화살표 여백
+  const W = 200, H = vertical ? 168 : 130, pad = 12, aw = 32;  // aw=하중화살표 여백(확대)
   const maxAbs = Math.max(...geom.cols.map(v => Math.abs(v)));
   // 3D/DXF connParts stagOf 정합: 내측열 off=45·nLo행, 외측열 off=0·nHi행, 엇모 피치 90.
   const stagOf = (cv: number) => {
@@ -44,8 +47,8 @@ function BsPanel({ c, geom, lang }: { c: BlockCase; geom: BlockShearGeom; lang: 
   const sc = Math.min(((vertical ? H : W) - 2 * pad - aw) / lenTot, ((vertical ? W : H) - 2 * pad) / widTot);
   const u0 = pad + aw, vc = (vertical ? W : H) / 2;
   const map = (u: number, v: number): [number, number] => vertical ? [vc + v * sc, u0 + u * sc] : [u0 + u * sc, vc - v * sc];
-  const letter = (c.label[0] || 'C').toUpperCase();
-  const f = fracture(letter, geom.cols, geom.halfWidth);
+  const key = c.key || 'L1';
+  const f = fracture(key, geom.cols, geom.halfWidth);
   const br = Math.max(1.3, geom.dh / 2 * sc);
   const pid = 'bsh' + (HID++);
   const onShear = (v: number) => f.shearYs.some(s => Math.abs(s - v) < 0.1);
@@ -66,10 +69,9 @@ function BsPanel({ c, geom, lang }: { c: BlockCase; geom: BlockShearGeom; lang: 
     return { x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1) };
   };
   const plate = rct(0, -geom.halfWidth, lenTot, geom.halfWidth);
-  const [la1x, la1y] = map(-1, 0), [la2x, la2y] = map(-13, 0);
-  const ahead = vertical ? `M${la2x},${la2y} l-3,5 h6 z` : `M${la2x},${la2y} l5,-3 v6 z`;
+  const [la1x, la1y] = map(-2, 0), [la2x, la2y] = map(-26, 0);   // 하중 화살표(확대)
+  const ahead = vertical ? `M${la2x},${la2y} l-6,11 h12 z` : `M${la2x},${la2y} l11,-6 v12 z`;
   const loadLbl = geom.loadDir === 'H' ? 'Hu' : vertical ? 'Vu' : 'Pf';
-  const modeTxt = c.path ? ` · ${c.path}` : '';
   // 전단(S)·인장(T) 인라인 라벨 위치 — 첫 전단열 중앙 / 인장면 중앙
   const sv0 = f.shearYs[0];
   const [sLx, sLy] = map(stagOf(sv0).Lv * 0.42, sv0);
@@ -82,16 +84,16 @@ function BsPanel({ c, geom, lang }: { c: BlockCase; geom: BlockShearGeom; lang: 
   return (
     <div style={{ textAlign: 'center' }}>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" style={{ width: '100%', maxWidth: W, height: 'auto' }}>
-        <title>{caseLabel(c.label, lang)}{modeTxt}</title>
+        <title>{c.path ?? ''}</title>
         <defs><pattern id={pid} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
           <line x1="0" y1="0" x2="0" y2="5" stroke={BLOCKS} strokeWidth="0.6" opacity="0.55" /></pattern></defs>
         <rect x={plate.x} y={plate.y} width={plate.w} height={plate.h} fill="none" stroke={c.gov ? BLOCKS : PLATE} strokeWidth={c.gov ? 1.6 : 1} />
         {/* 탈락 블록(폴리곤) — 엇모 경사 s²/4g 삼각부까지 해치 포함 */}
         <polygon points={blockPts} fill={BLOCKF} stroke="none" />
         <polygon points={blockPts} fill={`url(#${pid})`} stroke={BLOCKS} strokeWidth="0.7" strokeDasharray="2 2" />
-        <line x1={la1x} y1={la1y} x2={la2x} y2={la2y} stroke={LOAD} strokeWidth={1.4} />
+        <line x1={la1x} y1={la1y} x2={la2x} y2={la2y} stroke={LOAD} strokeWidth={3} strokeLinecap="round" />
         <path d={ahead} fill={LOAD} />
-        <text x={vertical ? la2x + 9 : la2x} y={vertical ? la2y + 3 : la2y - 4} fontSize="8" fill={LOAD} textAnchor="middle">{loadLbl}</text>
+        <text x={vertical ? la2x + 14 : la2x} y={vertical ? la2y + 4 : la2y - 7} fontSize="13" fontWeight={700} fill={LOAD} textAnchor="middle">{loadLbl}</text>
         {/* 볼트 — 열별 행수·오프셋(3D/DXF stagOf 동일) */}
         {geom.cols.map((cv, ci) => { const { rows, off, pit } = stagOf(cv); return Array.from({ length: rows }, (_, i) => {
           const [bx, by] = map(geom.edge + off + i * pit, cv);
@@ -105,10 +107,10 @@ function BsPanel({ c, geom, lang }: { c: BlockCase; geom: BlockShearGeom; lang: 
         {freeEdge}
         <text x={sLx} y={sLy - 4} fontSize="7.5" fontWeight={700} fill={SHEAR} textAnchor="middle">S</text>
         <text x={tLx} y={tLy} fontSize="7.5" fontWeight={700} fill={TENSION} textAnchor="middle">T</text>
-        {c.path ? <text x={4} y={11} fontSize="9" fontWeight={700} fill={c.gov ? BLOCKS : INK}>{c.path}</text> : null}
+        {c.path ? <text x={4} y={13} fontSize="11" fontWeight={700} fill={c.gov ? BLOCKS : INK}>{c.path}</text> : null}
       </svg>
-      <div style={{ fontSize: 10, color: c.gov ? BLOCKS : 'var(--sub,#6b7280)', fontWeight: c.gov ? 700 : 500, marginTop: -1 }}>
-        {c.path ? <b>{c.path}</b> : null}{c.path ? ' · ' : ''}{caseLabel(c.label, lang)} · U<sub>bs</sub>{c.Ubs.toFixed(1)}{c.gov ? ' ◀' : ''}
+      <div style={{ fontSize: 10.5, color: c.gov ? BLOCKS : 'var(--sub,#6b7280)', fontWeight: c.gov ? 700 : 500, marginTop: -1 }}>
+        {c.path ? <b>{c.path}</b> : null} · U<sub>bs</sub>{c.Ubs.toFixed(1)}{c.gov ? ' ◀' : ''}
       </div>
     </div>
   );
@@ -119,7 +121,7 @@ function BlockShearFig({ cases, geom, lang }: { cases: BlockCase[]; geom: BlockS
   return (
     <div className="cf-bs" style={{ margin: '4px 0 8px' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-start' }}>
-        {cases.map((c, i) => <BsPanel key={i} c={c} geom={geom} lang={lang} />)}
+        {cases.map((c, i) => <BsPanel key={i} c={c} geom={geom} />)}
       </div>
       <div style={{ fontSize: 10.5, color: 'var(--sub,#6b7280)', marginTop: 3 }}>
         {lang === 'ko'

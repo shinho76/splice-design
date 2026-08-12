@@ -5,7 +5,7 @@ import { aiscAutoCorrect } from '../engine/aisc/compat.ts';
 import type { AiscCheck, AiscStep, BlockCase } from '../engine/aisc/types.ts';
 import { parseName } from '../engine/sections.ts';
 import { useLang, type Lang } from '../i18n.ts';
-import { EN_LABEL, caseLabel, groupT as group } from './aiscI18n.ts';
+import { EN_LABEL, groupT as group } from './aiscI18n.ts';
 import { stdLabelLong } from '../engine/std.ts';
 import CheckFig from './CheckFig.tsx';
 
@@ -42,25 +42,25 @@ const INTRO: Record<string, [string, string]> = {
   FP2: ['항복 외에, 외부 이음판은 볼트구멍 열(순단면)에서 파단하지 않아야 한다.', 'Beyond yielding, the outer plate must not rupture through the line of bolt holes (net section).'],
   FP3: ['해당 플랜지가 압축이면 외부 이음판은 이음갭 구간 좌굴을 검토한다.', 'Where this flange is in compression, the outer plate is checked for buckling across the open splice gap.'],
   FP4: ['각 볼트는 외부 이음판에 지압하며, 연단·내부 볼트의 지압·찢김을 합산한다.', 'Each bolt bears against the outer plate; bearing and tear-out are summed over the edge and interior bolts.'],
-  FP5: ['외부 이음판의 한 블록이 볼트군 주위로 뜯길 수 있어 모든 후보블록(Case A~D)을 검토한다.', 'A wedge of the outer plate could tear out around the bolt group; every candidate block (Cases A–D) is examined.'],
+  FP5: ['외부 이음판이 볼트군 주위로 뜯길 수 있어 첨부 도해의 모든 파단경로(Path 1·2a·2b·3)를 검토한다.', 'A wedge of the outer plate could tear out around the bolt group; every rupture path (Path 1, 2a, 2b, 3) is examined.'],
   FI1: ['내부 이음판 2매는 합성 총단면에서 항복하지 않아야 한다.', 'The pair of inner plates must not yield across their combined gross section.'],
   FI2: ['내부 이음판은 볼트구멍에서 파단하지 않아야 한다.', 'The inner plates must not rupture through the bolt holes.'],
   FI3: ['압축 시 내부 이음판은 이음갭 좌굴을 검토한다.', 'In compression the inner plates are checked for buckling across the gap.'],
   FI4: ['내부 이음판의 지압·찢김을 전 볼트에 대해 합산한다.', 'Bearing and tear-out of the inner plates, summed over all bolts.'],
-  FI5: ['내부 이음판(2매)의 블록전단 뜯김을 모든 케이스에 대해 검토한다.', 'Block-shear tear-out of the inner plates (two plates), every candidate case.'],
+  FI5: ['내부 이음판(2매)의 블록전단 뜯김을 첨부 도해의 모든 파단경로(Path 4·5a·5b)에 대해 검토한다.', 'Block-shear tear-out of the inner plates (two plates), every rupture path (Path 4, 5a, 5b).'],
   FM1: ['볼트는 H형강 플랜지 자체에도 지압한다.', 'The bolts also bear against the H-beam flange itself.'],
   FM2: ['구멍으로 약화된 인장플랜지의 휨파단(F13.1)을 검토한다.', 'The tension flange, weakened by holes, is checked for flexural rupture (F13.1).'],
   FM3: ['이음 플랜지를 WT(플랜지+웨브 스템)로 이상화하여 인장항복을 검토한다.', 'The spliced flange is idealised as a WT (flange + web stem) and checked for tension yielding.'],
   FM4: ['동일 WT를 전단지연을 포함해 인장파단으로 검토한다.', 'The same WT is checked for tension rupture, including the shear-lag effect.'],
-  FM5: ['볼트군 주위 H형강 플랜지의 블록전단 뜯김을 모든 케이스에 대해 검토한다.', 'Block-shear tear-out of the H-beam flange around the bolt group, every candidate case.'],
+  FM5: ['볼트군 주위 H형강(거더) 플랜지의 블록전단 뜯김을 파단경로(Path 6·7, 8·9)에 대해 검토한다.', 'Block-shear tear-out of the H-beam (girder) flange around the bolt group (Path 6·7, 8·9).'],
   WB1: ['웨브 볼트는 전단 Vu 전체를 부담한다. 볼트군은 동심(C=n)으로 보고 편심모멘트는 이음판이 부담한다.', 'The web bolts carry the full shear Vu; the group is taken as concentric — the plates absorb the eccentric moment.'],
   WB2: ['마찰 웨브에서 볼트는 Vu 하에서 미끄러지지 않아야 한다.', 'For a slip-critical web the bolts must not slip under Vu.'],
   WR1: ['웨브 볼트는 부재웨브와 이음판 2매에 지압하며, 약한 쪽이 지배한다.', 'The web bolts bear on the beam web and on the two splice plates; the weaker of the two governs.'],
-  WP1: ['웨브 이음판의 한 블록이 수직전단으로 뜯길 수 있어 모든 케이스를 검토한다.', 'A block of the web plates could tear out under the vertical shear; every candidate case is examined.'],
+  WP1: ['웨브 이음판(Web Splice Plate)이 수직전단 V로 뜯길 수 있어 Path 1을 검토한다. 수평력 H=0이므로 H블록은 제외.', 'The web splice plate could tear out under the vertical shear V (Path 1); horizontal H=0, so H-blocks are excluded.'],
   WI1: ['웨브 이음판은 전단 Vu와 편심모멘트 Mux를 함께 받으며, 항복을 상호작용으로 검토한다.', 'The web plates carry shear Vu together with the eccentric moment Mux; yielding is checked by an interaction.'],
   WI2: ['동일 전단+휨 조합을 웨브 이음판 순단면 파단에 대해 검토한다.', 'The same shear + moment combination is checked against rupture of the net web-plate section.'],
   WM1: ['부재 웨브 자체의 전단항복을 검토한다.', 'The beam web itself is checked for shear yielding.'],
-  WM2: ['이음부 부재 웨브의 블록전단 뜯김을 검토한다.', 'Block-shear tear-out of the beam web at the splice.'],
+  WM2: ['거더 웨브(Girder Web)의 수직전단 V에 대한 블록전단 뜯김을 Path 4·5(좌·우 거더)로 검토한다.', 'Block-shear tear-out of the girder web under vertical shear V (Path 4·5, left/right girder).'],
 };
 
 function Steps({ steps, lang }: { steps: AiscStep[]; lang: Lang }) {
@@ -95,7 +95,7 @@ function BlockCaseTable({ cases, lang }: { cases: BlockCase[]; lang: Lang }) {
           const phi = c.phiRn / 1e3, dem = (c.dcr ?? 0) * phi;
           return (
             <tr key={i} className={c.gov ? 'bs-gov' : ''}>
-              <td className="bs-lb">{c.path ? <b>{c.path}</b> : null}{c.path ? ' · ' : ''}{caseLabel(c.label, lang)}</td>
+              <td className="bs-lb">{c.path ? <b>{c.path}</b> : null}</td>
               <td>{c.Ubs.toFixed(1)}</td>
               <td>{nf(c.Agv, 0)}</td><td>{nf(c.Anv, 0)}</td><td>{nf(c.Ant, 0)}</td>
               <td>{nf(phi)}</td><td>×{c.frac.toFixed(2)}</td><td>{nf(dem)}</td>
@@ -204,8 +204,8 @@ export default function AiscDetailReport({ result, cond, onClose }: { result: De
                 {INTRO[c.id] && <p className="narr-intro">{L(INTRO[c.id][0], INTRO[c.id][1])}</p>}
                 {c.steps && c.steps.length > 0 && <Steps steps={c.steps} lang={lang} />}
                 {c.cases && c.cases.length > 0 && <>
-                  <p className="narr-p narr-bs-note">{L('각 후보블록은 뜯기는 볼트만 분리하므로, 강도를 그 하중분담(아래 분담)과 비교한다. DCR이 가장 큰 블록이 지배한다.',
-                    'Each candidate block carries only the bolts it releases, so its capacity is compared with that share of the force (load share below). The block with the highest DCR governs.')}</p>
+                  <p className="narr-p narr-bs-note">{L('양측 파단선 U블록(Path 2a·2b·3, 5a·5b, 6·7·8·9, 웨브 V)은 요소 전체 소요력(분담 1.0)과, 단일 파단선 L블록(Path 1·4)은 그 열이 분담하는 하중과 비교한다. DCR이 가장 큰 Path가 지배한다.',
+                    'Two-sided U-blocks (Path 2a/2b/3, 5a/5b, 6·7/8·9, web V) are compared with the full element force (share 1.0); single-line L-blocks (Path 1/4) with the share carried by that gauge line. The path with the highest DCR governs.')}</p>
                   <BlockCaseTable cases={c.cases} lang={lang} />
                 </>}
                 <Conclusion c={c} lang={lang} />

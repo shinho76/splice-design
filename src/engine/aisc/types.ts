@@ -64,9 +64,10 @@ export interface BlockShearGeom {
   nLo?: number;        // 내측열 행수(엇모)
 }
 
-/** 블록전단 한 케이스 결과 (요소별 A/B/C/D) */
+/** 블록전단 한 케이스 결과 (AISIsplice Appendix C Path) */
 export interface BlockCase {
-  label: string;      // "Case A(외연 L블록)" — 블록 유형 서술(내부용)
+  key: string;        // 내부 기하 판별자 'L1'|'U2a'|'U2b'|'B3'|'webV' (도해·표기 무관)
+  label?: string;     // (구) 블록 유형 서술 — 표기는 path만 사용, 하위호환용
   path?: string;      // AISIsplice Appendix C 파단경로 표기 "Path 1|2a|2b|3…"(요소별)
   Ubs: number;        // 0.5 | 1.0
   Agv: number;        // 총전단면적 mm²

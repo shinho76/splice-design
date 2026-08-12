@@ -9,7 +9,7 @@ export const EN_LABEL: Record<string, string> = {
   FP1: 'Outer plate — tension yielding', FP2: 'Outer plate — tension rupture', FP3: 'Outer plate — compression buckling', FP4: 'Outer plate — bearing & tear-out', FP5: 'Outer plate — block shear',
   FI1: 'Inner plates — tension yielding', FI2: 'Inner plates — tension rupture', FI3: 'Inner plates — compression buckling', FI4: 'Inner plates — bearing & tear-out', FI5: 'Inner plates — block shear',
   FM1: 'Beam flange — bearing & tear-out', FM2: 'Beam flange — flexural rupture (F13.1)', FM3: 'Beam flange (WT) — tension yielding', FM4: 'Beam flange (WT) — tension rupture', FM5: 'Beam flange — block shear',
-  WB1: 'Web bolt shear (double shear)', WB2: 'Web bolt slip resistance', WR1: 'Web — bearing & tear-out', WP1: 'Web plates — block shear', WP2: 'Web plates — block shear (horizontal)', WI1: 'Web plates — yielding interaction', WI2: 'Web plates — rupture interaction', WM1: 'Beam web — shear yielding', WM2: 'Beam web — block shear', WM3: 'Beam web — block shear (horizontal)',
+  WB1: 'Web bolt shear (double shear)', WB2: 'Web bolt slip resistance', WR1: 'Web — bearing & tear-out', WP1: 'Web splice plate — block shear (V, Path 1)', WI1: 'Web plates — yielding interaction', WI2: 'Web plates — rupture interaction', WM1: 'Beam web — shear yielding', WM2: 'Girder web — block shear (V, Path 4·5)',
 };
 
 const CASE_EN: Record<string, string> = {

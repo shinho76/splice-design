@@ -355,3 +355,24 @@ const PATH_OF: Record<BsRegion, Record<string, string>> = {
   - 손검산 상계: `H_L ≤ MuxWeb/((nVert−1)·Pc)` (후보 (a), nVert=2·3에서 등호).
 - **잔여 확인(구현 시, 규준값 아님):** WP2/WM3 신설 id·그룹명, `bsGeom.loadDir:'H'` 도해 방향, 내첨판 Path 4
   연단(CL측/팁측) 취득 경로 — 코드 구조 사항으로 구현자 재량(규준값 추측 아님).
+
+---
+
+## v2 개정 (2026-08-12) — 첨부 AISIsplice Appendix C 전면 반영
+
+참조: `docs/파단선/플렌지 2열배치 파단선과 웨브 2열 배치 파단선.pdf` (AISIsplice Software Manual p.34).
+
+1. **파단경로 기하 재정의(요소별)** — `geometry.ts blockShear`가 기하키(`BlockCase.key`)로 열거:
+   - `L1`=Path 1(외연 L, 1전단+연단인장, Ubs 0.5) · `U2a`=Path 2a(전열 U, 2전단+전폭인장, Ubs 1.0)
+     · `U2b`=Path 2b(외측 U, 2전단+양측 연단인장 ×2, Ubs 1.0) · `B3`=Path 3(밴드분할 U, m≥4, Ubs 1.0).
+   - 요소 매핑(`PATH_OF`): outer 1/2a/2b/3 · inner 4/5a/5b · member-flange 6·7/8·9 · web-plate 1(V) · member-web 4·5(V).
+     첨부에 없는 경로는 `''`로 매핑되어 자동 제외(예: member-flange는 L1·U2b 미검토).
+   - **구 Path 2b(중앙 L블록)은 오류** → 첨부대로 **외측 U블록**으로 정정.
+2. **분담(frac) 정책** — 사용자 결정(Option 1): **양측 파단선 U블록 = 1.0**(요소 전체 소요력),
+   **단일 파단선 L블록(Path 1·4) = 그 열 tributary(1/m)**. (전 경로 1.0은 표준단면 L블록이 과다보수로 스퓨리어스
+   지배 → 배제.) 표기·용어에서 `Case A~D / 외연 L / 중앙 L / 후보블록` 전면 삭제, **Path만** 사용.
+3. **웨브 = 수직력 V 전용** — 단순전단(N=0, M은 플랜지 전담)이므로 수평 H블록(구 WP2/WM3) **제거**.
+   V에 대해 **Web Splice Plate(WP1, ×2매, Path 1)** · **Girder Web(WM2, 1매, Path 4·5)** 2계통. 도해 방향은 수직(Vu).
+   대칭 양면 이음판·동심 볼트군 → 인장 균등으로 보아 **Ubs 1.0**(코프보 0.5 아님). 인장 자유단 = min(축 wp.L/2, 춤 dp/2).
+   ※ 웨브 축력 N≠0 또는 웨브 모멘트 분담 확장 시 H블록 부활 필요.
+4. **도해(CheckFig)** — 하중 화살표(Pf/Vu) 확대(aw 32, 굵기 3, 글자 13), 파단 기하는 `key` 구동.
