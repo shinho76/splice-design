@@ -17,6 +17,8 @@ export interface DemandInput {
   flangeScale?: number;
   /** 웨브(Vu·Mux) 부재강도 캡핑 배율(1=무캡핑) */
   webScale?: number;
+  /** 외/내부 이음판 소요분담: '5050'(각 파이잉면 Pf/2, 기본) / 'area'(판 총단면적 비례) */
+  share?: '5050' | 'area';
 }
 
 /** 웨브 볼트군 편심 e (mm) = 이음갭/2 + 축방향 연단 + (축방향 열수−1)·축피치/2 */
@@ -44,13 +46,16 @@ export function computeDemand(r: DesignResult, inp: DemandInput = {}): DemandSet
   const e = webEccentricity(r);
   const MuxWeb = Vu * e;
 
-  // 외/내부 이음판 소요분배: 판 총단면적 비례(불균등판 표준배분). 초기설계는 A외=A내 → 50:50과 동치.
-  // 내판이 폭한계(k1)로 얇지 못할 때, 옵티마이저가 외판을 키우면 소요가 외판으로 이동(내판 파단 완화).
+  // 외/내부 이음판 소요분배 — 두 모드:
+  //  '5050'(기본·정역학): 대칭 이중전단 볼트는 외판·내판쌍이 각 파이잉면 Pf/2를 전달(판면적 무관). → 외=내=Pf/2.
+  //  'area'(옵션): 판 총단면적 비례. 내판이 폭한계(k1)로 얇을 때 외판을 키워 소요를 외판으로 이동(강성분배).
   const oT = r.flange.outerPlate?.t ?? 0, oW = r.flange.outerPlate?.w ?? 0;
   const inner = r.flange.innerPlate;
   const Aout = oW * oT, Ain = inner ? 2 * inner.w * inner.t : 0;
   const denom = Aout + Ain;
-  const fracOut = inner && denom > 0 ? Aout / denom : 1;
+  const fracOut = !inner ? 1
+    : inp.share === 'area' && denom > 0 ? Aout / denom      // 면적 비례
+    : 0.5;                                                  // 50:50(기본)
 
   return { Pf, half: Pf / 2, halfOuter: Pf * fracOut, halfInner: Pf * (1 - fracOut), Mu, Vu, MuxWeb, e, capScale: Math.min(fScale, wScale) };
 }

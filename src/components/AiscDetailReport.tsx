@@ -171,9 +171,14 @@ export default function AiscDetailReport({ result, cond, onClose }: { result: De
             &nbsp;({L('커플 arm', 'lever arm')} d − t<sub>f</sub> = {arm} mm).
           </p>
           <p className="narr-p">
-            {L('이 플랜지력은 이중전단 경로를 따르며 ', 'This flange force follows a double-shear load path and is shared ')}<b>50 : 50</b>
-            {L('으로 분담된다 — 외부 이음판 1매가 Pf/2 = ', ' — the single outer plate resists Pf/2 = ')}<b>{kn(dem.half)}</b>
-            {L(' kN, 내부 이음판 2매가 나머지 Pf/2를 부담한다. 다만 각 볼트는 2개 전단면을 지나므로 ', ' kN, and the pair of inner plates together resist the other Pf/2. Every bolt, however, sees the ')}
+            {Math.abs(dem.halfOuter - dem.half) > 1
+              ? <>{L('이 플랜지력은 이중전단 경로를 따르며 ', 'This flange force follows a double-shear load path and is shared ')}<b>{L('판 총단면적 비례', 'by plate gross area')}</b>
+                  {L('로 분담된다 — 외부 이음판 = ', ' — the outer plate takes ')}<b>{kn(dem.halfOuter)}</b>
+                  {L(' kN, 내부 이음판 2매 = ', ' kN, the inner-plate pair takes ')}<b>{kn(dem.halfInner)}</b>
+                  {L(' kN (면적 A외/(A외+A내) 비례).', ' kN (∝ A_out/(A_out+A_in)).')}</>
+              : <>{L('이 플랜지력은 이중전단 경로를 따르며 ', 'This flange force follows a double-shear load path and is shared ')}<b>50 : 50</b>
+                  {L('으로 분담된다 — 외부 이음판 1매 = 내부 이음판 2매 = Pf/2 = ', ' — the outer plate and the inner-plate pair each resist Pf/2 = ')}<b>{kn(dem.halfOuter)}</b>{L(' kN.', ' kN.')}</>}
+            {L(' 다만 각 볼트는 2개 전단면을 지나므로 ', ' Every bolt, however, sees the ')}
             <i>{L('Pf 전체', 'full Pf')}</i>{L('를 받는다.', ' because it crosses two shear planes.')}
           </p>
           <p className="narr-p">

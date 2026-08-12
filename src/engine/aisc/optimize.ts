@@ -196,7 +196,9 @@ export function aiscOptimize(r0: DesignResult, cond: DesignCondition, limits: Op
   return done(true);
 
   function done(_ok: boolean): AiscOptResult {
-    trimDown();   // 성공/캡핑 확정 후 국소최소로 하강(철판 최소)
+    // 부분강도 발현율을 M·V 일관 적용 — 낮은 쪽(지배)으로 통일해 플랜지·웨브 동일 비율만 발현.
+    if (fScale < 1 || wScale < 1) { const cap = Math.min(fScale, wScale); fScale = cap; wScale = cap; }
+    trimDown();   // 통일 발현율 하에서 국소최소로 하강(철판 최소)
     const report = aiscRun(r, cond, { flangeScale: fScale, webScale: wScale });
     return { result: r, report, history, changes, ok: report.ok, flangeScale: fScale, webScale: wScale, memberLimited, wt0, wt1: plateWeight(r) };
   }

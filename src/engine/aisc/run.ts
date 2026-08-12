@@ -11,7 +11,7 @@ import type { AiscResult, AiscCheck } from './types.ts';
 export interface AiscRunOpts { flangeScale?: number; webScale?: number; }
 
 export function aiscRun(r: DesignResult, cond: DesignCondition, opts: AiscRunOpts = {}): AiscResult {
-  const dem = computeDemand(r, { flangeScale: opts.flangeScale, webScale: opts.webScale });
+  const dem = computeDemand(r, { flangeScale: opts.flangeScale, webScale: opts.webScale, share: cond.plateShare });
   const checks: AiscCheck[] = [...flangeChecks(r, cond, dem), ...webChecks(r, cond, dem)];
   const scored = checks.filter(c => c.dcr != null);
   const gov = scored.reduce<AiscCheck | undefined>((a, b) => (a == null || (b.dcr ?? 0) > (a.dcr ?? 0) ? b : a), undefined);
