@@ -65,7 +65,6 @@ export function aiscOptimize(r0: DesignResult, cond: DesignCondition, limits: Op
   const fPitch = r.flange.pitch ?? 60, fEdge = r.flange.edge ?? 40, gap = r.flange.gap ?? 10;
   const fStag = r.flange.staggered ?? false;          // 엇모면 이음판 길이식이 다름((2n−1)·45)
   const Pc = r.web.Pc ?? 60, webP = r.web.pitch ?? 60, wEdge = r.web.edge ?? 40;
-  const wStag = r.web.staggered ?? false;   // KBC-09 엇갈림(H<200&l<60) 웨브볼트 30mm 이동 → 첨판폭 +60(엔진 wpw 정합)
   const secG = sectionByName(r.section);          // 카탈로그 실치수(H·tf·r) — parse는 W-호칭 미지원
   const H = secG?.H ?? 0, tf = secG?.tf ?? 0, rFil = secG?.r ?? 0;
   const FCL = 8;    // 웨브 이음판 필렛 클리어런스(엔진 designWeb과 동일). H형강은 플랫 이내만 강제.
@@ -74,7 +73,7 @@ export function aiscOptimize(r0: DesignResult, cond: DesignCondition, limits: Op
   const flangeLen = (n: number) => fStag
     ? 2 * ((2 * Math.round(n) - 1) * 45 + 2 * fEdge) + gap
     : 2 * ((Math.round(n) - 1) * fPitch + 2 * fEdge) + gap;
-  const webWidth = (nh: number) => 2 * ((nh - 1) * webP + 2 * wEdge) + gap + (wStag ? 60 : 0);
+  const webWidth = (nh: number) => 2 * ((nh - 1) * webP + 2 * wEdge) + gap;
   const webDepth = (mv: number) => Math.min((mv - 1) * Pc + 80, chumCap);   // 필렛플랫 초과 방지
   const maxWebVert = Math.max(1, Math.floor((chumCap - 80) / Pc) + 1);      // 춤(이음판) 필렛플랫 이내
 
