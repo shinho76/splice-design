@@ -73,8 +73,8 @@ function BsPanel({ c, geom }: { c: BlockCase; geom: BlockShearGeom }) {
         <rect x={plate.x} y={plate.y} width={plate.w} height={plate.h} fill="none" stroke={c.gov ? BLOCKS : PLATE} strokeWidth={c.gov ? 1.5 : 1} />
         {/* WEB 바(내부·부재) */}
         {wb ? (() => { const a = map(0, wb), b = map(Xj, -wb); return <rect x={Math.min(a[0], b[0])} y={Math.min(a[1], b[1])} width={Math.abs(b[0] - a[0])} height={Math.abs(b[1] - a[1])} fill="#2b3038" opacity={0.5} />; })() : null}
-        {/* 내부판 끝선(웨브측) — ±iE */}
-        {iE != null && !vertical ? [iE, -iE].map((ye, k) => { const a = map(0, ye), b = map(Xj, ye); return <line key={`ie${k}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={BLOCKS} strokeWidth={1.1} strokeDasharray="2 2" />; }) : null}
+        {/* 끝선(웨브측 판단부) — ±iE 실선. 내부판=내부판 끝선, 부재=웨브 경계 */}
+        {iE != null && !vertical ? [iE, -iE].map((ye, k) => { const a = map(0, ye), b = map(Xj, ye); return <line key={`ie${k}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={BLOCKS} strokeWidth={1.3} />; }) : null}
         {/* 탈락블록 */}
         {viz.tear.map((poly, i) => <Hatch key={i} poly={poly.map(M)} />)}
         {/* 하중 화살표 */}

@@ -269,7 +269,7 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
     checks.push(finalize({
       id: 'FM5', region: 'member', group: g, label: '부재 블록 전단', clause: 'J4.3',
       detail: bsDetail(bs), phiRn: kN(bs.gov.phiRn), demand: kN(Pf), unit: 'kN', cases: bs.cases,
-      bsGeom: { cols, nrow, pitch, edge, halfWidth: B / 2, dh, plates: 1, staggered: stagF, gauge: g1, nHi, nLo, webBar: tw / 2 + 4 } as any,
+      bsGeom: { cols, nrow, pitch, edge, halfWidth: B / 2, dh, plates: 1, staggered: stagF, gauge: g1, nHi, nLo, webBar: tw / 2 + 4, innerEdge: tw / 2 + 4 } as any,
     }));
   }
 
