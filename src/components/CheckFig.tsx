@@ -3,7 +3,7 @@
 //     전단면(빨강 실선, ∥하중)·인장면(파랑 실선, ⊥하중, 계단)·탈락 블록(앰버 해치), 지배 Path 강조.
 //   후보 Path 전체를 나열(각 케이스 DCR). 기타 한계상태: 조항(clause)별 글리프.
 import type { ReactNode } from 'react';
-import type { AiscCheck, BlockCase, BlockShearGeom } from '../engine/aisc/types.ts';
+import type { AiscCheck, BlockCase, BlockShearGeom, NetPath, NetSectionGeom } from '../engine/aisc/types.ts';
 import type { Lang } from '../i18n.ts';
 
 const SHEAR = '#d1495b', TENSION = '#2c6fbb', BLOCKF = 'rgba(245,184,71,.18)', BLOCKS = '#e0a92e',
@@ -123,6 +123,79 @@ function BlockShearFig({ cases, geom, lang }: { cases: BlockCase[]; geom: BlockS
   );
 }
 
+// ── 엇모 순단면 인장파단(B4.3b) 후보경로 패널 ──
+//   판폭(세로)을 관통하는 파단선을 실측 작도. u=응력축(우=이음), y=폭.
+//   전열 지그재그(계단, +Σs²/4g) · 정렬위상별 직선. 공제 구멍 강조, 지배 경로 앰버.
+function NetPanel({ path, geom, govKey }: { path: NetPath; geom: NetSectionGeom; govKey: string }) {
+  const gov = path.key === govKey;
+  const { edge, pitch, width } = geom;
+  const lines = geom.lines.slice().sort((a, b) => b.y - a.y);  // 위(+y)→아래(−y)
+  const uOf = (l: { off: number; rows: number }) => edge + l.off + Math.max(0, l.rows - 1) * pitch;  // 이음측 마지막 행
+  const maxLastU = Math.max(...lines.map(uOf));
+  const uEnd = maxLastU + edge, yTop = width / 2, yBot = -width / 2;
+  const W = 176, H = 150, pad = 12, aw = 24;
+  const sc = Math.min((W - 2 * pad - aw) / (uEnd || 1), (H - 2 * pad) / (width || 1));
+  const padL = pad + aw;
+  const map = (u: number, y: number): Pt => [padL + u * sc, pad + (yTop - y) * sc];
+  const br = Math.max(1.4, (geom.dh / 2) * sc);
+  // 파단경로 폴리라인 + 공제 구멍 판정
+  const phaseOff = path.key[0] === 's' ? Number(path.key.slice(1)) : null;
+  const cut = (l: { off: number }) => phaseOff == null || Math.abs(l.off - phaseOff) < 0.5;   // 이 경로가 지나는(공제) 게이지선
+  let poly: Pt[];
+  if (phaseOff == null) {                              // 전열 지그재그
+    const lp = lines.map(l => map(uOf(l), l.y));
+    poly = [map(uOf(lines[0]), yTop), ...lp, map(uOf(lines[lines.length - 1]), yBot)];
+  } else {                                             // 직선(정렬 위상)
+    const l0 = lines.find(cut)!, uS = uOf(l0);
+    poly = [map(uS, yTop), map(uS, yBot)];
+  }
+  const pl = map(0, 0), plax = pl[0] - (aw - 6);       // 하중 화살표(좌측 자유단 → 우향)
+  const col = gov ? BLOCKS : PLATE;
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" style={{ width: '100%', maxWidth: W, height: 'auto', background: '#fff', borderRadius: 5 }}>
+        <title>{path.label}</title>
+        {/* 판 */}
+        {(() => { const a = map(0, yTop), b = map(uEnd, yBot); return <rect x={a[0]} y={a[1]} width={b[0] - a[0]} height={b[1] - a[1]} fill="none" stroke={col} strokeWidth={gov ? 1.6 : 1} />; })()}
+        {/* 이음 CL(우측단 점선) */}
+        {(() => { const a = map(uEnd, yTop), b = map(uEnd, yBot); return <line x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={HOLE} strokeWidth={0.8} strokeDasharray="7 3 2 3" />; })()}
+        {/* 하중 화살표 Pf */}
+        <line x1={plax} y1={pl[1]} x2={pl[0]} y2={pl[1]} stroke={LOAD} strokeWidth={4} strokeLinecap="round" />
+        <path d={`M${plax},${pl[1]} l14,-7 v14 z`} fill={LOAD} />
+        <text x={plax} y={pl[1] - 9} fontSize={12} fontWeight={800} fill={LOAD} textAnchor="middle">Pf</text>
+        {/* 볼트(공제 구멍 강조) */}
+        {lines.map((l, li) => Array.from({ length: l.rows }, (_, k) => {
+          const [bx, by] = map(edge + l.off + k * pitch, l.y);
+          const isCut = cut(l) && k === l.rows - 1;    // 파단선이 지나는 행
+          return <circle key={`${li}-${k}`} cx={bx} cy={by} r={br} fill={isCut ? 'rgba(44,111,187,.12)' : 'none'} stroke={isCut ? TENSION : HOLE} strokeWidth={isCut ? 1.3 : 0.85} />;
+        }))}
+        {/* 파단선(파랑 계단/직선) */}
+        <polyline points={poly.map(p => p.join(',')).join(' ')} fill="none" stroke={TENSION} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        <text x={4} y={12} fontSize={11} fontWeight={700} fill={gov ? BLOCKS : INK}>{phaseOff == null ? '지그재그' : '직선'}</text>
+      </svg>
+      <div style={{ fontSize: 10.5, color: gov ? BLOCKS : 'var(--sub,#6b7280)', fontWeight: gov ? 700 : 500, marginTop: -1 }}>
+        {path.nHoles}공 공제{path.gain > 0.05 ? ` +Σs²/4g=${path.gain.toFixed(1)}` : ''} · An={Math.round(path.area)}{geom.plates === 2 ? '×2' : ''}mm²{gov ? ' ◀' : ''}
+      </div>
+    </div>
+  );
+}
+
+function NetSectionFig({ paths, geom, lang }: { paths: NetPath[]; geom: NetSectionGeom; lang: Lang }) {
+  const govKey = paths.reduce((a, b) => (b.area < a.area ? b : a)).key;
+  return (
+    <div className="cf-ns" style={{ margin: '4px 0 8px' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-start' }}>
+        {paths.map((p, i) => <NetPanel key={i} path={p} geom={geom} govKey={govKey} />)}
+      </div>
+      <div style={{ fontSize: 10.5, color: 'var(--sub,#6b7280)', marginTop: 3 }}>
+        {lang === 'ko'
+          ? `엇모 순단면 인장파단(AISC B4.3b) 후보경로 전수검토 · 게이지선 ${geom.lines.length}열, 피치 ${geom.pitch}, 연단 ${geom.edge}, 폭 ${Math.round(geom.width)}mm${geom.plates === 2 ? ' (내부판 ×2)' : ''}. 파랑=파단선(계단=엇모 +s²/4g). 최소 순단면(An)이 지배 ◀.`
+          : `Staggered net-section rupture (AISC B4.3b): all candidate paths. blue=fracture line; min net area governs ◀.`}
+      </div>
+    </div>
+  );
+}
+
 // 조항별 단일 글리프(48×34)
 function Glyph({ clause }: { clause: string }) {
   const P = { width: 48, height: 34, viewBox: '0 0 60 40' } as const;
@@ -149,6 +222,7 @@ function Glyph({ clause }: { clause: string }) {
 /** 검토별 도해: 블록전단은 실측 파단선 패널, 그 외는 조항 글리프. */
 export default function CheckFig({ c, lang }: { c: AiscCheck; lang: Lang }) {
   if (c.cases && c.cases.length && c.bsGeom && c.cases.some(x => x.viz)) return <BlockShearFig cases={c.cases} geom={c.bsGeom} lang={lang} />;
+  if (c.nsPaths && c.nsPaths.length && c.nsGeom) return <NetSectionFig paths={c.nsPaths} geom={c.nsGeom} lang={lang} />;
   const g = <Glyph clause={c.clause} />;
   if (!g) return null;
   return <div className="cf-glyph" style={{ float: 'right', marginLeft: 8 }}>{g}</div>;

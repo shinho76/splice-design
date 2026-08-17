@@ -44,6 +44,8 @@ export interface AiscCheck {
   steps?: AiscStep[]; // 세부 추적 단계
   cases?: BlockCase[];// 블록전단 요소별 케이스(있으면)
   bsGeom?: BlockShearGeom; // 블록전단 실제 기하(도해용) — 있으면 파단선 실측 작도
+  nsPaths?: NetPath[];     // 엇모 순단면 후보경로(있으면) — 인장파단 도해
+  nsGeom?: NetSectionGeom; // 순단면 도해 기하
   note?: string;
 }
 
@@ -62,6 +64,26 @@ export interface BlockShearGeom {
   gauge?: number;      // 인접 볼트열 게이지(mm) — 엇모 s²/4g·도해용
   nHi?: number;        // 외측열 행수(엇모, 3D/DXF 정합)
   nLo?: number;        // 내측열 행수(엇모)
+}
+
+/** 순단면 파단경로 후보 (B4.3b) — 엇모 인장파단 전수검토 */
+export interface NetPath {
+  key: string;        // 'zig' | 's<off>' | 'gross'
+  label: string;      // 표기용 라벨
+  nHoles: number;     // 이 경로가 지나는 구멍수(폭방향)
+  gain: number;       // Σs²/4g (엇모 대각 회복)
+  netWidth: number;   // 순폭 (mm)
+  area: number;       // 순단면적 (mm², 1매)
+}
+
+/** 순단면 도해 기하 — 엇모 인장파단(FP2·FI2) 후보경로 실측 작도 */
+export interface NetSectionGeom {
+  width: number;      // 그릴 판 폭(mm)
+  lines: { y: number; off: number; rows: number }[]; // 게이지선(y=폭좌표[중심0], off=길이오프셋, rows=행수)
+  edge: number;       // 자유단 연단거리(mm)
+  pitch: number;      // 응력방향 피치(mm)
+  dh: number;         // 볼트구멍 지름(mm)
+  plates: number;     // 판수(외부=1, 내부=2) — 라벨용
 }
 
 /** 블록전단 한 케이스 결과 (AISIsplice Appendix C Path) */

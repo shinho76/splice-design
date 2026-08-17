@@ -10,14 +10,33 @@ import { parseName, sectionByName } from '../sections.ts';
 import { Fy as FySteel, Fu as FuSteel, BOLT_MAT } from '../materials.ts';
 import { Ab, To_kN } from '../bolts.ts';
 import { PHI, FNV_FACTOR, SLIP, holeDia, netDeductPerHole, kN, kNm } from './constants.ts';
-import { grossArea, netArea, netAreaStag, colOffsets, bearing, buckling, flangeColumns } from './geometry.ts';
+import { grossArea, netArea, netAreaStag, netSectionCases, colOffsets, bearing, buckling, flangeColumns } from './geometry.ts';
 import { bsCases } from './bsPatterns.ts';
 import type { BsInput } from './bsPatterns.ts';
-import type { AiscCheck, AiscStep, BlockCase, DemandSet } from './types.ts';
+import type { AiscCheck, AiscStep, BlockCase, DemandSet, NetPath, NetSectionGeom } from './types.ts';
+
+/** 엇모 순단면 도해 기하 생성 — 게이지선을 판폭 중심(0)으로 이동, off·행수 부여 */
+function netGeom(width: number, colsOff: { x: number; off: number }[], edge: number, pitch: number, dh: number, plates: number, nHi: number, nLo: number): NetSectionGeom {
+  const mean = colsOff.reduce((s, c) => s + c.x, 0) / (colsOff.length || 1);
+  const lines = colsOff.map(c => ({ y: c.x - mean, off: c.off, rows: c.off > 0 ? nLo : nHi }));
+  return { width, lines, edge, pitch, dh, plates };
+}
 
 /** step 팩토리 */
 const S = (label: string, formula?: string, subst?: string, value?: number, unit?: string, ref?: string): AiscStep =>
   ({ label, formula, subst, value, unit, ref });
+
+/** 엇모 순단면 후보경로 → 계산서 step 행(각 경로 순폭·순단면적, 지배(최소) 표시). mult=판수(내부판 ×2). */
+function netPathSteps(width: number, t: number, cases: NetPath[], gov: NetPath, ndp: number, mult = 1): AiscStep[] {
+  const M = mult > 1 ? `·${mult}` : '';
+  return cases.map(c => ({
+    label: `· ${c.label}`,
+    formula: `(w − n·(dₕ+2)${c.gain > 0.05 ? ' + Σs²/4g' : ''})·t${M}`,
+    subst: `(${width} − ${c.nHoles}·${ndp}${c.gain > 0.05 ? ` + ${c.gain.toFixed(1)}` : ''})·${t}${M}`,
+    value: +(c.area * mult).toFixed(0), unit: 'mm²', ref: 'B4.3b',
+    note: c.key === gov.key ? '지배(최소)' : undefined,
+  }));
+}
 
 /** 블록전단 지배 Path 요약 문자열 (Path·Ubs·DCR만) */
 export function bsDetail(bs: { gov: BlockCase; cases: BlockCase[] }): string {
@@ -105,7 +124,7 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
   // ── FP. 외부 이음판 PL (half) ──
   {
     const g = `B. 외부 이음판 PL-${oT}×${oW}`;
-    const ns = netAreaStag(oW, oT, colsOff, ndp), An = ns.area, Ag = grossArea(oW, oT), Ae = Math.min(An, 0.85 * Ag);
+    const nsc = netSectionCases(oW, oT, colsOff, ndp), An = nsc.gov.area, Ag = grossArea(oW, oT), Ae = Math.min(An, 0.85 * Ag);
     checks.push(finalize({
       id: 'FP1', region: 'outer', group: g, label: '인장 항복', clause: 'J4.1',
       detail: `φFyAg = 0.90·${pFy}·${Ag.toFixed(0)}`, phiRn: kN(PHI.Y * pFy * Ag), demand: kN(halfOut), unit: 'kN',
@@ -116,13 +135,17 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
     }));
     checks.push(finalize({
       id: 'FP2', region: 'outer', group: g, label: '인장 파단', clause: 'J4.2',
-      detail: `φFuAe, Ae=min(An,0.85Ag)=${Ae.toFixed(0)}`, phiRn: kN(PHI.V * pFu * Ae), demand: kN(halfOut), unit: 'kN',
+      detail: `φFuAe, Ae=min(An,0.85Ag)=${Ae.toFixed(0)}${stagF ? ` · 순단면 지배=${nsc.gov.label}` : ''}`, phiRn: kN(PHI.V * pFu * Ae), demand: kN(halfOut), unit: 'kN',
       steps: [
         S('Gross area Ag', 'width × thickness', `${oW}·${oT}`, +Ag.toFixed(0), 'mm²'),
-        S('Net area An (deduct m holes)', stagF ? '(w − m·(dₕ+2) + Σs²/4g)·t' : '(w − m·(dₕ+2mm))·t', stagF ? `(${oW} − ${m}·${ndp} + ${ns.gain.toFixed(1)})·${oT}` : `(${oW} − ${m}·${ndp})·${oT}`, +An.toFixed(0), 'mm²', 'B4.3b'),
+        ...(stagF
+          ? [S('Net area An — 후보 파단경로 전수검토 (B4.3b)', '', '', undefined, undefined, 'B4.3b'), ...netPathSteps(oW, oT, nsc.cases, nsc.gov, ndp)]
+          : [S('Net area An (deduct m holes)', '(w − m·(dₕ+2mm))·t', `(${oW} − ${m}·${ndp})·${oT}`, +An.toFixed(0), 'mm²', 'B4.3b')]),
         S('Effective area Ae', 'min(An, 0.85·Ag)', `min(${An.toFixed(0)}, ${(0.85 * Ag).toFixed(0)})`, +Ae.toFixed(0), 'mm²'),
         S('Design rupture φRn', 'φ·Fu·Ae', `0.75·${pFu}·${Ae.toFixed(0)}`, kN(PHI.V * pFu * Ae), 'kN', 'J4.2'),
       ],
+      nsPaths: stagF ? nsc.cases : undefined,
+      nsGeom: stagF ? netGeom(oW, colsOff, edge, pitch, dh, 1, nHi, nLo) : undefined,
     }));
     const bk = buckling(oT, Ag, pFy, unbraced);
     checks.push(finalize({
@@ -157,8 +180,8 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
   if (inner) {
     const g = `C. 내부 이음판 PL-${iT}×${iW}×2`;
     const nHalf = Math.ceil(m / 2);                 // 내판 1매당 열수
-    const nsI = netAreaStag(iW, iT, innerColsOff, ndp);   // 내판 1매 B4.3b 순단면
-    const Ag = 2 * grossArea(iW, iT), An = 2 * nsI.area, Ae = Math.min(An, 0.85 * Ag);
+    const nscI = netSectionCases(iW, iT, innerColsOff, ndp);   // 내판 1매 B4.3b 순단면(후보경로 전수)
+    const Ag = 2 * grossArea(iW, iT), An = 2 * nscI.gov.area, Ae = Math.min(An, 0.85 * Ag);
     checks.push(finalize({
       id: 'FI1', region: 'inner', group: g, label: '인장 항복', clause: 'J4.1',
       detail: `φFy·2Ag = 0.90·${pFy}·${Ag.toFixed(0)}`, phiRn: kN(PHI.Y * pFy * Ag), demand: kN(halfIn), unit: 'kN',
@@ -169,13 +192,17 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
     }));
     checks.push(finalize({
       id: 'FI2', region: 'inner', group: g, label: '인장 파단', clause: 'J4.2',
-      detail: `φFu·Ae, Ae=${Ae.toFixed(0)}`, phiRn: kN(PHI.V * pFu * Ae), demand: kN(halfIn), unit: 'kN',
+      detail: `φFu·Ae, Ae=${Ae.toFixed(0)}${stagF ? ` · 순단면 지배=${nscI.gov.label}` : ''}`, phiRn: kN(PHI.V * pFu * Ae), demand: kN(halfIn), unit: 'kN',
       steps: [
         S('Gross area (2 plates) Ag', '2·w·t', `2·${iW}·${iT}`, +Ag.toFixed(0), 'mm²'),
-        S('Net area An (deduct n holes/plate)', stagF ? '2·(w − n·(dₕ+2mm) + Σs²/4g)·t' : '2·(w − n·(dₕ+2mm))·t', stagF ? `2·(${iW} − ${nHalf}·${ndp} + ${nsI.gain.toFixed(1)})·${iT}` : `2·(${iW} − ${nHalf}·${ndp})·${iT} (n=${nHalf}열, dₕ=${dh}=d+2, +2mm B4.3b → ${ndp})`, +An.toFixed(0), 'mm²', 'B4.3b'),
+        ...(stagF
+          ? [S('Net area An (×2매) — 후보 파단경로 전수검토 (B4.3b)', '', '', undefined, undefined, 'B4.3b'), ...netPathSteps(iW, iT, nscI.cases, nscI.gov, ndp, 2)]
+          : [S('Net area An (deduct n holes/plate)', '2·(w − n·(dₕ+2mm))·t', `2·(${iW} − ${nHalf}·${ndp})·${iT} (n=${nHalf}열, dₕ=${dh}=d+2, +2mm B4.3b → ${ndp})`, +An.toFixed(0), 'mm²', 'B4.3b')]),
         S('Effective area Ae', 'min(An, 0.85·Ag)', `min(${An.toFixed(0)}, ${(0.85 * Ag).toFixed(0)})`, +Ae.toFixed(0), 'mm²'),
         S('Design rupture φRn', 'φ·Fu·Ae', `0.75·${pFu}·${Ae.toFixed(0)}`, kN(PHI.V * pFu * Ae), 'kN', 'J4.2'),
       ],
+      nsPaths: stagF ? nscI.cases : undefined,
+      nsGeom: stagF ? netGeom(iW, innerColsOff, edge, pitch, dh, 2, nHi, nLo) : undefined,
     }));
     const bk = buckling(iT, Ag, pFy, unbraced);
     checks.push(finalize({

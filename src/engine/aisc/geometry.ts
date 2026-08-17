@@ -5,7 +5,7 @@
 // 반환값은 별도 표기 없으면 N (힘) 단위.
 // ────────────────────────────────────────────────────────────────────────────
 import { PHI, E_STEEL, K_BUCKLE, UBS, holeDia, netDeductPerHole } from './constants.ts';
-import type { BlockCase, BsRegion } from './types.ts';
+import type { BlockCase, BsRegion, NetPath } from './types.ts';
 
 /** 총단면적 (mm²) */
 export const grossArea = (width: number, t: number): number => width * t;
@@ -22,18 +22,45 @@ export const netArea = (width: number, t: number, nHoles: number, d: number): nu
  * 반환: {area, gain}(gain=Σs²/4g, 계산서 표기용).
  */
 export function netAreaStag(width: number, t: number, cols: { x: number; off: number }[], dd: number): { area: number; gain: number } {
-  if (cols.length === 0) return { area: width * t, gain: 0 };
+  const { cases, gov } = netSectionCases(width, t, cols, dd);
+  void cases;
+  return { area: gov.area, gain: gov.key === 'zig' ? gov.gain : 0 };
+}
+
+/**
+ * 엇모(staggered) 순단면 후보 파단경로 열거 — AISC 360-16 B4.3b.
+ *   폭방향으로 요소를 관통하는 모든 실질 후보 경로를 나열하고 최소 순단면(=지배)을 반환.
+ *   ① 전열 지그재그: 모든 게이지선의 구멍 공제 + 인접 대각마다 s²/4g 회복 (통상 지배).
+ *   ② 정렬 위상별 직선: 같은 길이방향 위상(off)에 놓인 열만 동시에 절단하는 수직 파단선.
+ *   (정렬배치면 off 단일위상 → ①=② 로 축약, 후보 1개.)
+ * cols: 각 볼트열의 {x: 폭방향 좌표, off: 길이방향 오프셋}. dd = 1구멍 공제폭.
+ */
+export function netSectionCases(width: number, t: number, cols: { x: number; off: number }[], dd: number): { cases: NetPath[]; gov: NetPath } {
   const xs = cols.slice().sort((a, b) => a.x - b.x);
+  if (xs.length === 0) {
+    const c: NetPath = { key: 'gross', label: '무공제', nHoles: 0, gain: 0, netWidth: width, area: width * t };
+    return { cases: [c], gov: c };
+  }
+  const cases: NetPath[] = [];
+  // ① 전열 지그재그
   let gain = 0;
   for (let i = 0; i < xs.length - 1; i++) {
     const g = xs[i + 1].x - xs[i].x, s = Math.abs(xs[i + 1].off - xs[i].off);
     if (g > 0 && s > 0) gain += (s * s) / (4 * g);
   }
-  const zig = width - xs.length * dd + gain;                 // 전열 지그재그(통상 지배)
-  const perLine = new Map<number, number>();                 // 방어적: 한 종선상 최다열 직선경로
-  for (const c of xs) perLine.set(c.off, (perLine.get(c.off) ?? 0) + 1);
-  const straight = width - Math.max(...perLine.values()) * dd;
-  return { area: Math.max(0, Math.min(zig, straight)) * t, gain: zig <= straight ? gain : 0 };
+  const zigW = Math.max(0, width - xs.length * dd + gain);
+  cases.push({ key: 'zig', label: `전열 지그재그(${xs.length}공, +Σs²/4g)`, nHoles: xs.length, gain, netWidth: zigW, area: zigW * t });
+  // ② 정렬 위상(off)별 직선 절단
+  const byOff = new Map<number, number>();
+  for (const c of xs) byOff.set(c.off, (byOff.get(c.off) ?? 0) + 1);
+  const offs = [...byOff.keys()].sort((a, b) => a - b);
+  if (offs.length > 1) for (const off of offs) {
+    const n = byOff.get(off)!;
+    const w = Math.max(0, width - n * dd);
+    cases.push({ key: `s${off}`, label: `직선(${off === 0 ? '외측정렬' : `엇모 +${off}`}열, ${n}공)`, nHoles: n, gain: 0, netWidth: w, area: w * t });
+  }
+  const gov = cases.reduce((a, b) => (b.area < a.area ? b : a));
+  return { cases, gov };
 }
 
 /** 열 x좌표 → 길이방향 오프셋(엇모: 최외곽열=0, 내측열=45mm 엇갈림). 정렬이면 전부 0. */
