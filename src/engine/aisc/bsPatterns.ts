@@ -206,8 +206,8 @@ export function blockShearPaths(p: BsInput): BsPath[] {
       [[[0, -aOut], nj(-aOut), nj(-aIn), nj(aIn), nj(aOut), [G.last(aOut), ym], [0, ym]]]),
     F('P1b', 'Path 1b', NON, [S(-aOut)], [[nj(-aOut), nj(-aIn), nj(aIn), [G.last(aIn), ym]]],
       [[[0, -aOut], nj(-aOut), nj(-aIn), nj(aIn), [G.last(aIn), ym], [0, ym]]]),
-    F('P2a', 'Path 2a', UNI, [S(-aOut), S(aOut)], [[nj(-aOut), nj(-aIn), nj(aIn), nj(aOut), [G.last(aOut), ym]]],
-      [[[0, -aOut], nj(-aOut), nj(-aIn), nj(aIn), nj(aOut), [G.last(aOut), ym], [0, ym]]]),
+    // ※ 엇모 Path 2a 삭제: 상단 외곽선이 탈락블록 내부(연단까지 확장)라 전단면에서 제외하면
+    //    하단 1면 전단 + 전 볼트 계단 인장이 되어 Path 1a와 완전히 동일(중복) → 후보에서 제거.
     F('P2b', 'Path 2b', UNI, [S(aIn), S(-aIn)], [[nj(aIn), [G.last(aIn), ym]], [[G.last(-aIn), -ym], nj(-aIn)]],
       [[[0, aIn], nj(aIn), [G.last(aIn), ym], [0, ym]], [[0, -ym], [G.last(-aIn), -ym], nj(-aIn), [0, -aIn]]]),
     F('P2c', 'Path 2c', UNI, [S(aIn), S(-aIn)], [[nj(aIn), nj(aOut), [G.last(aOut), ym]], [[G.last(-aOut), -ym], nj(-aOut), nj(-aIn)]],

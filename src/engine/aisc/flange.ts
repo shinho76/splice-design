@@ -265,11 +265,13 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
         S('Design rupture φRn', 'φ·Fu·Ae', `0.75·${mFu}·${AeWt.toFixed(0)}`, kN(PHI.V * mFu * AeWt), 'kN', 'D2.2'),
       ],
     }));
+    // 끝선 = 내부 이음판 끝선(FI5와 동일 위치 ±iE). 내부판 없으면 웨브 경계로 대체.
+    const iEm = iW > 0 ? Math.max(6, Math.max(...cols.map(Math.abs)) + 35 - iW) : tw / 2 + 4;
     const bs = bsCases({ kind: 'girder', lines: cols, n: nrow, pitch, edge, staggered: stagF, nHi, nLo, ym: B / 2, webBar: tw / 2 + 4, t: tf, dh, Fy: mFy, Fu: mFu, plates: 1 }, Pf);
     checks.push(finalize({
       id: 'FM5', region: 'member', group: g, label: '부재 블록 전단', clause: 'J4.3',
       detail: bsDetail(bs), phiRn: kN(bs.gov.phiRn), demand: kN(Pf), unit: 'kN', cases: bs.cases,
-      bsGeom: { cols, nrow, pitch, edge, halfWidth: B / 2, dh, plates: 1, staggered: stagF, gauge: g1, nHi, nLo, webBar: tw / 2 + 4, innerEdge: tw / 2 + 4 } as any,
+      bsGeom: { cols, nrow, pitch, edge, halfWidth: B / 2, dh, plates: 1, staggered: stagF, gauge: g1, nHi, nLo, webBar: tw / 2 + 4, innerEdge: iEm } as any,
     }));
   }
 

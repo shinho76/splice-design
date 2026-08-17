@@ -70,7 +70,17 @@ function BsPanel({ c, geom }: { c: BlockCase; geom: BlockShearGeom }) {
     <div style={{ textAlign: 'center' }}>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" style={{ width: '100%', maxWidth: W, height: 'auto', background: '#fff', borderRadius: 5 }}>
         <title>{c.path ?? ''}</title>
-        <rect x={plate.x} y={plate.y} width={plate.w} height={plate.h} fill="none" stroke={c.gov ? BLOCKS : PLATE} strokeWidth={c.gov ? 1.5 : 1} />
+        {vertical ? (() => {
+          // 웨브: 판 좌측선(외측단, Vu 화살표 우측)만 점선, 상·우·하 3면 실선
+          const Lx = plate.x, Rx = plate.x + plate.w, Ty = plate.y, By = plate.y + plate.h;
+          const col = c.gov ? BLOCKS : PLATE, sw = c.gov ? 1.5 : 1;
+          return <>
+            <polyline points={`${Lx},${By} ${Rx},${By} ${Rx},${Ty} ${Lx},${Ty}`} fill="none" stroke={col} strokeWidth={sw} />
+            <line x1={Lx} y1={Ty} x2={Lx} y2={By} stroke={col} strokeWidth={sw} strokeDasharray="4 3" />
+          </>;
+        })() : (
+          <rect x={plate.x} y={plate.y} width={plate.w} height={plate.h} fill="none" stroke={c.gov ? BLOCKS : PLATE} strokeWidth={c.gov ? 1.5 : 1} />
+        )}
         {/* WEB 바(내부·부재) */}
         {wb ? (() => { const a = map(0, wb), b = map(Xj, -wb); return <rect x={Math.min(a[0], b[0])} y={Math.min(a[1], b[1])} width={Math.abs(b[0] - a[0])} height={Math.abs(b[1] - a[1])} fill="#2b3038" opacity={0.5} />; })() : null}
         {/* 끝선(웨브측 판단부) — ±iE 실선. 내부판=내부판 끝선, 부재=웨브 경계 */}

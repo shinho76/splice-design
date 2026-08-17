@@ -70,11 +70,11 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
         <div className="fld">
           <label>{L('볼트', 'Bolt')}</label>
           <select value={cond.bolt} onChange={e => set('bolt', e.target.value as BoltGrade)}>
-            <optgroup label="KS">
+            <optgroup label="KS B 1010">
               <option value="F10T">F10T, S10T</option><option value="F13T">F13T</option>
             </optgroup>
-            <optgroup label="ASTM">
-              <option value="A325">A325</option><option value="F1852">F1852</option><option value="A490">A490</option><option value="F2280">F2280</option>
+            <optgroup label="ASTM F3125">
+              <option value="A325">A325, F1852</option><option value="A490">A490, F2280</option>
             </optgroup>
           </select>
         </div>
