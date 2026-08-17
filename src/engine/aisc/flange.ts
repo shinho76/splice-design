@@ -204,7 +204,7 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
       checks.push(finalize({
         id: 'FI5', region: 'inner', group: g, label: '블록 전단(×2)', clause: 'J4.3',
         detail: bsDetail(bs), phiRn: kN(bs.gov.phiRn), demand: kN(halfIn), unit: 'kN', cases: bs.cases,
-        bsGeom: { cols, nrow, pitch, edge, halfWidth: oE, dh, plates: 2, staggered: stagF, gauge: g2 || g1, nHi, nLo, webBar: tw / 2 + 4 } as any,
+        bsGeom: { cols, nrow, pitch, edge, halfWidth: oE, dh, plates: 2, staggered: stagF, gauge: g2 || g1, nHi, nLo, webBar: tw / 2 + 4, innerEdge: iE } as any,
       }));
     }
   }

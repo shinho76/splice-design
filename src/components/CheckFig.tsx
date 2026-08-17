@@ -31,51 +31,64 @@ function Hatch({ poly }: { poly: Pt[] }) {
   </>;
 }
 
-// 한 케이스(Path) 패널 — c.viz(x=하중축, y=폭)를 실측 작도
+// 한 케이스(Path) 패널 — c.viz(x=하중축, y=폭; 웨브는 x=춤·y=축[이음면0→외곽])를 실측 작도
 function BsPanel({ c, geom }: { c: BlockCase; geom: BlockShearGeom }) {
   const viz = c.viz; if (!viz) return null;
   const vertical = !!geom.vertical, stag = !!geom.staggered;
   const nHi = geom.nHi ?? geom.nrow, nLo = geom.nLo ?? geom.nrow;
   const mx = Math.max(...geom.cols.map(v => Math.abs(v)));
   const stagOf = (cv: number) => { const isOut = Math.abs(cv) >= mx - 0.5; const rows = stag ? (isOut ? nHi : nLo) : geom.nrow; const off = (stag && !isOut) ? 45 : 0; const pit = stag ? 90 : geom.pitch; return { rows, off, pit }; };
-  // (x,y) bbox — viz + 판폭 + 볼트
+  const iE = (geom as any).innerEdge as number | undefined;   // 내부판 끝선(웨브측)
+  const wb = (geom as any).webBar as number | undefined;
+  // (x,y) bbox — viz + 판폭/판단 + 볼트. 웨브는 축좌표 이음면(0)→외곽(양수, 한쪽 절반).
   const pts: Pt[] = [...viz.shear.flatMap(s => [[s.x0, s.y], [s.x1, s.y]] as Pt[]), ...viz.tension.flat(), ...viz.tear.flat()];
-  const xs = pts.map(p => p[0]).concat([geom.edge]), ys = pts.map(p => p[1]).concat([geom.halfWidth, -geom.halfWidth]);
+  const xs = pts.map(p => p[0]).concat([geom.edge]);
+  const ys = vertical ? pts.map(p => p[1]).concat([0, mx + geom.edge]) : pts.map(p => p[1]).concat([geom.halfWidth, -geom.halfWidth]);
   const XT = Math.max(...xs), Xj = XT + geom.edge, ymax = Math.max(...ys), ymin = Math.min(...ys), yMid = (ymax + ymin) / 2;
   const W = 232, H = vertical ? 208 : 150, pad = 12, aw = 42;
   const lenTot = Xj, widTot = ymax - ymin;
-  const sc = Math.min(((vertical ? H : W) - 2 * pad - aw) / lenTot, ((vertical ? W : H) - 2 * pad) / (widTot || 1));
-  const u0 = pad + aw, cc = (vertical ? W : H) / 2;
-  const map = (x: number, y: number): Pt => vertical ? [cc + (y - yMid) * sc, u0 + x * sc] : [u0 + x * sc, cc - (y - yMid) * sc];
+  const sc = Math.min(((vertical ? H : W) - 2 * pad - aw) / lenTot, ((vertical ? W : H) - 2 * pad - (vertical ? aw : 0)) / (widTot || 1));
+  const u0 = pad + aw, cc = vertical ? (W + aw) / 2 : H / 2;
+  // 웨브(vertical): 이음면(y=0) 우측, 외곽 좌측(→ Vu·전단선이 좌측). 그 외: x=하중축(우=이음).
+  const map = (x: number, y: number): Pt => vertical ? [cc - (y - yMid) * sc, u0 + x * sc] : [u0 + x * sc, cc - (y - yMid) * sc];
   const M = (p: Pt) => map(p[0], p[1]);
   const br = Math.max(1.3, (geom.dh / 2) * sc);
   const plate = (() => { const a = map(0, ymax), b = map(Xj, ymin); return { x: Math.min(a[0], b[0]), y: Math.min(a[1], b[1]), w: Math.abs(b[0] - a[0]), h: Math.abs(b[1] - a[1]) }; })();
   const onShear = (y: number) => viz.shear.some(s => Math.abs(s.y - y) < 0.5);
   const loadLbl = geom.loadDir === 'H' ? 'Hu' : vertical ? 'Vu' : 'Pf';
-  // 하중 화살표(자유단측)
-  const la0 = map(0, yMid), lax = la0[0] - (vertical ? 0 : aw - 8), lay = la0[1] + (vertical ? -(aw - 8) : 0);
-  const ahead = vertical ? `M${la0[0]},${la0[1] - (aw - 8)} l-7,14 h14 z` : `M${lax},${lay} l14,-7 v14 z`;
+  // 하중 화살표 — 웨브는 전단선(외곽열) 좌측·하향, 그 외는 자유단(좌측)에서 우향.
+  const shearMaxX = Math.max(...viz.shear.map(s => s.x1), XT);
+  let ld: { x1: number; y1: number; x2: number; y2: number; head: string; lx: number; ly: number };
+  if (vertical) {
+    const topY = map(0, mx)[1], botY = map(shearMaxX, mx)[1], vx = plate.x - 8;
+    ld = { x1: vx, y1: topY, x2: vx, y2: botY - 3, head: `M${vx},${botY} l-6,-12 h12 z`, lx: vx, ly: topY - 5 };
+  } else {
+    const la0 = map(0, yMid), lax = la0[0] - (aw - 8);
+    ld = { x1: lax, y1: la0[1], x2: la0[0], y2: la0[1], head: `M${lax},${la0[1]} l14,-7 v14 z`, lx: lax, ly: la0[1] - 8 };
+  }
   return (
     <div style={{ textAlign: 'center' }}>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" style={{ width: '100%', maxWidth: W, height: 'auto', background: '#fff', borderRadius: 5 }}>
         <title>{c.path ?? ''}</title>
         <rect x={plate.x} y={plate.y} width={plate.w} height={plate.h} fill="none" stroke={c.gov ? BLOCKS : PLATE} strokeWidth={c.gov ? 1.5 : 1} />
         {/* WEB 바(내부·부재) */}
-        {(geom as any).webBar ? (() => { const wb = (geom as any).webBar as number; const a = map(0, wb), b = map(Xj, -wb); return <rect x={Math.min(a[0], b[0])} y={Math.min(a[1], b[1])} width={Math.abs(b[0] - a[0])} height={Math.abs(b[1] - a[1])} fill="#2b3038" opacity={0.5} />; })() : null}
+        {wb ? (() => { const a = map(0, wb), b = map(Xj, -wb); return <rect x={Math.min(a[0], b[0])} y={Math.min(a[1], b[1])} width={Math.abs(b[0] - a[0])} height={Math.abs(b[1] - a[1])} fill="#2b3038" opacity={0.5} />; })() : null}
+        {/* 내부판 끝선(웨브측) — ±iE */}
+        {iE != null && !vertical ? [iE, -iE].map((ye, k) => { const a = map(0, ye), b = map(Xj, ye); return <line key={`ie${k}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={BLOCKS} strokeWidth={1.1} strokeDasharray="2 2" />; }) : null}
         {/* 탈락블록 */}
         {viz.tear.map((poly, i) => <Hatch key={i} poly={poly.map(M)} />)}
         {/* 하중 화살표 */}
-        <line x1={vertical ? la0[0] : lax} y1={vertical ? la0[1] - (aw - 8) : lay} x2={la0[0]} y2={la0[1]} stroke={LOAD} strokeWidth={4} strokeLinecap="round" />
-        <path d={ahead} fill={LOAD} />
-        <text x={vertical ? la0[0] + 12 : lax} y={vertical ? la0[1] - (aw - 2) : lay - 8} fontSize={13} fontWeight={800} fill={LOAD} textAnchor="middle">{loadLbl}</text>
+        <line x1={ld.x1} y1={ld.y1} x2={ld.x2} y2={ld.y2} stroke={LOAD} strokeWidth={4} strokeLinecap="round" />
+        <path d={ld.head} fill={LOAD} />
+        <text x={ld.lx} y={ld.ly} fontSize={13} fontWeight={800} fill={LOAD} textAnchor="middle">{loadLbl}</text>
         {/* 볼트 */}
         {geom.cols.map((cv, ci) => { const { rows, off, pit } = stagOf(cv); return Array.from({ length: rows }, (_, i) => { const [bx, by] = map(geom.edge + off + i * pit, cv); return <circle key={`${ci}-${i}`} cx={bx} cy={by} r={br} fill="none" stroke={onShear(cv) ? INK : HOLE} strokeWidth={onShear(cv) ? 1.2 : 0.85} />; }); })}
         {/* 전단면(빨강 ∥하중) */}
         {viz.shear.map((s, i) => { const [x1, y1] = map(s.x0, s.y), [x2, y2] = map(s.x1, s.y); return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={SHEAR} strokeWidth={2} strokeLinecap="round" />; })}
         {/* 인장면(파랑 계단) */}
         {viz.tension.map((poly, i) => <polyline key={i} points={poly.map(M).map(p => p.join(',')).join(' ')} fill="none" stroke={TENSION} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />)}
-        {/* 이음 CL */}
-        {(() => { const a = map(Xj, ymax), b = map(Xj, ymin); return <line x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={HOLE} strokeWidth={0.8} strokeDasharray="7 3 2 3" />; })()}
+        {/* 이음 CL — 웨브는 이음면(y=0) 수직, 그 외는 이음측(x=Xj) */}
+        {(() => { const a = vertical ? map(0, 0) : map(Xj, ymax), b = vertical ? map(Xj, 0) : map(Xj, ymin); return <line x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={HOLE} strokeWidth={0.8} strokeDasharray="7 3 2 3" />; })()}
         {c.path ? <text x={4} y={12} fontSize={11} fontWeight={700} fill={c.gov ? BLOCKS : INK}>{c.path}</text> : null}
       </svg>
       <div style={{ fontSize: 10.5, color: c.gov ? BLOCKS : 'var(--sub,#6b7280)', fontWeight: c.gov ? 700 : 500, marginTop: -1 }}>

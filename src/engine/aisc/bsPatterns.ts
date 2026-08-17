@@ -112,13 +112,14 @@ export function blockShearPaths(p: BsInput): BsPath[] {
   const F = (id: string, l: string, u: number, sh: ShearLine[], te: Pt[][], tr: Pt[][]) => finalize(id, l, u, sh, te, tr, p);
 
   if (p.kind === 'web') {
-    // 웨브: 수직전단 V, 이음면 한쪽 절반. 전단=외곽 볼트열(수직 1면, 2열도 내부 전단면 제외),
-    //   인장=최하단행에서 자유단(vHalf=ym)까지 수평 1면. 탈락블록=외곽열~자유단 스트립.
-    const cOut = Math.max(...p.lines.map(Math.abs)), Lv = G.last(cOut), yE = ym;
+    // 웨브: 수직전단 V, 이음면 한쪽 절반(축좌표 y=이음면0→외곽, 양수). 전단=외곽 볼트열만
+    //   수직 1면(2·3열도 내부 전단면 제외), 인장=최하단행에서 외곽열→이음면 수평 1면,
+    //   탈락블록=외곽열~이음면 블록(내부열 포함).
+    const cOut = Math.max(...p.lines.map(Math.abs)), Lv = G.last(cOut);
     return [F('W1', 'Path 1', UNI,
       [{ y: cOut, x0: 0, x1: Lv }],
-      [vseg(Lv, cOut, yE)],
-      [rect(0, Lv, cOut, yE)])];
+      [[[Lv, cOut], [Lv, 0]]],
+      [rect(0, Lv, 0, cOut)])];
   }
 
   if (p.kind === 'inner') {
@@ -178,7 +179,7 @@ export function blockShearPaths(p: BsInput): BsPath[] {
   const stepAll: Pt[] = [nj(-aOut), nj(-aIn), nj(aIn), nj(aOut)];
   if (!st) { // 2열 (정렬)
     if (isG) return [
-      F('M6', 'Path 6', UNI, [S(aOut), S(-aOut)], [vseg(XT, aIn, ym), vseg(XT, -ym, -aIn)], [rect(0, XT, aIn, ym), rect(0, XT, -ym, -aIn)]),
+      F('M6', 'Path 6', UNI, [S(aIn), S(-aIn)], [vseg(XT, aIn, ym), vseg(XT, -ym, -aIn)], [rect(0, XT, aIn, ym), rect(0, XT, -ym, -aIn)]),
       F('M7', 'Path 7', UNI, [S(aOut), S(aIn), S(-aIn), S(-aOut)], [vseg(XT, aIn, aOut), vseg(XT, -aOut, -aIn)], [rect(0, XT, aIn, aOut), rect(0, XT, -aOut, -aIn)]),
     ];
     return [

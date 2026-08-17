@@ -50,7 +50,8 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
   const webP = r.web.pitch ?? 60;                      // 축 피치
   const edge = r.web.edge ?? 40;
   const tp = wp.t, dp = wp.w;                          // 이음판 두께·춤
-  const colsAxis = Array.from({ length: nHoriz }, (_, i) => (i - (nHoriz - 1) / 2) * webP); // 축방향 열 x
+  const j0 = (cond.gap ?? 10) / 2 + edge;   // 이음면(0)→근접 볼트열 축거리
+  const colsAxis = Array.from({ length: nHoriz }, (_, i) => j0 + i * webP); // 이음면 기준 축위치(양수, 한쪽 절반)
 
   const g = `E. 웨브 이음판 PL-${tp}×${dp}×2`;
 
