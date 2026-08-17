@@ -191,20 +191,16 @@ export function blockShearPaths(p: BsInput): BsPath[] {
   }
   // 엇모 (m=4) — 경사(계단) 인장
   const bandTopStep: Pt[] = [nj(aIn), nj(aOut)], bandBotStep: Pt[] = [nj(-aOut), nj(-aIn)];
-  if (isG) {
-    const wb = p.webBar ?? Math.min(aIn * 0.5, 20);   // 내측 스트립 경계 = 웨브 바(플랜지-웨브 접합선)
-    return [
+  if (isG) return [
+    // ※ Path 8(=5b 등가, 2스트립)은 삭제: 부재 플랜지의 내측 스트립이 웨브와 일체(연결)라
+    //    그 블록은 분리·탈락하지 않는다. 내부 이음판(FI5)의 5b와 달리 자유단이 없음.
     F('M6a', 'Path 6a', NON, [S(aIn), S(-aIn)], [[nj(aIn), [G.last(aIn), ym]], [[G.last(-aIn), -ym], nj(-aIn)]],
       [[[0, aIn], nj(aIn), [G.last(aIn), ym], [0, ym]], [[0, -ym], [G.last(-aIn), -ym], nj(-aIn), [0, -aIn]]]),
     F('M6b', 'Path 6b', NON, [S(aIn), S(-aIn)], [[nj(aIn), nj(aOut), [G.last(aOut), ym]], [[G.last(-aOut), -ym], nj(-aOut), nj(-aIn)]],
       [[[0, aIn], nj(aIn), nj(aOut), [G.last(aOut), ym], [0, ym]], [[0, -ym], [G.last(-aOut), -ym], nj(-aOut), nj(-aIn), [0, -aIn]]]),
     F('M7', 'Path 7', UNI, [S(aOut), S(aIn), S(-aIn), S(-aOut)], [bandTopStep, bandBotStep],
       [[[0, aIn], nj(aIn), nj(aOut), [0, aOut]], [[0, -aOut], nj(-aOut), nj(-aIn), [0, -aIn]]]),
-    F('M8', 'Path 8', UNI, [S(aOut), S(aIn), S(-aIn), S(-aOut)],
-      [[nj(aOut), [G.last(aOut), ym]], [[G.last(aIn), wb], nj(aIn)], [[G.last(-aIn), -wb], nj(-aIn)], [nj(-aOut), [G.last(-aOut), -ym]]],
-      [[[0, aOut], nj(aOut), [G.last(aOut), ym], [0, ym]], [[0, wb], [G.last(aIn), wb], nj(aIn), [0, aIn]], [[0, -aIn], nj(-aIn), [G.last(-aIn), -wb], [0, -wb]], [[0, -ym], [G.last(-aOut), -ym], nj(-aOut), [0, -aOut]]]),
-    ];
-  }
+  ];
   return [
     F('P1a', 'Path 1a', NON, [S(-aOut)], [[nj(-aOut), nj(-aIn), nj(aIn), nj(aOut), [G.last(aOut), ym]]],
       [[[0, -aOut], nj(-aOut), nj(-aIn), nj(aIn), nj(aOut), [G.last(aOut), ym], [0, ym]]]),
