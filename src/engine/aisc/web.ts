@@ -159,6 +159,9 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
   }
 
   // ── WM. 부재 웨브 ──
+  //   ※ 부재웨브 블록전단(구 WM2)은 검토하지 않는다: 부재웨브는 상·하 플랜지와 일체(연속)로
+  //     블록이 분리될 자유단(연단)이 없어 블록전단 파단면이 형성되지 않는다. 웨브 이음판(WP1)만
+  //     자유단을 가지므로 블록전단 대상이다. (수직전단 항복 WM1만 유지)
   {
     const gm = 'F. 부재 웨브';
     const Aw = H * tw;
@@ -168,10 +171,6 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
         S('Gross web area Aw', 'H·tw', `${H}·${tw}`, +Aw.toFixed(0), 'mm²'),
         S('Design shear yield φVn', 'φv·0.6·Fy·Aw', `1.0·0.6·${mFy}·${Aw.toFixed(0)}`, kN(PHI.SH * 0.6 * mFy * Aw), 'kN', 'G2.1'),
       ] }));
-    const bs = bsCases({ kind: 'web', lines: colsAxis, n: nVert, pitch: Pc, edge, ym: vHalf, t: tw, dh, Fy: mFy, Fu: mFu, plates: 1 }, Vu);
-    checks.push(finalize({ id: 'WM2', region: 'member', group: gm, label: 'Girder Web 블록 전단', clause: 'J4.3',
-      detail: bsDetail(bs), phiRn: kN(bs.gov.phiRn), demand: kN(Vu), unit: 'kN', cases: bs.cases,
-      bsGeom: { cols: colsAxis, nrow: nVert, pitch: Pc, edge, halfWidth: vHalf, dh, plates: 1, vertical: true, loadDir: 'V' } }));
   }
 
   return checks;

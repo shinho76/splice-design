@@ -112,13 +112,13 @@ export function blockShearPaths(p: BsInput): BsPath[] {
   const F = (id: string, l: string, u: number, sh: ShearLine[], te: Pt[][], tr: Pt[][]) => finalize(id, l, u, sh, te, tr, p);
 
   if (p.kind === 'web') {
-    // 웨브: 이음면 한쪽 절반. 1열=외곽열 전단1면, 2열=외곽열만 전단(내부 전단면 제외). 인장=최하단행.
-    const cAll = p.lines.map(Math.abs), cOut = Math.max(...cAll), Lv = XT;
-    const shearCols = [cOut];
+    // 웨브: 수직전단 V, 이음면 한쪽 절반. 전단=외곽 볼트열(수직 1면, 2열도 내부 전단면 제외),
+    //   인장=최하단행에서 자유단(vHalf=ym)까지 수평 1면. 탈락블록=외곽열~자유단 스트립.
+    const cOut = Math.max(...p.lines.map(Math.abs)), Lv = G.last(cOut), yE = ym;
     return [F('W1', 'Path 1', UNI,
-      shearCols.map(c => ({ y: c, x0: 0, x1: G.last(c) })),
-      [[[Lv, cOut], [Lv, 0]]],
-      [rect(0, Lv, 0, cOut)])];
+      [{ y: cOut, x0: 0, x1: Lv }],
+      [vseg(Lv, cOut, yE)],
+      [rect(0, Lv, cOut, yE)])];
   }
 
   if (p.kind === 'inner') {
@@ -131,7 +131,23 @@ export function blockShearPaths(p: BsInput): BsPath[] {
         [vseg(G.last(hiU), hiU, oE), vseg(G.last(hiL), hiL, -oE)],
         [rect(0, G.last(hiU), hiU, oE), rect(0, G.last(hiL), hiL, -oE)])];
     }
-    // 2열/엇모: Path 4(내측선·판연단) / 5a(4면·내측) / 5b(4면·2스트립)
+    if (p.staggered) { // 엇모: 계단(경사) 인장 — Path 4a(직진)/4b(계단)/5a(밴드계단)/5b(2스트립)
+      return [
+        F('I4a', 'Path 4a', NON, [S(inU), S(inL)],
+          [vseg(G.last(inU), inU, oE), vseg(G.last(inL), inL, -oE)],
+          [rect(0, G.last(inU), inU, oE), rect(0, G.last(inL), inL, -oE)]),
+        F('I4b', 'Path 4b', NON, [S(inU), S(inL)],
+          [[nj(inU), nj(hiU), [G.last(hiU), oE]], [[G.last(hiL), -oE], nj(hiL), nj(inL)]],
+          [[[0, inU], nj(inU), nj(hiU), [G.last(hiU), oE], [0, oE]], [[0, -oE], [G.last(hiL), -oE], nj(hiL), nj(inL), [0, inL]]]),
+        F('I5a', 'Path 5a', UNI, [S(hiU), S(inU), S(inL), S(hiL)],
+          [[nj(inU), nj(hiU)], [nj(hiL), nj(inL)]],
+          [[[0, inU], nj(inU), nj(hiU), [0, hiU]], [[0, hiL], nj(hiL), nj(inL), [0, inL]]]),
+        F('I5b', 'Path 5b', UNI, [S(hiU), S(inU), S(inL), S(hiL)],
+          [[nj(hiU), [G.last(hiU), oE]], [[G.last(inU), iE], nj(inU)], [[G.last(inL), -iE], nj(inL)], [nj(hiL), [G.last(hiL), -oE]]],
+          [[[0, hiU], nj(hiU), [G.last(hiU), oE], [0, oE]], [[0, iE], [G.last(inU), iE], nj(inU), [0, inU]], [[0, inL], nj(inL), [G.last(inL), -iE], [0, -iE]], [[0, -oE], [G.last(hiL), -oE], nj(hiL), [0, hiL]]]),
+      ];
+    }
+    // 2열(정렬): Path 4(내측선·판연단) / 5a(4면·내측) / 5b(4면·2스트립)
     const r: BsPath[] = [];
     r.push(F('I4', 'Path 4', NON, [S(inU), S(inL)],
       [vseg(G.last(inU), inU, oE), vseg(G.last(inL), inL, -oE)],
@@ -174,14 +190,20 @@ export function blockShearPaths(p: BsInput): BsPath[] {
   }
   // 엇모 (m=4) — 경사(계단) 인장
   const bandTopStep: Pt[] = [nj(aIn), nj(aOut)], bandBotStep: Pt[] = [nj(-aOut), nj(-aIn)];
-  if (isG) return [
+  if (isG) {
+    const wb = p.webBar ?? Math.min(aIn * 0.5, 20);   // 내측 스트립 경계 = 웨브 바(플랜지-웨브 접합선)
+    return [
     F('M6a', 'Path 6a', NON, [S(aIn), S(-aIn)], [[nj(aIn), [G.last(aIn), ym]], [[G.last(-aIn), -ym], nj(-aIn)]],
       [[[0, aIn], nj(aIn), [G.last(aIn), ym], [0, ym]], [[0, -ym], [G.last(-aIn), -ym], nj(-aIn), [0, -aIn]]]),
     F('M6b', 'Path 6b', NON, [S(aIn), S(-aIn)], [[nj(aIn), nj(aOut), [G.last(aOut), ym]], [[G.last(-aOut), -ym], nj(-aOut), nj(-aIn)]],
       [[[0, aIn], nj(aIn), nj(aOut), [G.last(aOut), ym], [0, ym]], [[0, -ym], [G.last(-aOut), -ym], nj(-aOut), nj(-aIn), [0, -aIn]]]),
     F('M7', 'Path 7', UNI, [S(aOut), S(aIn), S(-aIn), S(-aOut)], [bandTopStep, bandBotStep],
       [[[0, aIn], nj(aIn), nj(aOut), [0, aOut]], [[0, -aOut], nj(-aOut), nj(-aIn), [0, -aIn]]]),
-  ];
+    F('M8', 'Path 8', UNI, [S(aOut), S(aIn), S(-aIn), S(-aOut)],
+      [[nj(aOut), [G.last(aOut), ym]], [[G.last(aIn), wb], nj(aIn)], [[G.last(-aIn), -wb], nj(-aIn)], [nj(-aOut), [G.last(-aOut), -ym]]],
+      [[[0, aOut], nj(aOut), [G.last(aOut), ym], [0, ym]], [[0, wb], [G.last(aIn), wb], nj(aIn), [0, aIn]], [[0, -aIn], nj(-aIn), [G.last(-aIn), -wb], [0, -wb]], [[0, -ym], [G.last(-aOut), -ym], nj(-aOut), [0, -aOut]]]),
+    ];
+  }
   return [
     F('P1a', 'Path 1a', NON, [S(-aOut)], [[nj(-aOut), nj(-aIn), nj(aIn), nj(aOut), [G.last(aOut), ym]]],
       [[[0, -aOut], nj(-aOut), nj(-aIn), nj(aIn), nj(aOut), [G.last(aOut), ym], [0, ym]]]),
