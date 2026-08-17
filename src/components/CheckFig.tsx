@@ -1,8 +1,7 @@
 // 상세계산서 검토별 파단선/검토선 도해.
-//   블록전단: 실제 볼트배치(열·피치·연단·폭)로 AISIsplice Appendix C Path 파단선을 실측 작도 —
-//     전단면(빨강 실선, 하중방향)·인장면(파랑 점선, 직각)·탈락 블록(앰버 해치), 지배 Path 강조.
-//     Path 1 외연L · 2a 전열U(내부인장) · 2b 외측U(연단인장) · 3 밴드분할U · webV 웨브 수직전단.
-//   기타 한계상태: 조항(clause)별 검토 글리프.
+//   블록전단: bsPatterns 단일 소스의 viz(전단·인장·탈락)를 실 볼트배치로 작도 —
+//     전단면(빨강 실선, ∥하중)·인장면(파랑 실선, ⊥하중, 계단)·탈락 블록(앰버 해치), 지배 Path 강조.
+//   후보 Path 전체를 나열(각 케이스 DCR). 기타 한계상태: 조항(clause)별 글리프.
 import type { ReactNode } from 'react';
 import type { AiscCheck, BlockCase, BlockShearGeom } from '../engine/aisc/types.ts';
 import type { Lang } from '../i18n.ts';
@@ -10,123 +9,92 @@ import type { Lang } from '../i18n.ts';
 const SHEAR = '#d1495b', TENSION = '#2c6fbb', BLOCKF = 'rgba(245,184,71,.18)', BLOCKS = '#e0a92e',
   HOLE = '#8b93a0', PLATE = '#9aa1ab', LOAD = '#12a794', INK = '#333';
 
-let HID = 0;   // 해치 pattern 고유 id
-
-// 기하키(BlockCase.key) → 파단 기하(전단열 y[], 인장구간 [lo,hi]). cols·halfWidth(mm) 기준.
-function fracture(key: string, cols: number[], halfWidth: number): { shearYs: number[]; tenLo: number; tenHi: number } {
-  const absC = cols.map(v => Math.abs(v));
-  const xOut = Math.max(...absC);
-  const posAbs = absC.filter(v => v > 0.1);
-  const xIn = posAbs.length ? Math.min(...posAbs) : xOut;
-  switch (key) {
-    case 'U2a': return { shearYs: [-xOut, xOut], tenLo: -xOut, tenHi: xOut };                // 전열 U: 2전단 + 전폭 인장
-    case 'U2b': return { shearYs: xIn > 0.1 ? [-xIn, xIn] : [-xOut, xOut], tenLo: -halfWidth, tenHi: halfWidth }; // 외측 U: 2전단 + 연단 인장
-    case 'B3':  return { shearYs: [-xOut, -xIn, xIn, xOut], tenLo: -xOut, tenHi: xOut };      // 밴드분할 U: 4전단
-    case 'webV': return cols.length >= 2
-      ? { shearYs: [-xOut, xOut], tenLo: -xOut, tenHi: xOut }                                 // 웨브 U(수직전단)
-      : { shearYs: [xOut], tenLo: xOut, tenHi: halfWidth };                                   // 웨브 L(단일열)
-    default:    return { shearYs: [xOut], tenLo: xOut, tenHi: halfWidth };                    // L1 외연 L: 1전단 + 연단 인장
+type Pt = [number, number];
+// 다각형 45° 해치(해석적 클리핑) — 어떤 렌더러/인쇄에서도 안전
+function Hatch({ poly }: { poly: Pt[] }) {
+  const xs = poly.map(p => p[0]), ys = poly.map(p => p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const inside = (x: number, y: number) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if (((yi > y) !== (yj > y)) && (x < ((xj - xi) * (y - yi)) / (yj - yi) + xi)) c = !c; } return c; };
+  const it = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number, dx: number, dy: number) => { const r1 = bx - ax, r2 = by - ay, s1 = dx - cx, s2 = dy - cy, den = r1 * s2 - r2 * s1; if (Math.abs(den) < 1e-9) return null; const t = ((cx - ax) * s2 - (cy - ay) * s1) / den, u = ((cx - ax) * r2 - (cy - ay) * r1) / den; return (t >= -1e-6 && t <= 1 + 1e-6 && u >= -1e-6 && u <= 1 + 1e-6) ? t : null; };
+  const segs: Pt[][] = [];
+  for (let c = x0 - y1; c <= x1 - y0; c += 5.5) {
+    const Ax = c + y0, Ay = y0, Bx = c + y1, By = y1, ts: number[] = [];
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const t = it(Ax, Ay, Bx, By, poly[i][0], poly[i][1], poly[j][0], poly[j][1]); if (t != null) ts.push(t); }
+    if (ts.length < 2) continue; ts.sort((a, b) => a - b);
+    for (let k = 0; k < ts.length - 1; k++) { const tm = (ts[k] + ts[k + 1]) / 2; if (!inside(Ax + (Bx - Ax) * tm, Ay + (By - Ay) * tm)) continue; segs.push([[Ax + (Bx - Ax) * ts[k], Ay + (By - Ay) * ts[k]], [Ax + (Bx - Ax) * ts[k + 1], Ay + (By - Ay) * ts[k + 1]]]); }
   }
+  const ptStr = poly.map(p => p.join(',')).join(' ');
+  return <>
+    <polygon points={ptStr} fill={BLOCKF} />
+    {segs.map((s, i) => <line key={i} x1={s[0][0]} y1={s[0][1]} x2={s[1][0]} y2={s[1][1]} stroke={BLOCKS} strokeWidth={0.7} opacity={0.6} />)}
+    <polygon points={ptStr} fill="none" stroke={BLOCKS} strokeWidth={0.9} strokeDasharray="3 2" />
+  </>;
 }
 
+// 한 케이스(Path) 패널 — c.viz(x=하중축, y=폭)를 실측 작도
 function BsPanel({ c, geom }: { c: BlockCase; geom: BlockShearGeom }) {
-  const vertical = !!geom.vertical, stag = !!geom.staggered;   // 웨브=수직 전단, 엇모=지그재그
+  const viz = c.viz; if (!viz) return null;
+  const vertical = !!geom.vertical, stag = !!geom.staggered;
   const nHi = geom.nHi ?? geom.nrow, nLo = geom.nLo ?? geom.nrow;
-  const W = 236, H = vertical ? 196 : 152, pad = 12, aw = 50;  // aw=하중화살표 여백(2단계 추가 확대)
-  const maxAbs = Math.max(...geom.cols.map(v => Math.abs(v)));
-  // 3D/DXF connParts stagOf 정합: 내측열 off=45·nLo행, 외측열 off=0·nHi행, 엇모 피치 90.
-  const stagOf = (cv: number) => {
-    const isOut = Math.abs(cv) >= maxAbs - 0.5;
-    const rows = stag ? (isOut ? nHi : nLo) : geom.nrow;
-    const off = (stag && !isOut) ? 45 : 0;
-    const pit = stag ? 90 : geom.pitch;
-    return { rows, off, pit, Lv: geom.edge + off + Math.max(0, rows - 1) * pit };
-  };
-  const LvMax = Math.max(geom.edge, ...geom.cols.map(cv => stagOf(cv).Lv));
-  const lenTot = LvMax + geom.edge, widTot = 2 * geom.halfWidth;
-  const sc = Math.min(((vertical ? H : W) - 2 * pad - aw) / lenTot, ((vertical ? W : H) - 2 * pad) / widTot);
-  const u0 = pad + aw, vc = (vertical ? W : H) / 2;
-  const map = (u: number, v: number): [number, number] => vertical ? [vc + v * sc, u0 + u * sc] : [u0 + u * sc, vc - v * sc];
-  const key = c.key || 'L1';
-  const f = fracture(key, geom.cols, geom.halfWidth);
-  const br = Math.max(1.3, geom.dh / 2 * sc);
-  const pid = 'bsh' + (HID++);
-  const onShear = (v: number) => f.shearYs.some(s => Math.abs(s - v) < 0.1);
-
-  // 인장 경계 — 열은 그 열 마지막볼트 u(엇모=지그재그), 판단/CL은 가장 가까운 전단열 u
-  const uAt = (v: number) => {
-    const col = geom.cols.find(cc => Math.abs(cc - v) < 0.5);
-    if (col !== undefined) return stagOf(col).Lv;
-    const near = f.shearYs.reduce((a, b) => Math.abs(b - v) < Math.abs(a - v) ? b : a, f.shearYs[0]);
-    return stagOf(near).Lv;
-  };
-  const spanVs = [f.tenLo, ...geom.cols.filter(cc => cc > f.tenLo + 0.1 && cc < f.tenHi - 0.1), f.tenHi].sort((a, b) => a - b);
-  const tenNodes: [number, number][] = spanVs.map(v => [uAt(v), v]);
-  const blockPts = [map(0, f.tenLo), ...tenNodes.map(([u, v]) => map(u, v)), map(0, f.tenHi)].map(p => p.join(',')).join(' ');
-  const tenPts = tenNodes.map(([u, v]) => map(u, v).join(',')).join(' ');
-  const rct = (u1: number, v1: number, u2: number, v2: number) => {
-    const [x1, y1] = map(u1, v1), [x2, y2] = map(u2, v2);
-    return { x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1) };
-  };
-  const plate = rct(0, -geom.halfWidth, lenTot, geom.halfWidth);
-  const [la1x, la1y] = map(-3, 0), [la2x, la2y] = map(-42, 0);   // 하중 화살표(2단계 추가 확대)
-  const ahead = vertical ? `M${la2x},${la2y} l-9,17 h18 z` : `M${la2x},${la2y} l17,-9 v18 z`;
+  const mx = Math.max(...geom.cols.map(v => Math.abs(v)));
+  const stagOf = (cv: number) => { const isOut = Math.abs(cv) >= mx - 0.5; const rows = stag ? (isOut ? nHi : nLo) : geom.nrow; const off = (stag && !isOut) ? 45 : 0; const pit = stag ? 90 : geom.pitch; return { rows, off, pit }; };
+  // (x,y) bbox — viz + 판폭 + 볼트
+  const pts: Pt[] = [...viz.shear.flatMap(s => [[s.x0, s.y], [s.x1, s.y]] as Pt[]), ...viz.tension.flat(), ...viz.tear.flat()];
+  const xs = pts.map(p => p[0]).concat([geom.edge]), ys = pts.map(p => p[1]).concat([geom.halfWidth, -geom.halfWidth]);
+  const XT = Math.max(...xs), Xj = XT + geom.edge, ymax = Math.max(...ys), ymin = Math.min(...ys), yMid = (ymax + ymin) / 2;
+  const W = 232, H = vertical ? 208 : 150, pad = 12, aw = 42;
+  const lenTot = Xj, widTot = ymax - ymin;
+  const sc = Math.min(((vertical ? H : W) - 2 * pad - aw) / lenTot, ((vertical ? W : H) - 2 * pad) / (widTot || 1));
+  const u0 = pad + aw, cc = (vertical ? W : H) / 2;
+  const map = (x: number, y: number): Pt => vertical ? [cc + (y - yMid) * sc, u0 + x * sc] : [u0 + x * sc, cc - (y - yMid) * sc];
+  const M = (p: Pt) => map(p[0], p[1]);
+  const br = Math.max(1.3, (geom.dh / 2) * sc);
+  const plate = (() => { const a = map(0, ymax), b = map(Xj, ymin); return { x: Math.min(a[0], b[0]), y: Math.min(a[1], b[1]), w: Math.abs(b[0] - a[0]), h: Math.abs(b[1] - a[1]) }; })();
+  const onShear = (y: number) => viz.shear.some(s => Math.abs(s.y - y) < 0.5);
   const loadLbl = geom.loadDir === 'H' ? 'Hu' : vertical ? 'Vu' : 'Pf';
-  // 전단(S)·인장(T) 인라인 라벨 위치 — 첫 전단열 중앙 / 인장면 중앙
-  const sv0 = f.shearYs[0];
-  const [sLx, sLy] = map(stagOf(sv0).Lv * 0.42, sv0);
-  const tMidV = (f.tenLo + f.tenHi) / 2, [tLx, tLy] = map(uAt(tMidV) + 6, tMidV);
-  // 자유단(파단 이탈측 = 이음 갭 단부, u=0) 눈금 — PDF 체크무늬 대응
-  const freeEdge = Array.from({ length: 7 }, (_, i) => {
-    const v = -geom.halfWidth + i * (geom.halfWidth * 2 / 6), [ex, ey] = map(0, v);
-    return <line key={'fe' + i} x1={ex} y1={ey} x2={vertical ? ex : ex - 4} y2={vertical ? ey - 4 : ey} stroke={HOLE} strokeWidth={0.8} />;
-  });
+  // 하중 화살표(자유단측)
+  const la0 = map(0, yMid), lax = la0[0] - (vertical ? 0 : aw - 8), lay = la0[1] + (vertical ? -(aw - 8) : 0);
+  const ahead = vertical ? `M${la0[0]},${la0[1] - (aw - 8)} l-7,14 h14 z` : `M${lax},${lay} l14,-7 v14 z`;
   return (
     <div style={{ textAlign: 'center' }}>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" style={{ width: '100%', maxWidth: W, height: 'auto' }}>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" style={{ width: '100%', maxWidth: W, height: 'auto', background: '#fff', borderRadius: 5 }}>
         <title>{c.path ?? ''}</title>
-        <defs><pattern id={pid} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <line x1="0" y1="0" x2="0" y2="5" stroke={BLOCKS} strokeWidth="0.6" opacity="0.55" /></pattern></defs>
-        <rect x={plate.x} y={plate.y} width={plate.w} height={plate.h} fill="none" stroke={c.gov ? BLOCKS : PLATE} strokeWidth={c.gov ? 1.6 : 1} />
-        {/* 탈락 블록(폴리곤) — 엇모 경사 s²/4g 삼각부까지 해치 포함 */}
-        <polygon points={blockPts} fill={BLOCKF} stroke="none" />
-        <polygon points={blockPts} fill={`url(#${pid})`} stroke={BLOCKS} strokeWidth="0.7" strokeDasharray="2 2" />
-        <line x1={la1x} y1={la1y} x2={la2x} y2={la2y} stroke={LOAD} strokeWidth={4.5} strokeLinecap="round" />
+        <rect x={plate.x} y={plate.y} width={plate.w} height={plate.h} fill="none" stroke={c.gov ? BLOCKS : PLATE} strokeWidth={c.gov ? 1.5 : 1} />
+        {/* WEB 바(내부·부재) */}
+        {(geom as any).webBar ? (() => { const wb = (geom as any).webBar as number; const a = map(0, wb), b = map(Xj, -wb); return <rect x={Math.min(a[0], b[0])} y={Math.min(a[1], b[1])} width={Math.abs(b[0] - a[0])} height={Math.abs(b[1] - a[1])} fill="#2b3038" opacity={0.5} />; })() : null}
+        {/* 탈락블록 */}
+        {viz.tear.map((poly, i) => <Hatch key={i} poly={poly.map(M)} />)}
+        {/* 하중 화살표 */}
+        <line x1={vertical ? la0[0] : lax} y1={vertical ? la0[1] - (aw - 8) : lay} x2={la0[0]} y2={la0[1]} stroke={LOAD} strokeWidth={4} strokeLinecap="round" />
         <path d={ahead} fill={LOAD} />
-        <text x={vertical ? la2x + 18 : la2x} y={vertical ? la2y + 5 : la2y - 10} fontSize="17" fontWeight={800} fill={LOAD} textAnchor="middle">{loadLbl}</text>
-        {/* 볼트 — 열별 행수·오프셋(3D/DXF stagOf 동일) */}
-        {geom.cols.map((cv, ci) => { const { rows, off, pit } = stagOf(cv); return Array.from({ length: rows }, (_, i) => {
-          const [bx, by] = map(geom.edge + off + i * pit, cv);
-          return <circle key={`${ci}-${i}`} cx={bx} cy={by} r={br} fill="none" stroke={onShear(cv) ? INK : HOLE} strokeWidth={onShear(cv) ? 1.2 : 0.85} />;
-        }); })}
-        {/* 전단면 — 열별 Lv */}
-        {f.shearYs.map((v, i) => { const L = stagOf(v).Lv; const [x1, y1] = map(0, v), [x2, y2] = map(L, v); return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={SHEAR} strokeWidth={1.8} strokeLinecap="round" />; })}
-        {/* 인장면 — 엇모면 지그재그 폴리라인 */}
-        <polyline points={tenPts} fill="none" stroke={TENSION} strokeWidth={1.8} strokeDasharray="4 3" strokeLinecap="round" strokeLinejoin="round" />
-        {/* 자유단(이음 갭 단부) · 전단(S)/인장(T) 라벨 · Path 배지 */}
-        {freeEdge}
-        <text x={sLx} y={sLy - 4} fontSize="7.5" fontWeight={700} fill={SHEAR} textAnchor="middle">S</text>
-        <text x={tLx} y={tLy} fontSize="7.5" fontWeight={700} fill={TENSION} textAnchor="middle">T</text>
-        {c.path ? <text x={4} y={13} fontSize="11" fontWeight={700} fill={c.gov ? BLOCKS : INK}>{c.path}</text> : null}
+        <text x={vertical ? la0[0] + 12 : lax} y={vertical ? la0[1] - (aw - 2) : lay - 8} fontSize={13} fontWeight={800} fill={LOAD} textAnchor="middle">{loadLbl}</text>
+        {/* 볼트 */}
+        {geom.cols.map((cv, ci) => { const { rows, off, pit } = stagOf(cv); return Array.from({ length: rows }, (_, i) => { const [bx, by] = map(geom.edge + off + i * pit, cv); return <circle key={`${ci}-${i}`} cx={bx} cy={by} r={br} fill="none" stroke={onShear(cv) ? INK : HOLE} strokeWidth={onShear(cv) ? 1.2 : 0.85} />; }); })}
+        {/* 전단면(빨강 ∥하중) */}
+        {viz.shear.map((s, i) => { const [x1, y1] = map(s.x0, s.y), [x2, y2] = map(s.x1, s.y); return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={SHEAR} strokeWidth={2} strokeLinecap="round" />; })}
+        {/* 인장면(파랑 계단) */}
+        {viz.tension.map((poly, i) => <polyline key={i} points={poly.map(M).map(p => p.join(',')).join(' ')} fill="none" stroke={TENSION} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />)}
+        {/* 이음 CL */}
+        {(() => { const a = map(Xj, ymax), b = map(Xj, ymin); return <line x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={HOLE} strokeWidth={0.8} strokeDasharray="7 3 2 3" />; })()}
+        {c.path ? <text x={4} y={12} fontSize={11} fontWeight={700} fill={c.gov ? BLOCKS : INK}>{c.path}</text> : null}
       </svg>
       <div style={{ fontSize: 10.5, color: c.gov ? BLOCKS : 'var(--sub,#6b7280)', fontWeight: c.gov ? 700 : 500, marginTop: -1 }}>
-        {c.path ? <b>{c.path}</b> : null} · U<sub>bs</sub>{c.Ubs.toFixed(1)}{c.gov ? ' ◀' : ''}
+        <b>{c.path}</b> · U<sub>bs</sub>{c.Ubs.toFixed(1)} · DCR {(c.dcr ?? 0).toFixed(2)}{c.gov ? ' ◀' : ''}
       </div>
     </div>
   );
 }
 
 function BlockShearFig({ cases, geom, lang }: { cases: BlockCase[]; geom: BlockShearGeom; lang: Lang }) {
-  const gauge = geom.cols.length > 1 ? Math.round(Math.max(...geom.cols) - Math.min(...geom.cols)) : 0;
   return (
     <div className="cf-bs" style={{ margin: '4px 0 8px' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-start' }}>
-        {cases.map((c, i) => <BsPanel key={i} c={c} geom={geom} />)}
+        {cases.filter(c => c.viz).map((c, i) => <BsPanel key={i} c={c} geom={geom} />)}
       </div>
       <div style={{ fontSize: 10.5, color: 'var(--sub,#6b7280)', marginTop: 3 }}>
         {lang === 'ko'
-          ? `실측 작도(AISIsplice Path): 볼트 ${geom.cols.length}열 × ${geom.nrow}행, 피치 s=${geom.pitch}, 연단 e=${geom.edge}, 게이지 ${gauge}, 폭 ${Math.round(2 * geom.halfWidth)}mm${geom.plates === 2 ? ' (×2매)' : ''}${geom.vertical ? ' · 수직 전단(웨브 Vu)' : ''}${geom.staggered ? ' · 엇모 지그재그(+s²/4g)' : ''}. 빨강=전단면(S)·파랑점선=인장면(T)·해치=탈락블록·회색눈금=자유단(이음 갭 단부).`
-          : `To scale (AISIsplice Path): ${geom.cols.length} cols × ${geom.nrow} rows, pitch s=${geom.pitch}, edge e=${geom.edge}, gauge ${gauge}, width ${Math.round(2 * geom.halfWidth)}mm${geom.plates === 2 ? ' (×2)' : ''}${geom.vertical ? ' · vertical shear (web Vu)' : ''}${geom.staggered ? ' · staggered zig-zag (+s²/4g)' : ''}. red=shear(S), blue-dash=tension(T), hatch=tear-out block, grey ticks=free edge.`}
+          ? `AISIsplice Path 실측 작도 · 볼트 ${geom.cols.length}열×${geom.nrow}행, 피치 ${geom.pitch}, 연단 ${geom.edge}, 폭 ${Math.round(2 * geom.halfWidth)}mm${geom.plates === 2 ? ' (×2매)' : ''}${geom.vertical ? ' · 수직전단(Vu)·이음면 한쪽 절반' : ''}${geom.staggered ? ' · 엇모 계단(+s²/4g)' : ''}. 빨강=전단면·파랑=인장면·해치=탈락블록. 각 Path DCR 표기(지배 ◀).`
+          : `To-scale AISIsplice paths. red=shear, blue=tension, hatch=tear-out. DCR per path (governing ◀).`}
       </div>
     </div>
   );
@@ -157,7 +125,7 @@ function Glyph({ clause }: { clause: string }) {
 
 /** 검토별 도해: 블록전단은 실측 파단선 패널, 그 외는 조항 글리프. */
 export default function CheckFig({ c, lang }: { c: AiscCheck; lang: Lang }) {
-  if (c.cases && c.cases.length && c.bsGeom) return <BlockShearFig cases={c.cases} geom={c.bsGeom} lang={lang} />;
+  if (c.cases && c.cases.length && c.bsGeom && c.cases.some(x => x.viz)) return <BlockShearFig cases={c.cases} geom={c.bsGeom} lang={lang} />;
   const g = <Glyph clause={c.clause} />;
   if (!g) return null;
   return <div className="cf-glyph" style={{ float: 'right', marginLeft: 8 }}>{g}</div>;

@@ -10,7 +10,8 @@ import { parseName } from '../sections.ts';
 import { Fy as FySteel, Fu as FuSteel, BOLT_MAT } from '../materials.ts';
 import { Ab, To_kN } from '../bolts.ts';
 import { PHI, FNV_FACTOR, SLIP, holeDia, kN, kNm } from './constants.ts';
-import { bearing, blockShearGovern } from './geometry.ts';
+import { bearing } from './geometry.ts';
+import { bsCases } from './bsPatterns.ts';
 import { bsDetail } from './flange.ts';
 import type { AiscCheck, AiscStep, DemandSet } from './types.ts';
 
@@ -108,9 +109,9 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
 
   // ── WP1. Web Splice Plate 블록전단(×2, 수직전단 V) — Path 1 ──
   {
-    const bs = blockShearGovern({ t: tp, Fy: pFy, Fu: pFu, d, halfWidth: vHalf, cols: colsAxis, edge, pitch: Pc, nHi: nVert, nLo: nVert, region: 'web-plate' }, Vu, 2);
+    const bs = bsCases({ kind: 'web', lines: colsAxis, n: nVert, pitch: Pc, edge, ym: vHalf, t: tp, dh, Fy: pFy, Fu: pFu, plates: 2 }, Vu);
     checks.push(finalize({ id: 'WP1', region: 'web', group: g, label: '블록 전단(×2)', clause: 'J4.3',
-      detail: bsDetail(bs), phiRn: kN(bs.phiRn), demand: kN(bs.demand), unit: 'kN', cases: bs.cases,
+      detail: bsDetail(bs), phiRn: kN(bs.gov.phiRn), demand: kN(Vu), unit: 'kN', cases: bs.cases,
       bsGeom: { cols: colsAxis, nrow: nVert, pitch: Pc, edge, halfWidth: vHalf, dh, plates: 2, vertical: true, loadDir: 'V' } }));
   }
 
@@ -167,9 +168,9 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
         S('Gross web area Aw', 'H·tw', `${H}·${tw}`, +Aw.toFixed(0), 'mm²'),
         S('Design shear yield φVn', 'φv·0.6·Fy·Aw', `1.0·0.6·${mFy}·${Aw.toFixed(0)}`, kN(PHI.SH * 0.6 * mFy * Aw), 'kN', 'G2.1'),
       ] }));
-    const bs = blockShearGovern({ t: tw, Fy: mFy, Fu: mFu, d, halfWidth: vHalf, cols: colsAxis, edge, pitch: Pc, nHi: nVert, nLo: nVert, region: 'member-web' }, Vu, 1);
+    const bs = bsCases({ kind: 'web', lines: colsAxis, n: nVert, pitch: Pc, edge, ym: vHalf, t: tw, dh, Fy: mFy, Fu: mFu, plates: 1 }, Vu);
     checks.push(finalize({ id: 'WM2', region: 'member', group: gm, label: 'Girder Web 블록 전단', clause: 'J4.3',
-      detail: bsDetail(bs), phiRn: kN(bs.phiRn), demand: kN(bs.demand), unit: 'kN', cases: bs.cases,
+      detail: bsDetail(bs), phiRn: kN(bs.gov.phiRn), demand: kN(Vu), unit: 'kN', cases: bs.cases,
       bsGeom: { cols: colsAxis, nrow: nVert, pitch: Pc, edge, halfWidth: vHalf, dh, plates: 1, vertical: true, loadDir: 'V' } }));
   }
 

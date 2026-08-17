@@ -10,7 +10,9 @@ import { parseName, sectionByName } from '../sections.ts';
 import { Fy as FySteel, Fu as FuSteel, BOLT_MAT } from '../materials.ts';
 import { Ab, To_kN } from '../bolts.ts';
 import { PHI, FNV_FACTOR, SLIP, holeDia, netDeductPerHole, kN, kNm } from './constants.ts';
-import { grossArea, netArea, netAreaStag, colOffsets, bearing, buckling, blockShearGovern, flangeColumns } from './geometry.ts';
+import { grossArea, netArea, netAreaStag, colOffsets, bearing, buckling, flangeColumns } from './geometry.ts';
+import { bsCases } from './bsPatterns.ts';
+import type { BsInput } from './bsPatterns.ts';
 import type { AiscCheck, AiscStep, BlockCase, DemandSet } from './types.ts';
 
 /** step 팩토리 */
@@ -143,10 +145,10 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
         S('Total (m edge + m(n−1) interior)', 'nₑ·edge + nᵢ·interior', `${br.nEdge}·${kN(br.edge)} + ${br.nSpaced}·${kN(br.spaced)}`, kN(br.total), 'kN'),
       ],
     }));
-    const bs = blockShearGovern({ t: oT, Fy: pFy, Fu: pFu, d, halfWidth: oW / 2, cols, edge, pitch, nHi, nLo, staggered: stagF, gauge: g1, region: 'outer', fullShare: cond.bsShare === 'full' }, halfOut, 1);
+    const bs = bsCases({ kind: 'outer', lines: cols, n: nrow, pitch, edge, staggered: stagF, nHi, nLo, ym: oW / 2, t: oT, dh, Fy: pFy, Fu: pFu, plates: 1 }, halfOut);
     checks.push(finalize({
       id: 'FP5', region: 'outer', group: g, label: '블록 전단', clause: 'J4.3',
-      detail: bsDetail(bs), phiRn: kN(bs.phiRn), demand: kN(bs.demand), unit: 'kN', cases: bs.cases,
+      detail: bsDetail(bs), phiRn: kN(bs.gov.phiRn), demand: kN(halfOut), unit: 'kN', cases: bs.cases,
       bsGeom: { cols, nrow, pitch, edge, halfWidth: oW / 2, dh, plates: 1, staggered: stagF, gauge: g1, nHi, nLo },
     }));
   }
@@ -195,28 +197,14 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
         S('Total', 'nₑ·edge + nᵢ·interior', `${br.nEdge}·${kN(br.edge)} + ${br.nSpaced}·${kN(br.spaced)}`, kN(br.total), 'kN'),
       ],
     }));
-    if (nHalf >= 2) {
-      const iCols = [-g2 / 2, g2 / 2];
-      const bs = blockShearGovern({ t: iT, Fy: pFy, Fu: pFu, d, halfWidth: iW / 2, cols: iCols, edge, pitch, nHi, nLo, staggered: stagF, gauge: g2 || g1, region: 'inner', fullShare: cond.bsShare === 'full' }, halfIn, 2);
+    {
+      // 내부판 = 웨브 양측 2매(상·하 스트립). 게이지선=플랜지열(cols), 각 스트립 [끝선 iE, 외측연단 oE].
+      const aOutI = Math.max(...cols.map(Math.abs)), oE = aOutI + 35, iE = Math.max(6, oE - iW);
+      const bs = bsCases({ kind: 'inner', lines: cols, n: nrow, pitch, edge, staggered: stagF, nHi, nLo, ym: oE, innerEdge: iE, outerEdge: oE, webBar: tw / 2 + 4, t: iT, dh, Fy: pFy, Fu: pFu, plates: 1 }, halfIn);
       checks.push(finalize({
         id: 'FI5', region: 'inner', group: g, label: '블록 전단(×2)', clause: 'J4.3',
-        detail: bsDetail(bs), phiRn: kN(bs.phiRn), demand: kN(bs.demand), unit: 'kN', cases: bs.cases,
-        bsGeom: { cols: iCols, nrow, pitch, edge, halfWidth: iW / 2, dh, plates: 2, staggered: stagF, gauge: g2 || g1, nHi, nLo },
-      }));
-    } else {
-      // 내판 1열 = 판당 단일 게이지선 → Path 4(외연 L): 전단 1열 ∥ 하중 + 인장 열→판연단.
-      const Lv = edge + Math.max(0, nrow - 1) * pitch;
-      const Agv = Lv * iT, Anv = Math.max(0, Lv - (nrow - 0.5) * dh) * iT;
-      const Ant = Math.max(0, iW / 2 - 0.5 * dh) * iT;              // 단일선 → 판연단(iW/2)
-      const Rn = Math.min(0.6 * pFu * Anv, 0.6 * pFy * Agv) + 0.5 * pFu * Ant;
-      const phiRnN = PHI.R * Rn * 2;                                 // ×2매
-      const dcr = phiRnN > 0 ? +(halfIn / phiRnN).toFixed(3) : 0;
-      checks.push(finalize({
-        id: 'FI5', region: 'inner', group: g, label: '블록 전단(×2)', clause: 'J4.3',
-        detail: `Path 4 지배 · φ[min(0.6·Fu·Anv, 0.6·Fy·Agv)+0.5·Fu·Ant]×2 = ${kN(phiRnN)} kN`,
-        phiRn: kN(phiRnN), demand: kN(halfIn), unit: 'kN',
-        cases: [{ key: 'L1', path: 'Path 4', Ubs: 0.5, Agv, Anv, Ant, Rn: Rn * 2, phiRn: phiRnN, frac: 1, dcr, gov: true }],
-        bsGeom: { cols: [0], nrow, pitch, edge, halfWidth: iW / 2, dh, plates: 2, nHi: nrow, nLo: nrow },
+        detail: bsDetail(bs), phiRn: kN(bs.gov.phiRn), demand: kN(halfIn), unit: 'kN', cases: bs.cases,
+        bsGeom: { cols, nrow, pitch, edge, halfWidth: oE, dh, plates: 2, staggered: stagF, gauge: g2 || g1, nHi, nLo, webBar: tw / 2 + 4 } as any,
       }));
     }
   }
@@ -277,11 +265,11 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
         S('Design rupture φRn', 'φ·Fu·Ae', `0.75·${mFu}·${AeWt.toFixed(0)}`, kN(PHI.V * mFu * AeWt), 'kN', 'D2.2'),
       ],
     }));
-    const bs = blockShearGovern({ t: tf, Fy: mFy, Fu: mFu, d, halfWidth: B / 2, cols, edge, pitch, nHi, nLo, staggered: stagF, gauge: g1, region: 'member-flange', fullShare: cond.bsShare === 'full' }, Pf, 1);
+    const bs = bsCases({ kind: 'girder', lines: cols, n: nrow, pitch, edge, staggered: stagF, nHi, nLo, ym: B / 2, webBar: tw / 2 + 4, t: tf, dh, Fy: mFy, Fu: mFu, plates: 1 }, Pf);
     checks.push(finalize({
       id: 'FM5', region: 'member', group: g, label: '부재 블록 전단', clause: 'J4.3',
-      detail: bsDetail(bs), phiRn: kN(bs.phiRn), demand: kN(bs.demand), unit: 'kN', cases: bs.cases,
-      bsGeom: { cols, nrow, pitch, edge, halfWidth: B / 2, dh, plates: 1, staggered: stagF, gauge: g1, nHi, nLo },
+      detail: bsDetail(bs), phiRn: kN(bs.gov.phiRn), demand: kN(Pf), unit: 'kN', cases: bs.cases,
+      bsGeom: { cols, nrow, pitch, edge, halfWidth: B / 2, dh, plates: 1, staggered: stagF, gauge: g1, nHi, nLo, webBar: tw / 2 + 4 } as any,
     }));
   }
 
