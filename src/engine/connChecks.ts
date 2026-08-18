@@ -14,7 +14,8 @@ const AISC_WRENCH: Record<number, number> = { 16: 30, 20: 35, 22: 38, 24: 42, 27
 
 export function connChecks(r: DesignResult): ConnChecks {
   const { H, tw, tf } = parseName(r.section);
-  const fr = sectionByName(r.section)?.r ?? Math.round(tf * 0.9);
+  const sec = sectionByName(r.section);
+  const fr = sec?.r ?? Math.round(tf * 0.9);
   const db = r.boltDia;
   const gap = r.flange.gap ?? 10, base = gap / 2 + 40;
   const g1 = r.flange.gauge?.g1 ?? 90, g2 = r.flange.gauge?.g2 ?? 0;
@@ -30,7 +31,7 @@ export function connChecks(r: DesignResult): ConnChecks {
   const outer = r.flange.outerPlate, inner = r.flange.innerPlate, web = r.web.webPlate;
   const oL = outer?.L ?? 260, oW = outer?.w ?? H;
   const yTop = H / 2 + (outer?.t ?? 9);              // 외부 이음판 윗면(라벨 배치)
-  const filletToe = tw / 2 + fr;                     // 필렛 끝단 X
+  const filletToe = sec?.k1 ?? (tw / 2 + fr);        // 필렛 끝단 X — W형강은 AISC 공표 k1(설계 산정과 정합), H형강은 tw/2+r 폴백
 
   const rnd = (n: number) => Math.round(n);
   const EP = 3;                                                     // 면에서 살짝 띄움(붙임)

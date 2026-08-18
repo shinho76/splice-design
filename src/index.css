@@ -251,6 +251,15 @@ body {
   border-left: 4px solid var(--accent); background: linear-gradient(90deg, var(--accent-soft), transparent);
 }
 .sec-no { color: var(--accent); margin-right: 8px; }
+/* 설계조건 표 + 접합 상세도 SVG */
+.cond-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 14px; }
+.cond-table th, .cond-table td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; }
+.cond-table th { background: var(--panel2); color: var(--muted); font-weight: 700; width: 14%; white-space: nowrap; }
+.cond-table td { font-weight: 600; width: 36%; }
+.cond-fig { margin: 0; }
+.cond-svg { width: 100%; border: 1px solid var(--line); border-radius: 6px; background: #fff; padding: 8px; box-sizing: border-box; overflow-x: auto; }
+.cond-svg svg { display: block; }
+.cond-fig figcaption { font-size: 10.5px; color: var(--muted); margin-top: 5px; text-align: center; }
 .cs-num { color: var(--accent); font-weight: 800; font-size: 12px; font-family: var(--mono); min-width: 30px; }
 .result-table2 { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .result-table2 th, .result-table2 td { border: 1px solid var(--line); padding: 9px 14px; text-align: left; }
@@ -651,6 +660,27 @@ body {
 .narr-bs .bs-lb { text-align: left; }
 .narr-bs .bs-gov { background: var(--accent-soft); }
 .narr-bs .bs-gov b { color: var(--accent); }
+/* 블록전단 수식 전개 */
+.bs-formula { margin: 8px 0 6px; font-weight: 700; white-space: normal; }
+.narr-bs-exp { display: flex; flex-direction: column; gap: 7px; margin: 4px 0 8px; }
+.bs-exp-item { border: 1px solid var(--line-soft); border-left: 3px solid var(--line); border-radius: 6px; padding: 6px 10px; }
+.bs-exp-item.bs-gov { border-left-color: var(--accent); background: var(--accent-soft); }
+.bs-exp-h { font-size: 12.5px; margin-bottom: 3px; }
+.bs-govtag { color: var(--accent); font-weight: 700; font-size: 11.5px; }
+.bs-exp-body { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 11.5px; line-height: 1.65; color: var(--fg); }
+.bs-exp-body > div { white-space: normal; }
+.bs-min { color: var(--accent); font-weight: 700; }
+.narr-bs-cap { font-size: 11px; color: var(--muted); margin: 6px 0 2px; }
+/* #6 볼트 치수·체결 점검 */
+.bolt-spec { margin-bottom: 10px; }
+.bolt-chk { width: 100%; border-collapse: collapse; font-size: 12px; margin: 4px 0 4px; }
+.bolt-chk th, .bolt-chk td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; }
+.bolt-chk thead th { background: var(--panel2); color: var(--muted); font-weight: 700; }
+.bolt-chk .ck-lb { font-weight: 600; }
+.bolt-chk .ck-rs { font-weight: 700; white-space: nowrap; }
+.bolt-chk tr.chk-ng .ck-rs { color: var(--ng, #e5484d); }
+.bolt-chk tr:not(.chk-ng) .ck-rs { color: #1a7a3e; }
+.bolt-chk .ck-nt { font-weight: 500; color: var(--muted); font-size: 11px; }
 .narr-concl { margin: 6px 0 0; padding: 6px 10px; border-radius: 6px; font-size: 12.5px; }
 .narr-concl.ok { background: rgba(60,170,90,.12); }
 .narr-concl.ng { background: rgba(217,83,79,.14); }

@@ -749,6 +749,95 @@ function wrap(doc: Doc): string {
 export function toDXF(r: DesignResult, cond: DesignCondition): string {
   const doc = newDoc(); emitMember(doc, r, cond, 0, 0); return wrap(doc);
 }
+
+// ── 상세계산서용 SVG 상세도 : 개별 DXF와 동일 엔티티(emitMember)를 SVG로 렌더(비침습·기하 동일 보장) ──
+//   doc.e(내부 단축 레이어명) 엔티티를 순회 변환. DXF y-up → SVG y-down(Y부호 반전). 배경 white 가독 팔레트.
+const SVG_STYLE: Record<string, { s: string; w: number; dash?: boolean; head?: boolean }> = {
+  MAIN: { s: '#33383f', w: 1 }, HIDDEN: { s: '#8b93a0', w: 0.9, dash: true },
+  FLG_PL: { s: '#1a7a3e', w: 1.4 }, WEB_PL: { s: '#1668a8', w: 1.4 },   // 플랜지=녹/웨브=청(앱 3D 범례 정합)
+  BOLT: { s: '#33383f', w: 0.8 }, BOLTG: { s: '#9aa1ab', w: 0.8 }, VER_BOLT: { s: '#33383f', w: 0.8 },
+  DIM: { s: '#c0392b', w: 0.7 }, SECTION: { s: '#b5651d', w: 1 },
+  MINI_BOX: { s: '#555', w: 1 }, MINI_HEAD: { s: '#1a7a3e', w: 1, head: true }, TEXT: { s: '#333', w: 1, head: true }, NOTE: { s: '#555', w: 1, head: true },
+};
+const decodeEnc = (s: string) => s.replace(/\\U\+([0-9A-Fa-f]{4})/g, (_, h) => String.fromCodePoint(parseInt(h, 16)));
+const xmlEsc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+
+export function toSVGDetail(r: DesignResult, cond: DesignCondition): string {
+  const doc = newDoc();
+  emitMember(doc, r, cond, 0, 0);
+  const e = doc.e;
+  const body: string[] = [];
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  const Y = (y: number) => -y;                                   // DXF y-up → SVG y-down
+  const acc = (x: number, y: number) => { if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; };
+  const st = (lay: string) => SVG_STYLE[lay] ?? { s: '#33383f', w: 1 };
+  const dashAttr = (sty: { dash?: boolean }, hidden: boolean) => (sty.dash || hidden) ? ' stroke-dasharray="7 4"' : '';
+
+  // ── 엔티티 파서(그룹코드 평면배열) ──
+  let i = 0;
+  const readEnt = (): { type: string; g: Record<string, string>; verts: [number, number][] } => {
+    const type = e[i + 1]; i += 2;
+    const g: Record<string, string> = {}; const verts: [number, number][] = [];
+    while (i < e.length && e[i] !== '0') { g[e[i]] = e[i + 1]; i += 2; }
+    if (type === 'POLYLINE') {
+      while (i < e.length && e[i] === '0' && e[i + 1] === 'VERTEX') {
+        i += 2; const vg: Record<string, string> = {};
+        while (i < e.length && e[i] !== '0') { vg[e[i]] = e[i + 1]; i += 2; }
+        verts.push([+vg['10'], +vg['20']]);
+      }
+      if (i < e.length && e[i + 1] === 'SEQEND') { i += 2; while (i < e.length && e[i] !== '0') i += 2; }
+    }
+    return { type, g, verts };
+  };
+
+  while (i < e.length) {
+    if (e[i] !== '0') { i += 2; continue; }
+    const { type, g, verts } = readEnt();
+    const lay = g['8'] ?? 'MAIN';
+    const sty = st(lay), hidden = g['6'] === 'HIDDEN';
+    const strokeCommon = `stroke="${sty.s}" stroke-width="${sty.w}" fill="none"${dashAttr(sty, hidden)}`;
+    if (type === 'LINE') {
+      const x1 = +g['10'], y1 = Y(+g['20']), x2 = +g['11'], y2 = Y(+g['21']);
+      acc(x1, y1); acc(x2, y2);
+      body.push(`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" ${strokeCommon}/>`);
+    } else if (type === 'CIRCLE') {
+      const cx = +g['10'], cy = Y(+g['20']), rad = +g['40'];
+      acc(cx - rad, cy - rad); acc(cx + rad, cy + rad);
+      body.push(`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${rad.toFixed(1)}" ${strokeCommon}/>`);
+    } else if (type === 'ARC') {
+      const cx = +g['10'], cy = +g['20'], rad = +g['40']; let a0 = +g['50'], a1 = +g['51'];
+      if (a1 < a0) a1 += 360;
+      const pts: string[] = [];
+      for (let a = a0; a <= a1 + 0.01; a += 8) { const x = cx + rad * Math.cos(a * Math.PI / 180), y = Y(cy + rad * Math.sin(a * Math.PI / 180)); acc(x, y); pts.push(`${x.toFixed(1)},${y.toFixed(1)}`); }
+      body.push(`<polyline points="${pts.join(' ')}" ${strokeCommon}/>`);
+    } else if (type === 'SOLID') {
+      const q = [['10', '20'], ['11', '21'], ['13', '23'], ['12', '22']].map(([a, b]) => { const x = +g[a], y = Y(+g[b]); acc(x, y); return `${x.toFixed(1)},${y.toFixed(1)}`; });
+      body.push(`<polygon points="${q.join(' ')}" fill="${sty.s}" stroke="none"/>`);
+    } else if (type === 'POLYLINE') {
+      const pts = verts.map(([x, y]) => { const yy = Y(y); acc(x, yy); return `${x.toFixed(1)},${yy.toFixed(1)}`; });
+      const w = Math.max(sty.w, +(g['40'] ?? 0) > 0 ? 1.4 : sty.w);
+      body.push(`<polygon points="${pts.join(' ')}" stroke="${sty.s}" stroke-width="${w}" fill="none"/>`);
+    } else if (type === 'TEXT') {
+      const aligned = g['72'] === '1' || g['72'] === '2';
+      const px = aligned ? +g['11'] : +g['10'], py = Y(aligned ? +g['21'] : +g['20']);
+      const h = +g['40'], rot = +(g['50'] ?? 0), anchor = g['72'] === '1' ? 'middle' : g['72'] === '2' ? 'end' : 'start';
+      const fs = h * 1.15, txt = xmlEsc(decodeEnc(g['1'] ?? ''));
+      acc(px - h * txt.length * 0.3, py - h); acc(px + h * txt.length * 0.6, py + h);
+      const tr = rot ? ` transform="rotate(${(-rot).toFixed(1)} ${px.toFixed(1)} ${py.toFixed(1)})"` : '';
+      const fw = sty.head ? '600' : '400';
+      body.push(`<text x="${px.toFixed(1)}" y="${py.toFixed(1)}" font-size="${fs.toFixed(1)}" fill="${sty.s}" text-anchor="${anchor}" font-weight="${fw}" font-family="'Malgun Gothic',Arial,sans-serif"${tr}>${txt}</text>`);
+    } else if (type === 'INSERT' && g['2'] === '_ARCHTICK') {
+      const s = +(g['41'] ?? ARROW), rot = +(g['50'] ?? 0), ix = +g['10'], iy = +g['20'];
+      const rc = Math.cos(rot * Math.PI / 180), rs = Math.sin(rot * Math.PI / 180);
+      const P = (lx: number, ly: number): [number, number] => { const wx = ix + lx * rc - ly * rs, wy = iy + lx * rs + ly * rc; return [wx, Y(wy)]; };
+      const [x1, y1] = P(-0.5 * s, -0.5 * s), [x2, y2] = P(0.5 * s, 0.5 * s); acc(x1, y1); acc(x2, y2);
+      body.push(`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${st('DIM').s}" stroke-width="1"/>`);
+    }
+  }
+
+  const pad = 40, w = maxX - minX + 2 * pad, h = maxY - minY + 2 * pad;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${(minX - pad).toFixed(1)} ${(minY - pad).toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}" width="100%" style="max-width:100%;height:auto;background:#fff">\n${body.join('\n')}\n</svg>`;
+}
 // 다중 배치 : JointDetailDWG.exe 규약(도면 1건=도곽 시트) 참고.
 // 전 단면의 최대 도곽으로 균일 셀을 만들고 각 상세를 셀 중앙 배치 → 정렬된 시트세트(그리드).
 export function placeGrid(rows: DesignResult[], isCol: boolean, emit: (r: DesignResult, ox: number, oy: number) => void) {

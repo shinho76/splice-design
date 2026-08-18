@@ -8,7 +8,7 @@
 //     Ant=Σ(폭 − holes·dₕ + Σs²/4g)·t,  holes=인장 y구간내 게이지선 − 양단 게이지선당 0.5
 // ────────────────────────────────────────────────────────────────────────────
 import { PHI } from './constants.ts';
-import type { BlockCase } from './types.ts';
+import type { BlockCase, BsAreaCalc } from './types.ts';
 
 export type Pt = [number, number];
 export interface ShearLine { y: number; x0: number; x1: number; }
@@ -19,6 +19,7 @@ export interface BsPath {
   tear: Pt[][];             // 탈락블록 다각형(들)
   Agv: number; Anv: number; Ant: number;   // mm²(요소 합산: 내부·웨브=2매 포함)
   Rn: number; phiRn: number;               // N
+  areaCalc: BsAreaCalc;                    // 면적 산출 내역(계산서 전개용)
 }
 
 export interface BsInput {
@@ -54,13 +55,15 @@ function geom(p: BsInput) {
 }
 
 // ── 면적 산출(일반식) ────────────────────────────────────────────────────────
-function areas(path: { shear: ShearLine[]; tension: Pt[][] }, p: BsInput) {
-  const G = geom(p), dh = p.dh, gg = p.staggered ? p.pitch : 0; // 엇모 게이지 = 정렬피치(원 게이지)
+function areas(path: { shear: ShearLine[]; tension: Pt[][] }, p: BsInput): { Agv: number; Anv: number; Ant: number; calc: BsAreaCalc } {
+  const G = geom(p), dh = p.dh;
   let Agv = 0, Anv = 0, Ant = 0;
+  const calc: BsAreaCalc = { t: p.t, dh, shear: [], tension: [] };
   for (const s of path.shear) {
     const L = Math.abs(s.x1 - s.x0), r = G.rows(s.y);
     Agv += L * p.t;
     Anv += Math.max(0, L - (r - 0.5) * dh) * p.t;
+    calc.shear.push({ L: +L.toFixed(1), rows: r });
   }
   const onLine = (y: number) => p.lines.some(l => Math.abs(l - y) < 0.5);
   for (const poly of path.tension) {
@@ -76,14 +79,15 @@ function areas(path: { shear: ShearLine[]; tension: Pt[][] }, p: BsInput) {
       if (dx > 0.5 && dy > 0.5) gain += (dx * dx) / (4 * dy);
     }
     Ant += Math.max(0, width - holes * dh + gain) * p.t;
+    calc.tension.push({ width: +width.toFixed(1), holes: +holes.toFixed(2), gain: +gain.toFixed(1) });
   }
-  return { Agv, Anv, Ant };
+  return { Agv, Anv, Ant, calc };
 }
 
 function finalize(id: string, label: string, ubs: number, shear: ShearLine[], tension: Pt[][], tear: Pt[][], p: BsInput): BsPath {
-  const { Agv, Anv, Ant } = areas({ shear, tension }, p);
+  const { Agv, Anv, Ant, calc } = areas({ shear, tension }, p);
   const Rn = Math.min(0.6 * p.Fu * Anv, 0.6 * p.Fy * Agv) + ubs * p.Fu * Ant;
-  return { id, label, ubs, shear, tension, tear, Agv, Anv, Ant, Rn, phiRn: PHI.R * Rn * p.plates };
+  return { id, label, ubs, shear, tension, tear, Agv, Anv, Ant, Rn, phiRn: PHI.R * Rn * p.plates, areaCalc: calc };
 }
 
 // ── 공통 조각 ────────────────────────────────────────────────────────────────
@@ -95,6 +99,7 @@ const vseg = (x: number, y0: number, y1: number): Pt[] => [[x, y0], [x, y1]];
 export function bsCases(input: BsInput, demandN: number): { cases: BlockCase[]; gov: BlockCase } {
   const cases: BlockCase[] = blockShearPaths(input).map(p => ({
     key: p.id, path: p.label, Ubs: p.ubs, Agv: p.Agv, Anv: p.Anv, Ant: p.Ant,
+    Fu: input.Fu, Fy: input.Fy, plates: input.plates, areaCalc: p.areaCalc,
     Rn: p.Rn * input.plates, phiRn: p.phiRn, frac: 1,
     dcr: p.phiRn > 0 ? +(demandN / p.phiRn).toFixed(3) : 0,
     viz: { shear: p.shear, tension: p.tension, tear: p.tear },

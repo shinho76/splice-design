@@ -87,6 +87,14 @@ export interface NetSectionGeom {
   plates: number;     // 판수(외부=1, 내부=2) — 라벨용
 }
 
+/** 블록전단 면적 산출 내역 (계산서 Agv·Anv·Ant 전개용) */
+export interface BsAreaCalc {
+  t: number;          // 요소 두께(mm)
+  dh: number;         // 구멍 지름(mm)
+  shear: { L: number; rows: number }[];               // 전단면별 {길이 L, 볼트행수}
+  tension: { width: number; holes: number; gain: number }[]; // 인장면별 {폭, 공제 구멍수, Σs²/4g}
+}
+
 /** 블록전단 한 케이스 결과 (AISIsplice Appendix C Path) */
 export interface BlockCase {
   key: string;        // 내부 기하 판별자 'L1'|'U2a'|'U2b'|'B3'|'webV' (도해·표기 무관)
@@ -98,6 +106,10 @@ export interface BlockCase {
   Ant: number;        // 순인장면적 mm²
   Rn: number;         // 공칭강도 (N)
   phiRn: number;      // 설계강도 (N)
+  Fu?: number;        // 요소 Fu (MPa) — 계산서 수식 전개용
+  Fy?: number;        // 요소 Fy (MPa)
+  plates?: number;    // φRn 곱수(외부·부재=1, 웨브=2)
+  areaCalc?: BsAreaCalc;  // Agv·Anv·Ant 산출 내역(계산서 전개용)
   frac: number;       // 이 블록이 분리시키는 하중분담 = 블록내 볼트수/전체 볼트수
   dcr?: number;       // (frac·소요)/φRn — 케이스 판정
   gov?: boolean;      // 이 요소에서 지배(최대 DCR)

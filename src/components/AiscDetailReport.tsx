@@ -4,9 +4,12 @@ import type { DesignResult, DesignCondition } from '../engine/types.ts';
 import { aiscAutoCorrect } from '../engine/aisc/compat.ts';
 import type { AiscCheck, AiscStep, BlockCase } from '../engine/aisc/types.ts';
 import { parseName } from '../engine/sections.ts';
-import { useLang, type Lang } from '../i18n.ts';
+import { useLang, tr, type Lang } from '../i18n.ts';
+import { connChecks } from '../engine/connChecks.ts';
+import { boltSpecOf } from '../engine/bolt_spec.ts';
 import { EN_LABEL, groupT as group } from './aiscI18n.ts';
 import { stdLabelLong } from '../engine/std.ts';
+import { toSVGDetail } from '../engine/dxf.ts';
 import CheckFig from './CheckFig.tsx';
 
 const nf = (n?: number, d = 1) => n == null ? '—' : n.toLocaleString('en-US', { maximumFractionDigits: d });
@@ -55,7 +58,7 @@ const INTRO: Record<string, [string, string]> = {
   FI4: ['내부 이음판의 지압·찢김을 전 볼트에 대해 합산한다.', 'Bearing and tear-out of the inner plates, summed over all bolts.'],
   FI5: ['내부 이음판(2매)의 블록전단 뜯김을 첨부 도해의 모든 파단경로(Path 4·5a·5b)에 대해 검토한다.', 'Block-shear tear-out of the inner plates (two plates), every rupture path (Path 4, 5a, 5b).'],
   FM1: ['볼트는 H형강 플랜지 자체에도 지압한다.', 'The bolts also bear against the H-beam flange itself.'],
-  FM2: ['구멍으로 약화된 인장플랜지의 휨파단(F13.1)을 검토한다. 부재 소요휨 Mu=α·φ·Mn(콤팩트 Mn=Fy·Zx, Zx=단면표 소성단면계수). 구멍감소 판정: Fu·Afn ≥ Yt·Fy·Afg이면 감소없이 Mp 유지, 미달이면 Mn=(Fu·Afn/Afg)·Sx. Yt=Fy/Fu≤0.8?1.0:1.1.', 'The tension flange, weakened by holes, is checked for flexural rupture (F13.1). Member moment Mu=α·φ·Mn (compact Mn=Fy·Zx, Zx = tabulated plastic modulus). Hole-reduction test: if Fu·Afn ≥ Yt·Fy·Afg no reduction (Mp), else Mn=(Fu·Afn/Afg)·Sx. Yt=1.0 if Fy/Fu≤0.8 else 1.1.'],
+  FM2: ['구멍으로 약화된 인장플랜지의 휨파단(F13.1)을 검토한다. 콤팩트 단면의 공칭휨강도는 Mn=Fy·Zx(Zx=단면표 소성단면계수)이다. 구멍감소 판정 — Fu·Afn ≥ Yt·Fy·Afg이면 감소 없이 Mp 유지, 미달이면 Mn=(Fu·Afn/Afg)·Sx로 저감한다. 여기서 Yt=1.0(Fy/Fu≤0.8), 그 외 1.1.', 'The tension flange, weakened by holes, is checked for flexural rupture (F13.1). For a compact section the nominal moment is Mn=Fy·Zx (Zx = tabulated plastic modulus). Hole-reduction test — if Fu·Afn ≥ Yt·Fy·Afg no reduction (Mp), otherwise Mn=(Fu·Afn/Afg)·Sx. Here Yt=1.0 when Fy/Fu≤0.8, else 1.1.'],
   FM3: ['이음 플랜지를 WT(플랜지+웨브 스템, Awt=B·tf+(H/2−tf)·tw)로 이상화하여 인장항복을 검토한다.', 'The spliced flange is idealised as a WT (flange + web stem, Awt=B·tf+(H/2−tf)·tw) and checked for tension yielding.'],
   FM4: ['동일 WT를 전단지연(U)을 포함해 인장파단으로 검토한다. U는 Table D3.1 Case 7(플랜지접합 W형강, 열당 볼트 3개↑): bf≥⅔d → 0.90, 미만 → 0.85.', 'The same WT is checked for tension rupture with shear lag U. Per Table D3.1 Case 7 (W-shape connected by flanges, ≥3 bolts/line): U=0.90 if bf≥⅔d, else 0.85.'],
   FM5: ['볼트군 주위 H형강(거더) 플랜지의 블록전단 뜯김을 파단경로(Path 6·7, 8·9)에 대해 검토한다.', 'Block-shear tear-out of the H-beam (girder) flange around the bolt group (Path 6·7, 8·9).'],
@@ -82,6 +85,41 @@ function Steps({ steps, lang }: { steps: AiscStep[]; lang: Lang }) {
         </li>
       ))}
     </ol>
+  );
+}
+
+// 블록전단 수식 전개 — Path별로 φRn = φ[min(0.6FuAnv, 0.6FyAgv) + Ubs·Fu·Ant] 를 대입까지 풀어 표기.
+function BlockCaseExpand({ cases, lang }: { cases: BlockCase[]; lang: Lang }) {
+  const L = (ko: string, en: string) => lang === 'en' ? en : ko;
+  return (
+    <div className="narr-bs-exp">
+      {cases.map((c, i) => {
+        const Fu = c.Fu ?? 0, Fy = c.Fy ?? 0, pl = c.plates ?? 1;
+        const shRup = 0.6 * Fu * c.Anv / 1e3, shYld = 0.6 * Fy * c.Agv / 1e3;   // kN
+        const shGov = Math.min(shRup, shYld), rupGov = shRup <= shYld;
+        const tens = c.Ubs * Fu * c.Ant / 1e3;
+        const rnEl = shGov + tens, phi = c.phiRn / 1e3, dem = (c.dcr ?? 0) * phi;
+        const ac = c.areaCalc;
+        const sum = (terms: string[]) => terms.length > 1 ? `(${terms.join(') + (')})` : (terms[0] ?? '');
+        return (
+          <div key={i} className={'bs-exp-item' + (c.gov ? ' bs-gov' : '')}>
+            <div className="bs-exp-h"><b>{c.path}</b> · U<sub>bs</sub> = {c.Ubs.toFixed(1)}{c.gov ? <span className="bs-govtag"> ◀ {L('지배', 'governs')}</span> : null}</div>
+            <div className="bs-exp-body">
+              {ac ? <>
+                <div>A<sub>gv</sub> = Σ(L·t) = {sum(ac.shear.map(s => `${nf(s.L, 0)}·${ac.t}`))} = <b>{nf(c.Agv, 0)}</b> mm²</div>
+                <div>A<sub>nv</sub> = Σ[(L − (n<sub>r</sub>−0.5)·dₕ)·t] = {sum(ac.shear.map(s => `(${nf(s.L, 0)}−${(s.rows - 0.5).toFixed(1)}·${ac.dh})·${ac.t}`))} = <b>{nf(c.Anv, 0)}</b> mm²</div>
+                <div>A<sub>nt</sub> = Σ[(b − n·dₕ{ac.tension.some(t => t.gain > 0.05) ? ' + Σs²/4g' : ''})·t] = {sum(ac.tension.map(t => `(${nf(t.width, 0)}−${t.holes}·${ac.dh}${t.gain > 0.05 ? `+${nf(t.gain, 0)}` : ''})·${ac.t}`))} = <b>{nf(c.Ant, 0)}</b> mm²</div>
+              </> : <div>A<sub>gv</sub> = {nf(c.Agv, 0)} mm² · A<sub>nv</sub> = {nf(c.Anv, 0)} mm² · A<sub>nt</sub> = {nf(c.Ant, 0)} mm²</div>}
+              <div>{L('전단파단', 'Shear rupture')} 0.6·F<sub>u</sub>·A<sub>nv</sub> = 0.6·{Fu}·{nf(c.Anv, 0)} = <b>{nf(shRup)}</b> kN{rupGov ? <span className="bs-min"> ← min</span> : null}</div>
+              <div>{L('전단항복', 'Shear yield')} 0.6·F<sub>y</sub>·A<sub>gv</sub> = 0.6·{Fy}·{nf(c.Agv, 0)} = <b>{nf(shYld)}</b> kN{!rupGov ? <span className="bs-min"> ← min</span> : null}</div>
+              <div>{L('인장파단', 'Tension rupture')} U<sub>bs</sub>·F<sub>u</sub>·A<sub>nt</sub> = {c.Ubs.toFixed(1)}·{Fu}·{nf(c.Ant, 0)} = <b>{nf(tens)}</b> kN</div>
+              <div>R<sub>n</sub> = min({nf(shRup)}, {nf(shYld)}) + {nf(tens)} = <b>{nf(rnEl)}</b> kN{pl > 1 ? <> (×{pl}{L('매', '')} = {nf(rnEl * pl)} kN)</> : null}</div>
+              <div>φR<sub>n</sub> = 0.75 × {nf(rnEl * pl)} = <b>{nf(phi)}</b> kN · DCR = {nf(dem)}/{nf(phi)} = <b>{(c.dcr ?? 0).toFixed(2)}</b></div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -129,6 +167,49 @@ function Conclusion({ c, lang }: { c: AiscCheck; lang: Lang }) {
   );
 }
 
+// #6 볼트 치수·체결 점검 — 사양(그립·표준길이·본수) + 설치여유/간섭(connChecks: 피치·연단·소켓여유·필렛간섭)
+function BoltInstallSection({ r, cond, lang, no }: { r: DesignResult; cond: DesignCondition; lang: Lang; no: number }) {
+  const L = (ko: string, en: string) => lang === 'en' ? en : ko;
+  const bs = boltSpecOf(r);
+  const cc = connChecks(r);
+  const thread = cond.threadCond === 'X' ? L('X(전단면 제외)', 'X (excluded)') : L('N(전단면 통과)', 'N (included)');
+  const grp = (g: typeof bs.flange, ko: string, en: string) => (
+    <tr><th>{L(ko, en)}</th><td>{g.count}{L('본', '')}</td><td>{L('그립', 'grip')} {g.grip}mm</td><td>{L('표준길이', 'Std length')} M{r.boltDia}×{g.length}</td></tr>
+  );
+  return (
+    <section className="doc-sec">
+      <h3><span className="sec-no">{no}.</span>{L('볼트 치수 · 체결 점검', 'Bolt sizing & installation check')}</h3>
+      <table className="cond-table bolt-spec">
+        <tbody>
+          <tr>
+            <th>{L('규격', 'Grade')}</th><td>{cond.bolt} · M{r.boltDia}</td>
+            <th>{L('나사부', 'Thread')}</th><td>{thread}</td>
+          </tr>
+          {grp(bs.flange, '플랜지 볼트', 'Flange bolts')}
+          {grp(bs.web, '웨브 볼트', 'Web bolts')}
+        </tbody>
+      </table>
+      <table className="bolt-chk">
+        <thead>
+          <tr><th>{L('점검항목', 'Check item')}</th><th>{L('값', 'Value')}</th><th>{L('기준', 'Limit')}</th><th>{L('판정', 'Result')}</th></tr>
+        </thead>
+        <tbody>
+          {cc.checks.map((k, i) => (
+            <tr key={i} className={k.ok ? '' : 'chk-ng'}>
+              <td className="ck-lb">{tr(k.label, lang)}</td>
+              <td>{tr(k.value, lang)}</td>
+              <td>{tr(k.limit, lang)}</td>
+              <td className="ck-rs">{k.ok ? '✔ OK' : '⚠ NG'}{k.note ? <span className="ck-nt"> · {tr(k.note, lang)}</span> : null}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="narr-bs-cap">{L('그립 = 체결 판두께 합. 표준길이 = 그립 + (너트+와셔2매+나사여장), 5mm 올림(KS B 1010). 설치여유는 AISC Table 7-16(근사)·J3.4M 기준.',
+        'Grip = fastened plate stack. Std length = grip + (nut + 2 washers + thread projection), rounded up to 5 mm (KS B 1010). Clearances per AISC Table 7-16 (approx.) and J3.4M.')}</p>
+    </section>
+  );
+}
+
 export default function AiscDetailReport({ result, cond, onClose }: { result: DesignResult; cond: DesignCondition; onClose: () => void }) {
   const lang = useLang();
   const L = (ko: string, en: string) => lang === 'en' ? en : ko;
@@ -166,6 +247,44 @@ export default function AiscDetailReport({ result, cond, onClose }: { result: De
             {L(' 웨브 ', ' web ')}{r.web.bolt.m}×{r.web.bolt.n}{L('볼트, PL-', ' bolts, PL-')}{r.web.webPlate?.t}×{r.web.webPlate?.w}×2.
           </p>
         </div>
+
+        {/* 0. 설계조건 + 접합 상세도 */}
+        <section className="doc-sec">
+          <h3><span className="sec-no">0.</span>{L('설계조건 · 접합 상세도', 'Design conditions & connection detail')}</h3>
+          <table className="cond-table">
+            <tbody>
+              <tr>
+                <th>{L('형상', 'Shape')}</th><td>{(cond.profile ?? 'H') === 'W' ? 'W-Shape' : 'H-Shape'} · {r.section}</td>
+                <th>{L('설계기준', 'Std')}</th><td>{stdLabelLong(cond.designStd)} · LRFD</td>
+              </tr>
+              <tr>
+                <th>{L('부재', 'Member')}</th><td>{cond.member === '기둥' ? L('기둥', 'Column') : L('보', 'Beam')}</td>
+                <th>{L('접합', 'Joint')}</th><td>{cond.jointType === '지압' ? L('지압접합', 'Bearing') : L('마찰접합(Class B)', 'Friction (Class B)')}</td>
+              </tr>
+              <tr>
+                <th>{L('H형강', 'Beam')}</th><td>{cond.steel}</td>
+                <th>{L('이음판', 'Plate')}</th><td>{ps}</td>
+              </tr>
+              <tr>
+                <th>{L('볼트', 'Bolt')}</th><td>{cond.bolt} · M{r.boltDia} · {L(`나사부 ${cond.threadCond === 'X' ? 'X(제외)' : 'N(통과)'}`, `threads ${cond.threadCond === 'X' ? 'X' : 'N'}`)}</td>
+                <th>{L('엇모', 'Stagger')}</th><td>{(cond.noStagger ?? false) ? L('제외', 'Off') : L('포함', 'On')}</td>
+              </tr>
+              <tr>
+                <th>{L('이음판두께', 'Plate t')}</th><td>{(cond.equalPlateT ?? true) ? L('내·외 동일', 'Equal') : L('개별', 'Indiv.')}</td>
+                <th>{L('판 분담', 'Plate share')}</th><td>{(cond.plateShare ?? '5050') === 'area' ? L('면적비례', 'By area') : '50:50'}</td>
+              </tr>
+              <tr>
+                <th>{L('블록전단', 'Block shear')}</th><td>{(cond.bsShare ?? 'balanced') === 'full' ? L('전체력', 'Full') : L('균형', 'Balanced')}</td>
+                <th>{L('강도비 α · 갭', 'Ratio α · gap')}</th><td>{Math.round(cond.strengthRatio * 100)}% · {cond.gap ?? 10}mm</td>
+              </tr>
+            </tbody>
+          </table>
+          <figure className="cond-fig">
+            <div className="cond-svg" dangerouslySetInnerHTML={{ __html: toSVGDetail(r, cond) }} />
+            <figcaption>{L('접합 상세도 — 평면·입면·단면(개별 DXF 동일). 녹색=플랜지 이음판·청색=웨브 이음판·적색=치수.',
+              'Connection detail — plan/elevation/section (same as individual DXF). green = flange plate, blue = web plate, red = dimensions.')}</figcaption>
+          </figure>
+        </section>
 
         {/* 1. 소요력 */}
         <section className="doc-sec">
@@ -220,6 +339,9 @@ export default function AiscDetailReport({ result, cond, onClose }: { result: De
                         '[Full] Every path is compared with the full element force (share 1.0, AISIsplice-style, conservative); single-line L-blocks are also checked at full force (may be over-conservative). The path with the highest DCR governs.')
                     : L('[균형] 양측 파단선 U블록(Path 2a·2b·3, 5a·5b, 6·7·8·9, 웨브 V)은 요소 전체 소요력(분담 1.0)과, 단일 파단선 L블록(Path 1·4)은 그 열이 분담하는 하중과 비교한다. DCR이 가장 큰 Path가 지배한다.',
                         '[Balanced] Two-sided U-blocks (Path 2a/2b/3, 5a/5b, 6·7/8·9, web V) are compared with the full element force (share 1.0); single-line L-blocks (Path 1/4) with the share carried by that gauge line. The path with the highest DCR governs.')}</p>
+                  <p className="narr-eq bs-formula">φR<sub>n</sub> = φ·[ min(0.6·F<sub>u</sub>·A<sub>nv</sub>, 0.6·F<sub>y</sub>·A<sub>gv</sub>) + U<sub>bs</sub>·F<sub>u</sub>·A<sub>nt</sub> ], φ = 0.75 (J4.3)</p>
+                  <BlockCaseExpand cases={c.cases} lang={lang} />
+                  <p className="narr-bs-cap">{L('▸ 아래 표는 위 전개의 요약', '▸ Summary of the above expansion')}</p>
                   <BlockCaseTable cases={c.cases} lang={lang} />
                 </>}
                 <Conclusion c={c} lang={lang} />
@@ -227,6 +349,8 @@ export default function AiscDetailReport({ result, cond, onClose }: { result: De
             ))}
           </section>
         ))}
+
+        <BoltInstallSection r={r} cond={cond} lang={lang} no={order.length + 2} />
 
         <p className="note">
           {L('AISC 360-16(15판) LRFD. φ = 0.90(항복)·0.75(파단/볼트전단/지압/블록전단)·0.90(압축)·1.00(이음판 전단항복 J4.2(a)). 순단면 공제폭 = 표준구멍 dₕ(=d+2mm, Table J3.3; M20→22) + 손상여유 2mm(B4.3b) = d+4mm. 블록전단은 요소별 케이스마다 ',
