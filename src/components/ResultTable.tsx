@@ -118,7 +118,11 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
                     title={L('부분강도접합 — 발현 가능한 최대 강도비율', 'Partial-strength splice — max developable ratio')}>
                     {Math.round(partial * 100)}%</span>}
                   {clash && <span className="cn-clash"
-                    title={L(`내부 이음판 ↔ 웨브 이음판 간섭 ${clash.oy}mm — 상세화 재검토 필요(초대형 부분강도 단면)`, `inner ↔ web plate overlap ${clash.oy}mm — revise detailing (jumbo partial-strength section)`)}>⚠</span>}</td>
+                    title={L(`내부 이음판 ↔ 웨브 이음판 간섭 ${clash.oy}mm — 상세화 재검토 필요(초대형 부분강도 단면)`, `inner ↔ web plate overlap ${clash.oy}mm — revise detailing (jumbo partial-strength section)`)}>⚠</span>}
+                  {((partial != null && partial < 0.70) || clash) && <span className="cn-weld"
+                    title={L(
+                      clash ? '용접 splice 권장 — 내부↔웨브 이음판 간섭으로 볼트 상세 불가' : `용접 splice 권장 — 볼트 발현율 ${Math.round((partial ?? 0) * 100)}% (<70%)`,
+                      clash ? 'Welded splice recommended — inner/web plate clash prevents bolted detailing' : `Welded splice recommended — bolt develops only ${Math.round((partial ?? 0) * 100)}% (<70%)`)}>용접</span>}</td>
                 <td className={`dcr-cell${govDcr != null && govDcr > 1.0 ? ' ng' : ''}${govDcr != null ? ' dcr-click' : ''}`}
                   title={govDcr == null ? undefined : L('선택 + 검토항목별 DCR 보기', 'Select + view DCR by limit state')}
                   onClick={govDcr != null ? (e => { e.stopPropagation(); onSelect(dr); onDcrClick?.({ r: dr, fScale, wScale }); }) : undefined}>

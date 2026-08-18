@@ -219,9 +219,9 @@ export default function App() {
                     {L('검토부재 수·적합/부적합·고력볼트 총본수·강재 물량을 실시간 집계.',
                        'Live totals: sections checked, pass/fail, total bolts, steel quantity.')}
                   </HelpItem>
-                  <HelpItem t={L('단면치수 열 (● 상태 · % 부분강도 · ⚠ 간섭)', 'Section column (● status · % · ⚠ clash)')}>
-                    {L('● 초록=적합·빨강=재검토. % 배지=발현 가능한 최대 강도비(부분강도). ⚠=내부 이음판↔웨브 이음판 간섭(초대형 W단면).',
-                       '● green = OK, red = review. % badge = max developable ratio. ⚠ = inner↔web plate clash (jumbo W sections).')}
+                  <HelpItem t={L('단면치수 열 (● 상태 · % 부분강도 · ⚠ 간섭 · 용접)', 'Section column (● status · % · ⚠ clash · weld)')}>
+                    {L('● 초록=적합·빨강=재검토. % 배지=발현 가능한 최대 강도비(부분강도). ⚠=내부 이음판↔웨브 이음판 간섭(초대형 W단면). 용접=발현율<70% 또는 간섭 → 볼트 대신 용접 splice 권장.',
+                       '● green = OK, red = review. % badge = max developable ratio. ⚠ = inner↔web plate clash (jumbo W sections). 용접 = develops <70% or clash → welded splice recommended over bolts.')}
                   </HelpItem>
                   <HelpItem t={L('DCR 열 (클릭 → 항목별)', 'DCR column (click → by item)')}>
                     {L('지배 DCR(소요/설계). 클릭하면 검토항목별 DCR과 우측 상세가 함께 열립니다.',
