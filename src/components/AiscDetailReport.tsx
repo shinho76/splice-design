@@ -3,7 +3,8 @@
 import type { DesignResult, DesignCondition } from '../engine/types.ts';
 import { aiscAutoCorrect } from '../engine/aisc/compat.ts';
 import type { AiscCheck, AiscStep, BlockCase } from '../engine/aisc/types.ts';
-import { parseName } from '../engine/sections.ts';
+import { parseName, sectionByName } from '../engine/sections.ts';
+import { Fy as FySteel } from '../engine/materials.ts';
 import { useLang, tr, type Lang } from '../i18n.ts';
 import { connChecks } from '../engine/connChecks.ts';
 import { boltSpecOf } from '../engine/bolt_spec.ts';
@@ -227,6 +228,32 @@ export default function AiscDetailReport({ result, cond, onClose }: { result: De
 
   const ps = cond.plateSteel ?? cond.steel;
 
+  // 발현율 ≤50% → 계산결과 생략, 용접 splice 권장만 표기
+  const capScale = Math.min(ac.flangeScale, ac.webScale);
+  if (capScale <= 0.5) {
+    return (
+      <div className="report" onClick={onClose}>
+        <div className="report-card doc aisc narr" onClick={e => e.stopPropagation()}>
+          <div className="report-tools">
+            <button className="close" onClick={onClose} aria-label={L('닫기', 'Close')}>✕</button>
+          </div>
+          <div className="doc-head">
+            <div className="doc-kicker">{stdLabelLong(cond.designStd)} · LRFD · {L('상세 계산서', 'DETAILED CALCULATION')}</div>
+            <h2>{r.section} — {L('고력볼트 이음 상세 계산', 'Bolted Splice')}</h2>
+          </div>
+          <div className="weld-only">
+            <div className="wo-badge">{L('용접 splice 권장', 'Welded splice recommended')}</div>
+            {ac.flangeScale <= 0.5
+              ? <p>{L(`플랜지의 F13.1 순단면 휨파단이 지배하므로 플랜지가 부재강도의 ${Math.round(ac.flangeScale * 100)}%만 발현 가능(≤50%)합니다. 따라서 볼트 접합보다 플랜지의 용접 splice(CJP)를 권장하며, 계산 결과는 생략합니다.`,
+                  `Flange net-section flexural rupture (F13.1) governs, so the flange develops only ${Math.round(ac.flangeScale * 100)}% of the member strength (≤50%). A welded flange splice (CJP) is therefore recommended over a bolted one; the calculation is omitted.`)}</p>
+              : <p>{L(`웨브가 부재강도의 ${Math.round(ac.webScale * 100)}%만 발현 가능(≤50%)하여 볼트 splice가 부적합합니다. 용접 splice(CJP)를 권장하고 계산 결과는 생략합니다.`,
+                  `The web develops only ${Math.round(ac.webScale * 100)}% of the member strength (≤50%), so a bolted splice is unsuitable. A welded splice (CJP) is recommended; the calculation is omitted.`)}</p>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="report" onClick={onClose}>
       <div className="report-card doc aisc narr" onClick={e => e.stopPropagation()}>
@@ -289,6 +316,18 @@ export default function AiscDetailReport({ result, cond, onClose }: { result: De
         {/* 1. 소요력 */}
         <section className="doc-sec">
           <h3><span className="sec-no">1.</span>{L('소요력 · 하중경로', 'Design forces & load path')}</h3>
+          {(() => {
+            const alpha = cond.strengthRatio, mFy = FySteel(cond.steel, tf), Zx = sectionByName(r.section)?.Zx ?? 0;
+            return (
+              <p className="narr-p">
+                {L('부재 설계휨강도 ', 'Member design flexural strength ')}
+                <span className="narr-eq">M<sub>u</sub> = α·φ·F<sub>y</sub>·Z<sub>x</sub> = {alpha.toFixed(2)}·0.9·{mFy}·{nf(Zx, 0)} = <b>{nf(r.Mu_kNm)}</b> kN·m</span>
+                {L('. 웨브 설계전단 ', '. Web design shear ')}
+                <span className="narr-eq">V<sub>u</sub> = α·φ<sub>v</sub>·0.6·F<sub>y</sub>·(H·t<sub>w</sub>) = {alpha.toFixed(2)}·0.9·0.6·{mFy}·{H}·{tw} = <b>{nf(r.Vu_kN)}</b> kN</span>
+                {L(' (φ=0.9, Z_x=단면표 소성단면계수, H·t_w=웨브 총단면).', ' (φ=0.9, Z_x = tabulated plastic modulus, H·t_w = gross web area).')}
+              </p>
+            );
+          })()}
           <p className="narr-p">
             {L('이음부는 부재 설계강도를 발현하도록 설계한다. 휨모멘트를 플랜지 커플로 분해하면 인장(및 압축)플랜지가 다음 힘을 부담한다:',
               'The splice is proportioned to develop the member design strength. The bending moment is resolved into a flange couple: the tension (and compression) flange carries')}
@@ -296,15 +335,18 @@ export default function AiscDetailReport({ result, cond, onClose }: { result: De
             &nbsp;({L('커플 arm', 'lever arm')} d − t<sub>f</sub> = {arm} mm).
           </p>
           <p className="narr-p">
-            {Math.abs(dem.halfOuter - dem.half) > 1
+            {!r.flange.innerPlate
+              ? <>{L('내부 이음판이 없는 소형 단면이므로 ', 'This is a small section without inner plates, so ')}<b>{L('외부 이음판이 플랜지력 Pf 전체(100%)를 분담', 'the outer plate resists the full flange force Pf (100%)')}</b>
+                  {L('한다 — 외부 이음판 = ', ' — outer plate = ')}<b>{kn(dem.halfOuter)}</b>{L(' kN (= Pf). 볼트는 단일전단(1면).', ' kN (= Pf). The bolts act in single shear.')}</>
+              : Math.abs(dem.halfOuter - dem.half) > 1
               ? <>{L('이 플랜지력은 이중전단 경로를 따르며 ', 'This flange force follows a double-shear load path and is shared ')}<b>{L('판 총단면적 비례', 'by plate gross area')}</b>
                   {L('로 분담된다 — 외부 이음판 = ', ' — the outer plate takes ')}<b>{kn(dem.halfOuter)}</b>
                   {L(' kN, 내부 이음판 2매 = ', ' kN, the inner-plate pair takes ')}<b>{kn(dem.halfInner)}</b>
                   {L(' kN (면적 A외/(A외+A내) 비례).', ' kN (∝ A_out/(A_out+A_in)).')}</>
               : <>{L('이 플랜지력은 이중전단 경로를 따르며 ', 'This flange force follows a double-shear load path and is shared ')}<b>50 : 50</b>
                   {L('으로 분담된다 — 외부 이음판 1매 = 내부 이음판 2매 = Pf/2 = ', ' — the outer plate and the inner-plate pair each resist Pf/2 = ')}<b>{kn(dem.halfOuter)}</b>{L(' kN.', ' kN.')}</>}
-            {L(' 다만 각 볼트는 2개 전단면을 지나므로 ', ' Every bolt, however, sees the ')}
-            <i>{L('Pf 전체', 'full Pf')}</i>{L('를 받는다.', ' because it crosses two shear planes.')}
+            {r.flange.innerPlate && <>{L(' 다만 각 볼트는 2개 전단면을 지나므로 ', ' Every bolt, however, sees the ')}
+            <i>{L('Pf 전체', 'full Pf')}</i>{L('를 받는다.', ' because it crosses two shear planes.')}</>}
           </p>
           <p className="narr-p">
             {L('웨브 이음은 설계전단 ', 'The web splice carries the design shear ')}<span className="narr-eq">V<sub>u</sub> = <b>{kn(dem.Vu)}</b> kN</span>
@@ -335,8 +377,8 @@ export default function AiscDetailReport({ result, cond, onClose }: { result: De
                 {c.steps && c.steps.length > 0 && <Steps steps={c.steps} lang={lang} />}
                 {c.cases && c.cases.length > 0 && <>
                   <p className="narr-p narr-bs-note">{cond.bsShare === 'full'
-                    ? L('[전체력] 모든 Path를 요소 전체 소요력(분담 1.0)과 비교한다(AISIsplice 방식·보수적). 단일 파단선 L블록도 전체력으로 검토되어 과다보수일 수 있다. DCR이 가장 큰 Path가 지배한다.',
-                        '[Full] Every path is compared with the full element force (share 1.0, AISIsplice-style, conservative); single-line L-blocks are also checked at full force (may be over-conservative). The path with the highest DCR governs.')
+                    ? L('[전체력] 모든 Path를 요소 전체 소요력(분담 1.0)과 비교한다(보수적). 단일 파단선 L블록도 전체력으로 검토되어 과다보수일 수 있다. DCR이 가장 큰 Path가 지배한다.',
+                        '[Full] Every path is compared with the full element force (share 1.0, conservative); single-line L-blocks are also checked at full force (may be over-conservative). The path with the highest DCR governs.')
                     : L('[균형] 양측 파단선 U블록(Path 2a·2b·3, 5a·5b, 6·7·8·9, 웨브 V)은 요소 전체 소요력(분담 1.0)과, 단일 파단선 L블록(Path 1·4)은 그 열이 분담하는 하중과 비교한다. DCR이 가장 큰 Path가 지배한다.',
                         '[Balanced] Two-sided U-blocks (Path 2a/2b/3, 5a/5b, 6·7/8·9, web V) are compared with the full element force (share 1.0); single-line L-blocks (Path 1/4) with the share carried by that gauge line. The path with the highest DCR governs.')}</p>
                   <p className="narr-eq bs-formula">φR<sub>n</sub> = φ·[ min(0.6·F<sub>u</sub>·A<sub>nv</sub>, 0.6·F<sub>y</sub>·A<sub>gv</sub>) + U<sub>bs</sub>·F<sub>u</sub>·A<sub>nt</sub> ], φ = 0.75 (J4.3)</p>

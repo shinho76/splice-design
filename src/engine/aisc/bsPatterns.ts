@@ -34,6 +34,7 @@ export interface BsInput {
   webBar?: number;      // 웨브 바 반폭(내부·부재 도해). 없으면 미표기
   t: number; dh: number; Fy: number; Fu: number;
   plates: number;       // φRn 곱수 관행(외부·부재=1, 웨브=2). 내부는 상·하 스트립 기하에 2매 포함→1
+  ubsInner?: number;    // 내부판(FI) Ubs 강제값 — 1열/엇모=1.0, 2열=0.5 (배치별 지정)
 }
 
 const STAG_OFF = 45, STAG_PITCH = 90;
@@ -129,39 +130,41 @@ export function blockShearPaths(p: BsInput): BsPath[] {
 
   if (p.kind === 'inner') {
     // 내부판 상·하 2스트립. 게이지선: 상판(양수)·하판(음수). 끝선 iE, 외측연단 oE.
+    // FI Ubs는 배치별 지정값(ubsInner): 1열/엇모=1.0, 2열=0.5.
+    const uI = p.ubsInner ?? (p.staggered ? UNI : (m <= 2 ? UNI : NON));
     const iE = p.innerEdge ?? aIn - 20, oE = p.outerEdge ?? aOut + 35;
     const up = p.lines.filter(y => y > 0).sort((a, b) => a - b), lo = p.lines.filter(y => y < 0).sort((a, b) => b - a);
     const hiU = up[up.length - 1], inU = up[0], hiL = lo[lo.length - 1], inL = lo[0]; // hi=외곽, in=내측
     if (m <= 2) { // 1열: 판당 1선 → Path 4
-      return [F('I4', 'Path 4', NON, [S(hiU), S(hiL)],
+      return [F('I4', 'Path 4', uI, [S(hiU), S(hiL)],
         [vseg(G.last(hiU), hiU, oE), vseg(G.last(hiL), hiL, -oE)],
         [rect(0, G.last(hiU), hiU, oE), rect(0, G.last(hiL), hiL, -oE)])];
     }
     if (p.staggered) { // 엇모: 계단(경사) 인장 — Path 4a(직진)/4b(계단)/5a(밴드계단)/5b(2스트립)
       return [
-        F('I4a', 'Path 4a', NON, [S(inU), S(inL)],
+        F('I4a', 'Path 4a', uI, [S(inU), S(inL)],
           [vseg(G.last(inU), inU, oE), vseg(G.last(inL), inL, -oE)],
           [rect(0, G.last(inU), inU, oE), rect(0, G.last(inL), inL, -oE)]),
-        F('I4b', 'Path 4b', NON, [S(inU), S(inL)],
+        F('I4b', 'Path 4b', uI, [S(inU), S(inL)],
           [[nj(inU), nj(hiU), [G.last(hiU), oE]], [[G.last(hiL), -oE], nj(hiL), nj(inL)]],
           [[[0, inU], nj(inU), nj(hiU), [G.last(hiU), oE], [0, oE]], [[0, -oE], [G.last(hiL), -oE], nj(hiL), nj(inL), [0, inL]]]),
-        F('I5a', 'Path 5a', UNI, [S(hiU), S(inU), S(inL), S(hiL)],
+        F('I5a', 'Path 5a', uI, [S(hiU), S(inU), S(inL), S(hiL)],
           [[nj(inU), nj(hiU)], [nj(hiL), nj(inL)]],
           [[[0, inU], nj(inU), nj(hiU), [0, hiU]], [[0, hiL], nj(hiL), nj(inL), [0, inL]]]),
-        F('I5b', 'Path 5b', UNI, [S(hiU), S(inU), S(inL), S(hiL)],
+        F('I5b', 'Path 5b', uI, [S(hiU), S(inU), S(inL), S(hiL)],
           [[nj(hiU), [G.last(hiU), oE]], [[G.last(inU), iE], nj(inU)], [[G.last(inL), -iE], nj(inL)], [nj(hiL), [G.last(hiL), -oE]]],
           [[[0, hiU], nj(hiU), [G.last(hiU), oE], [0, oE]], [[0, iE], [G.last(inU), iE], nj(inU), [0, inU]], [[0, inL], nj(inL), [G.last(inL), -iE], [0, -iE]], [[0, -oE], [G.last(hiL), -oE], nj(hiL), [0, hiL]]]),
       ];
     }
     // 2열(정렬): Path 4(내측선·판연단) / 5a(4면·내측) / 5b(4면·2스트립)
     const r: BsPath[] = [];
-    r.push(F('I4', 'Path 4', NON, [S(inU), S(inL)],
+    r.push(F('I4', 'Path 4', uI, [S(inU), S(inL)],
       [vseg(G.last(inU), inU, oE), vseg(G.last(inL), inL, -oE)],
       [rect(0, G.last(inU), inU, oE), rect(0, G.last(inL), inL, -oE)]));
-    r.push(F('I5a', 'Path 5a', UNI, [S(hiU), S(inU), S(inL), S(hiL)],
+    r.push(F('I5a', 'Path 5a', uI, [S(hiU), S(inU), S(inL), S(hiL)],
       [vseg(G.last(hiU), inU, hiU), vseg(G.last(hiL), hiL, inL)],
       [rect(0, G.last(hiU), inU, hiU), rect(0, G.last(hiL), hiL, inL)]));
-    r.push(F('I5b', 'Path 5b', UNI, [S(hiU), S(inU), S(inL), S(hiL)],
+    r.push(F('I5b', 'Path 5b', uI, [S(hiU), S(inU), S(inL), S(hiL)],
       [vseg(G.last(hiU), oE, hiU), vseg(G.last(inU), inU, iE), vseg(G.last(inL), -iE, inL), vseg(G.last(hiL), hiL, -oE)],
       [rect(0, G.last(hiU), hiU, oE), rect(0, G.last(inU), iE, inU), rect(0, G.last(inL), inL, -iE), rect(0, G.last(hiL), -oE, hiL)]));
     return r;

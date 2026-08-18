@@ -238,8 +238,8 @@ export default function App() {
                        'Plan/elevation/section detail and 3D shape (bolts, plates, fillet).')}
                   </HelpItem>
                   <HelpItem t={L('요약계산서 · 상세계산서', 'Summary · Detailed calc')}>
-                    {L('요약=검토항목별 φRn·소요·DCR·판정. 상세=수식 전개 + 블록전단 Case A~D의 실측 파단선 도해.',
-                       'Summary = per-item φRn/demand/DCR. Detailed = full formulas + block-shear Case A–D fracture-line figures drawn to actual geometry.')}
+                    {L('요약=검토항목별 φRn·소요·DCR·판정. 상세=수식 전개 + 블록전단 파단경로 도해.',
+                       'Summary = per-item φRn/demand/DCR. Detailed = full formulas + block-shear rupture-path figures.')}
                   </HelpItem>
                   <HelpItem t={L('DXF · IFC · 프로젝트 담기', 'DXF · IFC · Add to project')}>
                     {L('개별 단면 상세 DXF(R12), BIM 연동 IFC, 프로젝트 목록 담기.',
@@ -252,8 +252,8 @@ export default function App() {
                        'Jumbo sections cannot develop full member strength through a bolted splice, so demand is capped (% ratio).')}
                   </HelpItem>
                   <HelpItem t={L('블록전단 Case A/B/C/D', 'Block shear Case A/B/C/D')}>
-                    {L('볼트군이 U자(전열/내측쌍)·L자(외연/중앙)로 뜯기는 후보 파단을 모두 검토해 최소 지배값 채택. 상세계산서에 실측 파단선으로 도시.',
-                       'Evaluates U-shaped (full/inner-pair) and L-shaped (outer/central) tear-out patterns, taking the minimum. Drawn to scale in the detailed calc.')}
+                    {L('볼트군이 U자(전열/내측쌍)·L자(외연/중앙)로 뜯기는 후보 파단을 모두 검토해 최소 지배값 채택. 상세계산서에 파단선으로 도시.',
+                       'Evaluates U-shaped (full/inner-pair) and L-shaped (outer/central) tear-out patterns, taking the minimum. Shown in the detailed calc.')}
                   </HelpItem>
                   <HelpItem t={L('DXF 버전 (R12 / AC1009)', 'DXF version (R12 / AC1009)')}>
                     {L('AutoCAD·모든 뷰어 호환을 위해 R12로 저장하며, 생성 시 구조(테이블·엔트리명·섹션순서)를 엄격 검증합니다.',

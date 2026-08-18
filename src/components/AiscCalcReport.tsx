@@ -55,6 +55,32 @@ export default function AiscCalcReport({ result, cond, onClose }: { result: Desi
   for (const c of ac.report.checks) { if (!groups[c.group]) order.push(c.group); (groups[c.group] ??= []).push(c); }
   const clash = innerWebClash(r);   // 시공성 가드: 내부 이음판↔웨브 이음판 간섭
 
+  // 발현율 ≤50% → 계산결과 생략, 용접 splice 권장만 표기
+  const capScale = Math.min(ac.flangeScale, ac.webScale);
+  if (capScale <= 0.5) {
+    return (
+      <div className="report" onClick={onClose}>
+        <div className="report-card doc aisc" onClick={e => e.stopPropagation()}>
+          <div className="report-tools">
+            <button className="close" onClick={onClose} aria-label={L('닫기', 'Close')}>✕</button>
+          </div>
+          <div className="doc-head">
+            <div className="doc-kicker">{stdLabelLong(cond.designStd)} · LRFD · {L('이음 계산서', 'Splice Calculation')}</div>
+            <h2>{r.section}</h2>
+          </div>
+          <div className="weld-only">
+            <div className="wo-badge">{L('용접 splice 권장', 'Welded splice recommended')}</div>
+            {ac.flangeScale <= 0.5
+              ? <p>{L(`플랜지의 F13.1 순단면 휨파단이 지배하므로 플랜지가 부재강도의 ${Math.round(ac.flangeScale * 100)}%만 발현 가능(≤50%)합니다. 따라서 볼트 접합보다 플랜지의 용접 splice(CJP)를 권장하며, 계산 결과는 생략합니다.`,
+                  `Flange net-section flexural rupture (F13.1) governs, so the flange develops only ${Math.round(ac.flangeScale * 100)}% of the member strength (≤50%). A welded flange splice (CJP) is therefore recommended over a bolted one; the calculation is omitted.`)}</p>
+              : <p>{L(`웨브가 부재강도의 ${Math.round(ac.webScale * 100)}%만 발현 가능(≤50%)하여 볼트 splice가 부적합합니다. 용접 splice(CJP)를 권장하고 계산 결과는 생략합니다.`,
+                  `The web develops only ${Math.round(ac.webScale * 100)}% of the member strength (≤50%), so a bolted splice is unsuitable. A welded splice (CJP) is recommended; the calculation is omitted.`)}</p>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="report" onClick={onClose}>
       <div className="report-card doc aisc" onClick={e => e.stopPropagation()}>

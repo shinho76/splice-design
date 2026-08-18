@@ -116,8 +116,8 @@ function BlockShearFig({ cases, geom, lang }: { cases: BlockCase[]; geom: BlockS
       </div>
       <div style={{ fontSize: 10.5, color: 'var(--sub,#6b7280)', marginTop: 3 }}>
         {lang === 'ko'
-          ? `AISIsplice Path 실측 작도 · 볼트 ${geom.cols.length}열×${geom.nrow}행, 피치 ${geom.pitch}, 연단 ${geom.edge}, 폭 ${Math.round(2 * geom.halfWidth)}mm${geom.plates === 2 ? ' (×2매)' : ''}${geom.vertical ? ' · 수직전단(Vu)·이음면 한쪽 절반' : ''}${geom.staggered ? ' · 엇모 계단(+s²/4g)' : ''}. 빨강=전단면·파랑=인장면·해치=탈락블록. 각 Path DCR 표기(지배 ◀).`
-          : `To-scale AISIsplice paths. red=shear, blue=tension, hatch=tear-out. DCR per path (governing ◀).`}
+          ? `블록전단 파단경로 · 볼트 ${geom.cols.length}열×${geom.nrow}행, 피치 ${geom.pitch}, 연단 ${geom.edge}, 폭 ${Math.round(2 * geom.halfWidth)}mm${geom.plates === 2 ? ' (×2매)' : ''}${geom.vertical ? ' · 수직전단(Vu)·이음면 한쪽 절반' : ''}${geom.staggered ? ' · 엇모 계단(+s²/4g)' : ''}. 빨강=전단면·파랑=인장면·해치=탈락블록. 각 Path DCR 표기(지배 ◀).`
+          : `Block-shear rupture paths. red=shear, blue=tension, hatch=tear-out. DCR per path (governing ◀).`}
       </div>
     </div>
   );

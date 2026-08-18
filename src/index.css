@@ -674,6 +674,12 @@ body {
 .bs-exp-body > div { white-space: normal; }
 .bs-min { color: var(--accent); font-weight: 700; }
 .narr-bs-cap { font-size: 11px; color: var(--muted); margin: 6px 0 2px; }
+/* 발현율 ≤50% — 계산 생략, 용접 권장 안내 */
+.weld-only { margin: 20px 40px 40px; padding: 24px; border: 1.5px solid var(--ng, #e5484d);
+  border-radius: 10px; background: color-mix(in srgb, var(--ng, #e5484d) 8%, transparent); text-align: center; }
+.weld-only .wo-badge { display: inline-block; font-size: 15px; font-weight: 800; color: #fff;
+  background: var(--ng, #e5484d); padding: 6px 16px; border-radius: 6px; margin-bottom: 12px; }
+.weld-only p { font-size: 13.5px; line-height: 1.7; color: var(--fg); margin: 0; }
 /* #6 볼트 치수·체결 점검 */
 .bolt-spec { margin-bottom: 10px; }
 .bolt-chk { width: 100%; border-collapse: collapse; font-size: 12px; margin: 4px 0 4px; }
