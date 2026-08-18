@@ -68,12 +68,13 @@ export interface BlockShearGeom {
 
 /** 순단면 파단경로 후보 (B4.3b) — 엇모 인장파단 전수검토 */
 export interface NetPath {
-  key: string;        // 'zig' | 's<off>' | 'gross'
+  key: string;        // 'k<홀수>' | 'gross'
   label: string;      // 표기용 라벨
   nHoles: number;     // 이 경로가 지나는 구멍수(폭방향)
   gain: number;       // Σs²/4g (엇모 대각 회복)
   netWidth: number;   // 순폭 (mm)
   area: number;       // 순단면적 (mm², 1매)
+  lineIdx: number[];  // 이 경로가 지나는(공제) 게이지선의 cols 인덱스(도해용)
 }
 
 /** 순단면 도해 기하 — 엇모 인장파단(FP2·FI2) 후보경로 실측 작도 */

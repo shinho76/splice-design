@@ -22,42 +22,62 @@ export const netArea = (width: number, t: number, nHoles: number, d: number): nu
  * 반환: {area, gain}(gain=Σs²/4g, 계산서 표기용).
  */
 export function netAreaStag(width: number, t: number, cols: { x: number; off: number }[], dd: number): { area: number; gain: number } {
-  const { cases, gov } = netSectionCases(width, t, cols, dd);
-  void cases;
-  return { area: gov.area, gain: gov.key === 'zig' ? gov.gain : 0 };
+  const { gov } = netSectionCases(width, t, cols, dd);
+  return { area: gov.area, gain: gov.gain };
 }
 
 /**
- * 엇모(staggered) 순단면 후보 파단경로 열거 — AISC 360-16 B4.3b.
- *   폭방향으로 요소를 관통하는 모든 실질 후보 경로를 나열하고 최소 순단면(=지배)을 반환.
- *   ① 전열 지그재그: 모든 게이지선의 구멍 공제 + 인접 대각마다 s²/4g 회복 (통상 지배).
- *   ② 정렬 위상별 직선: 같은 길이방향 위상(off)에 놓인 열만 동시에 절단하는 수직 파단선.
- *   (정렬배치면 off 단일위상 → ①=② 로 축약, 후보 1개.)
+ * 엇모(staggered) 순단면 후보 파단경로 전수열거 — AISC 360-16 B4.3b.
+ *   폭방향으로 요소를 관통하는 파단선은 임의의 게이지선 부분집합을 지나며,
+ *   순폭 = 총폭 − (지나는 구멍수)·dd + Σ(인접 지나는 열의 s²/4g).
+ *   전 부분집합(≤2^m)을 훑어 **공제 구멍수 k별 최소 순단면 경로**를 후보로 채택:
+ *     k=m(전열 지그재그) → k=m−1,… → k=maxPhase(정렬 위상 직선).
+ *   각 k의 최소경로가 그 케이스의 지배 파단선. 전체 최소(보통 전열 지그재그)가 요소 지배.
+ *   (정렬배치면 maxPhase=m → 후보 1개로 축약.)
  * cols: 각 볼트열의 {x: 폭방향 좌표, off: 길이방향 오프셋}. dd = 1구멍 공제폭.
+ * NetPath.lineIdx = 이 경로가 지나는(공제) 게이지선의 입력 cols 인덱스(도해용).
  */
 export function netSectionCases(width: number, t: number, cols: { x: number; off: number }[], dd: number): { cases: NetPath[]; gov: NetPath } {
-  const xs = cols.slice().sort((a, b) => a.x - b.x);
-  if (xs.length === 0) {
-    const c: NetPath = { key: 'gross', label: '무공제', nHoles: 0, gain: 0, netWidth: width, area: width * t };
+  const n = cols.length;
+  if (n === 0) {
+    const c: NetPath = { key: 'gross', label: '무공제', nHoles: 0, gain: 0, netWidth: width, area: width * t, lineIdx: [] };
     return { cases: [c], gov: c };
   }
-  const cases: NetPath[] = [];
-  // ① 전열 지그재그
-  let gain = 0;
-  for (let i = 0; i < xs.length - 1; i++) {
-    const g = xs[i + 1].x - xs[i].x, s = Math.abs(xs[i + 1].off - xs[i].off);
-    if (g > 0 && s > 0) gain += (s * s) / (4 * g);
+  // x 오름차순 정렬(인접 판정) — sp(정렬위치) ↔ 원본 인덱스 매핑
+  const ord = cols.map((_, i) => i).sort((a, b) => cols[a].x - cols[b].x);
+  const sorted = ord.map(i => cols[i]);
+  const nwOf = (sp: number[]): { nw: number; gain: number } => {
+    let gain = 0;
+    for (let k = 0; k < sp.length - 1; k++) {
+      const a = sorted[sp[k]], b = sorted[sp[k + 1]];
+      const g = b.x - a.x, s = Math.abs(b.off - a.off);
+      if (g > 0 && s > 0) gain += (s * s) / (4 * g);
+    }
+    return { nw: width - sp.length * dd + gain, gain };
+  };
+  // 부분집합 전수 → 크기 k별 최소 순폭 경로
+  const best = new Map<number, { nw: number; gain: number; sp: number[] }>();
+  for (let mask = 1; mask < (1 << n); mask++) {
+    const sp: number[] = [];
+    for (let b = 0; b < n; b++) if (mask & (1 << b)) sp.push(b);
+    const { nw, gain } = nwOf(sp);
+    const cur = best.get(sp.length);
+    if (!cur || nw < cur.nw) best.set(sp.length, { nw, gain, sp });
   }
-  const zigW = Math.max(0, width - xs.length * dd + gain);
-  cases.push({ key: 'zig', label: `전열 지그재그(${xs.length}공, +Σs²/4g)`, nHoles: xs.length, gain, netWidth: zigW, area: zigW * t });
-  // ② 정렬 위상(off)별 직선 절단
+  // 정렬 위상당 최다 구멍수 = 직선 절단 최소 공제(그 이하는 실질 파단선 아님)
   const byOff = new Map<number, number>();
-  for (const c of xs) byOff.set(c.off, (byOff.get(c.off) ?? 0) + 1);
-  const offs = [...byOff.keys()].sort((a, b) => a - b);
-  if (offs.length > 1) for (const off of offs) {
-    const n = byOff.get(off)!;
-    const w = Math.max(0, width - n * dd);
-    cases.push({ key: `s${off}`, label: `직선(${off === 0 ? '외측정렬' : `엇모 +${off}`}열, ${n}공)`, nHoles: n, gain: 0, netWidth: w, area: w * t });
+  for (const c of cols) byOff.set(c.off, (byOff.get(c.off) ?? 0) + 1);
+  const maxPhase = Math.max(...byOff.values());
+  const cases: NetPath[] = [];
+  for (let k = n; k >= maxPhase; k--) {
+    const b = best.get(k);
+    if (!b) continue;
+    const lineIdx = b.sp.map(si => ord[si]);
+    const zig = b.gain > 0.05;
+    const label = k === n && n > maxPhase ? `전열 지그재그(${k}공, +Σs²/4g)`
+      : !zig ? `직선(${k}공)`
+        : `부분 지그재그(${k}공, +Σs²/4g)`;
+    cases.push({ key: `k${k}`, label, nHoles: k, gain: b.gain, netWidth: Math.max(0, b.nw), area: Math.max(0, b.nw) * t, lineIdx });
   }
   const gov = cases.reduce((a, b) => (b.area < a.area ? b : a));
   return { cases, gov };

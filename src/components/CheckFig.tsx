@@ -129,26 +129,23 @@ function BlockShearFig({ cases, geom, lang }: { cases: BlockCase[]; geom: BlockS
 function NetPanel({ path, geom, govKey }: { path: NetPath; geom: NetSectionGeom; govKey: string }) {
   const gov = path.key === govKey;
   const { edge, pitch, width } = geom;
-  const lines = geom.lines.slice().sort((a, b) => b.y - a.y);  // 위(+y)→아래(−y)
+  // 게이지선(원본 인덱스 유지) — 위(+y)→아래(−y) 정렬
+  const allLines = geom.lines.map((l, i) => ({ ...l, i })).sort((a, b) => b.y - a.y);
   const uOf = (l: { off: number; rows: number }) => edge + l.off + Math.max(0, l.rows - 1) * pitch;  // 이음측 마지막 행
-  const maxLastU = Math.max(...lines.map(uOf));
-  const uEnd = maxLastU + edge, yTop = width / 2, yBot = -width / 2;
+  const uEnd = Math.max(...allLines.map(uOf)) + edge, yTop = width / 2, yBot = -width / 2;
   const W = 176, H = 150, pad = 12, aw = 24;
   const sc = Math.min((W - 2 * pad - aw) / (uEnd || 1), (H - 2 * pad) / (width || 1));
   const padL = pad + aw;
   const map = (u: number, y: number): Pt => [padL + u * sc, pad + (yTop - y) * sc];
   const br = Math.max(1.4, (geom.dh / 2) * sc);
-  // 파단경로 폴리라인 + 공제 구멍 판정
-  const phaseOff = path.key[0] === 's' ? Number(path.key.slice(1)) : null;
-  const cut = (l: { off: number }) => phaseOff == null || Math.abs(l.off - phaseOff) < 0.5;   // 이 경로가 지나는(공제) 게이지선
-  let poly: Pt[];
-  if (phaseOff == null) {                              // 전열 지그재그
-    const lp = lines.map(l => map(uOf(l), l.y));
-    poly = [map(uOf(lines[0]), yTop), ...lp, map(uOf(lines[lines.length - 1]), yBot)];
-  } else {                                             // 직선(정렬 위상)
-    const l0 = lines.find(cut)!, uS = uOf(l0);
-    poly = [map(uS, yTop), map(uS, yBot)];
-  }
+  // 이 경로가 지나는(공제) 게이지선
+  const inPath = new Set(path.lineIdx);
+  const chain = allLines.filter(l => inPath.has(l.i));   // 위→아래 순
+  const cut = (l: { i: number }) => inPath.has(l.i);
+  // 파단선: 위쪽 연단 → 지나는 열들(계단) → 아래쪽 연단
+  const poly: Pt[] = chain.length
+    ? [map(uOf(chain[0]), yTop), ...chain.map(l => map(uOf(l), l.y)), map(uOf(chain[chain.length - 1]), yBot)]
+    : [map(edge, yTop), map(edge, yBot)];
   const pl = map(0, 0), plax = pl[0] - (aw - 6);       // 하중 화살표(좌측 자유단 → 우향)
   const col = gov ? BLOCKS : PLATE;
   return (
@@ -164,14 +161,14 @@ function NetPanel({ path, geom, govKey }: { path: NetPath; geom: NetSectionGeom;
         <path d={`M${plax},${pl[1]} l14,-7 v14 z`} fill={LOAD} />
         <text x={plax} y={pl[1] - 9} fontSize={12} fontWeight={800} fill={LOAD} textAnchor="middle">Pf</text>
         {/* 볼트(공제 구멍 강조) */}
-        {lines.map((l, li) => Array.from({ length: l.rows }, (_, k) => {
+        {allLines.map((l, li) => Array.from({ length: l.rows }, (_, k) => {
           const [bx, by] = map(edge + l.off + k * pitch, l.y);
           const isCut = cut(l) && k === l.rows - 1;    // 파단선이 지나는 행
           return <circle key={`${li}-${k}`} cx={bx} cy={by} r={br} fill={isCut ? 'rgba(44,111,187,.12)' : 'none'} stroke={isCut ? TENSION : HOLE} strokeWidth={isCut ? 1.3 : 0.85} />;
         }))}
         {/* 파단선(파랑 계단/직선) */}
         <polyline points={poly.map(p => p.join(',')).join(' ')} fill="none" stroke={TENSION} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-        <text x={4} y={12} fontSize={11} fontWeight={700} fill={gov ? BLOCKS : INK}>{phaseOff == null ? '지그재그' : '직선'}</text>
+        <text x={4} y={12} fontSize={11} fontWeight={700} fill={gov ? BLOCKS : INK}>{path.gain > 0.05 ? '지그재그' : '직선'}</text>
       </svg>
       <div style={{ fontSize: 10.5, color: gov ? BLOCKS : 'var(--sub,#6b7280)', fontWeight: gov ? 700 : 500, marginTop: -1 }}>
         {path.nHoles}공 공제{path.gain > 0.05 ? ` +Σs²/4g=${path.gain.toFixed(1)}` : ''} · An={Math.round(path.area)}{geom.plates === 2 ? '×2' : ''}mm²{gov ? ' ◀' : ''}
