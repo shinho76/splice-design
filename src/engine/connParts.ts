@@ -45,7 +45,7 @@ export function connParts(r: DesignResult): ConnParts {
     return Array.from({ length: rows }, (_, j) => base + off + j * 90);
   };
   const Pc = r.web.Pc ?? 60;
-  const webOff = 0;                 // 웨브볼트 이음부 연단 40(플랜지와 동일) — 절반피치 엇갈림 제거
+  const webOff = (r.web.staggered ?? false) ? 30 : 0;   // KBC-09 [그림3.4]: H<200&l<60 → 웨브볼트 절반피치(30mm) 엇갈림(렌치 간섭 회피, 첨판폭 +60 정합)
   const webZ = Array.from({ length: wB.n }, (_, i) => base + webOff + i * wp);
   const webY = Array.from({ length: wB.m }, (_, i) => (i - (wB.m - 1) / 2) * Pc);
 

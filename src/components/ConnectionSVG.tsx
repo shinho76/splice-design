@@ -37,8 +37,10 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
   const webWid = r.web.webPlate?.L ?? 170, wT = r.web.webPlate?.t;
   const flOff = Math.round((H - chum) / 2);
   const webRowY = Array.from({ length: mW }, (_, i) => (i - (mW - 1) / 2) * Pc);
-  // 웨브볼트는 정렬(엇갈림 없음) — DXF와 동일. (과거 +30 엇갈림은 이음판폭 미보정으로 연단 40→10mm 파괴 + DXF 불일치 유발)
-  const webPosX = Array.from({ length: nW }, (_, i) => base + i * wp);
+  // KBC-09 [그림3.4]: H<200&l<60 → 웨브볼트 절반피치(30mm) 엇갈림. 엔진이 첨판폭 +60(webWid에 반영)하므로
+  //   외측 연단 40 유지·DXF/connParts와 동일(과거 파괴는 첨판폭 미보정 탓, 현재는 정합).
+  const webOff = (r.web.staggered ?? false) ? 30 : 0;
+  const webPosX = Array.from({ length: nW }, (_, i) => base + webOff + i * wp);
 
   // ── 치수체인: 실제 좌표·판치수에서 도출 ──
   const round = (x: number) => Math.round(x);
