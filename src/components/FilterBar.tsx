@@ -22,7 +22,7 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
 
   return (
     <div className="filterbar">
-      {/* Ⓐ 형강 프로파일 (H형강 편람 / W형강 AISC v16.0) */}
+      {/* Ⓐ 형강 프로파일 (H형강 / W형강) */}
       <div className="fgrp">
         <Seg label={L('형강', 'Profile')} value={cond.profile ?? 'H'} opts={['H', 'W']} optLabels={['H-Shape', 'W-Shape']} onPick={v => set('profile', v as 'H' | 'W')} />
       </div>

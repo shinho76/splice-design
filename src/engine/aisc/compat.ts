@@ -10,7 +10,7 @@ import type { AiscResult, AiscCheck } from './types.ts';
 
 export type { AiscCheck, AiscResult } from './types.ts';
 
-/** 구 aiscCheck 호환: 편람 배치를 AISC 전 한계상태 검토. pfCapKN 지정 시 플랜지 소요캡핑. */
+/** 구 aiscCheck 호환: 표준 배치를 AISC 전 한계상태 검토. pfCapKN 지정 시 플랜지 소요캡핑. */
 export function aiscCheck(r: DesignResult, cond: DesignCondition, pfCapKN?: number): AiscResult {
   const flangeScale = pfCapKN != null && pfCapKN > 0 && pfCapKN < r.Puf_kN ? pfCapKN / r.Puf_kN : undefined;
   return aiscRun(r, cond, { flangeScale });

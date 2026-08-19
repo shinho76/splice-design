@@ -5,7 +5,7 @@
 /** 검토 대상 부위 (계산서·도해 색인) */
 export type Region = 'bolt' | 'outer' | 'inner' | 'web' | 'member';
 
-/** 블록전단 파단경로 요소 컨텍스트 (AISIsplice Appendix C Path 명명용) */
+/** 블록전단 파단경로 요소 컨텍스트 (블록전단 파단경로 분류 Path 명명용) */
 export type BsRegion = 'outer' | 'inner' | 'member-flange' | 'web-plate' | 'member-web';
 
 /**
@@ -95,11 +95,11 @@ export interface BsAreaCalc {
   tension: { width: number; holes: number; gain: number }[]; // 인장면별 {폭, 공제 구멍수, Σs²/4g}
 }
 
-/** 블록전단 한 케이스 결과 (AISIsplice Appendix C Path) */
+/** 블록전단 한 케이스 결과 (블록전단 파단경로 분류 Path) */
 export interface BlockCase {
   key: string;        // 내부 기하 판별자 'L1'|'U2a'|'U2b'|'B3'|'webV' (도해·표기 무관)
   label?: string;     // (구) 블록 유형 서술 — 표기는 path만 사용, 하위호환용
-  path?: string;      // AISIsplice Appendix C 파단경로 표기 "Path 1|2a|2b|3…"(요소별)
+  path?: string;      // 블록전단 파단경로 분류 파단경로 표기 "Path 1|2a|2b|3…"(요소별)
   Ubs: number;        // 0.5 | 1.0
   Agv: number;        // 총전단면적 mm²
   Anv: number;        // 순전단면적 mm²

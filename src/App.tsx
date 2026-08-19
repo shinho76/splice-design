@@ -27,6 +27,8 @@ const DEFAULT: DesignCondition = {
   designStd: 'AISC', noStagger: false, equalPlateT: true,
 };
 const nf = (v?: number) => v == null ? '—' : v.toLocaleString('en-US');
+// 사용자 피드백 구글 폼 링크 — 아래 URL을 발급받은 폼 주소로 교체하세요.
+const FEEDBACK_URL = 'https://forms.gle/REPLACE_WITH_YOUR_FORM_ID';
 const plate = (p?: { t: number; w: number; L: number }) => p ? `${p.t}×${p.w}×${p.L}` : '—';
 
 // 도움말 목차 아코디언 항목 — 제목(t) 클릭 시 상세(children) 펼침
@@ -182,12 +184,12 @@ export default function App() {
 
                   <div className="help-sec">{L('☰ 설계 조건 (좌측 패널)', '☰ Design conditions (left)')}</div>
                   <HelpItem t={L('형강(H/W) · 단면(전체/Preferred)', 'Profile (H/W) · Sections (All/Preferred)')}>
-                    {L('H-Shape=KS·편람 73종, W-Shape=AISC v16.0 289종. 「Preferred」는 자주 쓰는 단면만(H 21·W 53) 추립니다.',
-                       'H-Shape = KS 73 sections, W-Shape = AISC v16.0 289. “Preferred” narrows to common sections (H 21 / W 53).')}
+                    {L('H형강 73종, W형강 289종. 「Preferred」는 자주 쓰는 단면만(H 21·W 53) 추립니다.',
+                       'H-shape 73 sections, W-shape 289. “Preferred” narrows to common sections (H 21 / W 53).')}
                   </HelpItem>
                   <HelpItem t={L('설계기준 (AISC 16 / KDS 22 / KBC-09)', 'Standard (AISC 16 / KDS 22 / KBC-09)')}>
-                    {L('AISC·KDS=한계상태설계(KDS는 AISC 360-16 준용). KBC-09=편람 방식. 기준에 따라 검토·계산서 형식이 달라집니다.',
-                       'AISC/KDS = LRFD limit-state (KDS follows AISC 360-16). KBC-09 = manual method. Checks and calc-sheet format vary by standard.')}
+                    {L('AISC·KDS=한계상태설계(KDS는 AISC 360-16 준용). KBC-09=표준접합 설계법. 기준에 따라 검토·계산서 형식이 달라집니다.',
+                       'AISC/KDS = LRFD limit-state (KDS follows AISC 360-16). KBC-09 = standard-connection method. Checks and calc-sheet format vary by standard.')}
                   </HelpItem>
                   <HelpItem t={L('부재(보/기둥) · 접합(마찰/지압)', 'Member (Beam/Col) · Joint (Slip/Bearing)')}>
                     {L('마찰접합은 미끄럼과 함께 볼트전단·지압도 검토하고, 지압접합은 미끄럼을 생략합니다(AISC).',
@@ -271,6 +273,8 @@ export default function App() {
             <button type="button" className={dark ? 'on' : ''} onClick={() => setDark(true)} aria-pressed={dark} title={L('다크 모드', 'Dark')} aria-label={L('다크 모드', 'Dark')}>☾</button>
             <button type="button" className={!dark ? 'on' : ''} onClick={() => setDark(false)} aria-pressed={!dark} title={L('화이트 모드', 'Light')} aria-label={L('화이트 모드', 'Light')}>☀</button>
           </div>
+          <a className="fb-btn" href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer"
+            title={L('사용자 피드백 (구글 폼, 새 탭)', 'User feedback (Google Form, new tab)')}>💬 {L('피드백', 'Feedback')}</a>
         </header>
 
         <div className="cbody">

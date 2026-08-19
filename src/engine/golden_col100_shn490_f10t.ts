@@ -1,4 +1,4 @@
-// 골든 — 부록 I 「기둥 100% SHN490 F10T」(1/4·2/4, 인쇄 147·148쪽)
+// 검증셋 — 검증 예제(기둥 100% SHN490 F10T)
 // 검증 핵심: 축력 Nc = α·φc·bf·tf·Fy (엔진과 일치 확인). 플랜지 외부 이음판이 행수 n 인코딩.
 export interface ColJoint { fout: string; fin: string | null; wmn: string; wpc: number | null; wpl: string; }
 export interface ColRow { name: string; Nc: number; friction: ColJoint; bearing: ColJoint; }

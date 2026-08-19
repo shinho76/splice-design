@@ -1,4 +1,4 @@
-// 골든 검증: 엔진을 부록 「보 100% SHN490 F10T」(마찰·지압)와 대조
+// 검증셋 검증: 엔진을 검증 예제(보 100% SHN490 F10T)(마찰·지압)와 대조
 // 플랜지 볼트배열은 신뢰도 높은 '외부 이음판 길이'(=행수 n을 인코딩)로 검증(mn 필드는 전사노이즈 가능).
 import { designConnection } from './engine.ts';
 import { GOLDEN_BEAM100_SHN490_F10T as G } from './golden_beam100_shn490_f10t.ts';

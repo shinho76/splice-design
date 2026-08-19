@@ -1,5 +1,5 @@
 // ────────────────────────────────────────────────────────────────────────────
-// 소요력 산정 (demand) — 단일 소스 (참고 엔진 core/demand.ts 이식, SI)
+// 소요력 산정 (demand) — 단일 소스 (SI)
 //   플랜지력 Pf = M/(d−tf) + P/2    (커플 arm = 부재춤 − 플랜지두께)
 //   판군 분담 half = Pf/2            (외판 Pf/2, 내판쌍 Pf/2 — 이중전단 50:50)
 //   웨브   Vu, 편심 Mux = Vu·e       (판이 편심휨 흡수, e = 볼트군 중심~이음 CL)
@@ -39,7 +39,7 @@ export function computeDemand(r: DesignResult, inp: DemandInput = {}): DemandSet
   const fScale = clampScale(inp.flangeScale);
   const wScale = clampScale(inp.webScale);
 
-  // 플랜지 소요축력: 편람 Puf(=M/(H−tf))를 채택(참고식과 동치). 축력 P 있으면 P/2 가산.
+  // 플랜지 소요축력: 표준식 Puf(=M/(H−tf))를 채택(참고식과 동치). 축력 P 있으면 P/2 가산.
   const Pf = (r.Puf_kN * 1e3 * fScale) + (inp.axialP_N ?? 0) / 2;
   const Mu = r.Mu_kNm * 1e6 * fScale;
   const Vu = r.Vu_kN * 1e3 * wScale;

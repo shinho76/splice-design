@@ -1,5 +1,5 @@
 // 계산 엔진 — 보/기둥 × 마찰/지압 (제5·6·7·8장). 플랜지 이음 + 웨브 이음.
-// 검증: 9.1 예제 및 부록 「보 100% SHN490 F10T」 골든(마찰·지압).
+// 검증: 검증 예제(보 100% SHN490 F10T)(마찰·지압).
 import type { DesignCondition, HSection, CalcStep, DesignResult, JointDesign, BoltName } from './types.ts';
 import { Fy, BOLT_MAT, Fu as FuSteel } from './materials.ts';
 import {
@@ -136,7 +136,7 @@ function designFlange(cond: DesignCondition, sec: HSection, std: ReturnType<type
   // W형강: 표준 공칭폭(최근접 반올림)이 실 플랜지폭보다 클 수 있어 외부 이음판이 플랜지를 넘어감(오버행).
   //   → W형강만 실 플랜지폭으로 캡. 단, 최외곽 볼트열 횡연단이 최소치(AISC J3.4M) 이상이 되도록 하한 보장.
   //     (협폭 단면은 표준게이지 자체가 넓어, 최소연단 확보를 위해 소폭 오버행 잔존 — 연단 우선)
-  //   → H형강은 KS 공칭=실폭이라 불변(편람 골든 보존).
+  //   → H형강은 KS 공칭=실폭이라 불변(검증셋 보존).
   // ── 배치 결정: 표준 '엇모' 폭(공칭300)을 정렬 요청 시 대체배치로 전환 ──
   // 공칭300 표준은 4열 엇모(g2=50). 정렬하면 짝지은 열 간격 50<58.7(2⅔·M22)로 AISC J3.3 위반 →
   // 사용자 '엇모 제외' 또는 기둥 지압(밀착)일 때는 4열 대신 '2열 @ g1=180'(간격180·횡연단60) 대체배치 사용.
@@ -156,7 +156,7 @@ function designFlange(cond: DesignCondition, sec: HSection, std: ReturnType<type
     : std.outerW;
   // 내부 이음판 폭 = 플랜지끝(B/2)~필렛선단 거리에서 권장 여유 3mm 확보 후 이하 10mm 단위 (필렛 간섭 회피)
   // 필렛선단: W형강은 AISC 공표 k1(mm) 사용(기하근사 tw/2+r는 공표 대비 평균 8.5mm 과소평가 → 침범).
-  //           H형강은 KS 실측 필렛이 정확하여 tw/2+r 폴백 유지(편람 골든 보존).
+  //           H형강은 KS 실측 필렛이 정확하여 tw/2+r 폴백 유지(검증셋 보존).
   const INNER_CLEAR = 3;   // 필렛선단 이격 권장 여유(mm)
   const filletToe = sec.k1 ?? (sec.tw / 2 + sec.r);
   const flatHalf = sec.B / 2 - filletToe - INNER_CLEAR;
@@ -209,7 +209,7 @@ function designWeb(cond: DesignCondition, sec: HSection, bolt: BoltName, fy: num
   const phiRnW = boltStrength(cond, bolt, 2, tw, fu);   // 지압: 모재 웨브(tw) 지배
   const Nreq = Math.max(2, ceil(soryeok / phiRnW));
   // 웨브 이음판이 웨브 필렛을 침범하지 않도록 춤 상한(플랫 웨브 높이 − 2·클리어런스).
-  // H형강은 편람 골든 유지 위해 제한 없음(진단상 0건). W형강만 필렛 클리어런스 강제.
+  // H형강은 검증셋 유지 위해 제한 없음(진단상 0건). W형강만 필렛 클리어런스 강제.
   const FCL = 8;                                  // 필렛 클리어런스(mm)
   const isW = cond.profile === 'W';
   const chumCap = isW ? (H - 2 * (tf + r) - 2 * FCL) : Infinity;

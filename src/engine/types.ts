@@ -23,7 +23,7 @@ export interface HSection {
   Aw: number;        // 웨브 유효단면적 = H·tw (전단용, mm²)
   Sx: number;        // 탄성 단면계수 (mm³)
   Zx: number;        // 소성 단면계수 (mm³)
-  /** 단면성능 출처: 'ks'=KS 규격표 확정값, 'calc'=치수 기반 계산값, 'aisc'=AISC v16.0(inch→mm) */
+  /** 단면성능 출처: 'ks'=KS 규격표 확정값, 'calc'=치수 기반 계산값, 'aisc'=AISC(inch→mm) */
   propSource: 'ks' | 'calc' | 'aisc';
   label?: string;    // AISC W형강 원 표기(예 "W16X40"). H형강은 미사용
   k1?: number;       // 공표 k1(mm): 웨브중심~플랜지필렛선단. 내부 이음판 폭 산정에 사용(W형강). 없으면 tw/2+r 폴백
@@ -41,9 +41,9 @@ export interface DesignCondition {
   noStagger?: boolean;   // 엇모배치 제외(공칭300을 정렬 2/4열로 설계)
   equalPlateT?: boolean; // 내·외부 이음판 동일 두께 설계(합성 순단면 기준 단일 두께)
   gap?: number;          // 이음부 이격 갭(mm, 0·5·10). 기본 10
-  designStd?: 'KBC' | 'KDS' | 'AISC';  // 설계기준. KBC-09(편람) / KDS 14 31 25(AISC 준용) / AISC 360-16
+  designStd?: 'KBC' | 'KDS' | 'AISC';  // 설계기준. KBC-09 / KDS 14 31 25(AISC 준용) / AISC 360-16
   threadCond?: 'N' | 'X';      // AISC 볼트 나사조건(전단면 통과 N / 제외 X). 기본 N
-  profile?: 'H' | 'W';         // 형강 카탈로그. H=편람 73종(기본) / W=AISC v16.0 289종
+  profile?: 'H' | 'W';         // 형강 카탈로그. H=73종(기본) / W=W형강 289종
   sectionSet?: 'all' | 'preferred';   // 단면 범위. all=전체(기본) / preferred=자주 쓰는 단면만
   plateShare?: '5050' | 'area';   // 외/내부 이음판 소요분담. 50:50(각 파이잉면 Pf/2, 기본·정역학) / area(판 총단면적 비례)
   bsShare?: 'balanced' | 'full';  // 블록전단 분담. balanced(기본: U블록 1.0·단일 L블록 tributary) / full(전 Path 1.0)

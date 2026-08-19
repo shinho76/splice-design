@@ -1,4 +1,4 @@
-// KBC-09 상세 계산서(서술형·한/영) — 편람 설계절차를 단계별로 읽어 내려가도록 전개.
+// KBC-09 상세 계산서(서술형·한/영) — 표준접합 설계절차를 단계별로 읽어 내려가도록 전개.
 // 데이터 소스: 엔진 result.steps(CalcStep). 한→영은 i18n tr() 용어치환.
 import type { DesignCondition, DesignResult, CalcStep } from '../engine/types.ts';
 import { kbcCheck } from '../engine/kbcCheck.ts';
@@ -53,8 +53,8 @@ export default function KbcDetailReport({ result, cond, onClose }: { result: Des
             {tMember(cond.member, lang)} · {tJoint(cond.jointType, lang)}. {L('H형강 강종 ', 'Beam steel ')}<b>{cond.steel}</b>,
             {L(' 이음판 강종 ', ' plate steel ')}<b>{cond.plateSteel ?? cond.steel}</b>, {L('볼트 ', 'bolts ')}<b>{cond.bolt}</b> M{result.boltDia},
             {L(' 부분강도비 α = ', ' partial-strength ratio α = ')}<b>{pct}%</b>.
-            {L(' 근거: 한국강구조학회 고력볼트 표준접합 설계편람(KBC-09 한계상태설계법).',
-              ' Basis: KSSC High-Strength Bolt Standard Connection Design Guide (KBC-09 LRFD).')}
+            {L(' 근거: KBC-09 한계상태설계법(고력볼트 표준접합 설계).',
+              ' Basis: KBC-09 LRFD (high-strength bolt standard connection).')}
           </p>
         </div>
 

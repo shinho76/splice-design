@@ -3,7 +3,7 @@
 //   목적: ① 볼트수·판 최소  ② 지배 실패항목만 최소증분(불필요한 과설계 회피)
 //   레버: 이음판두께 · 플랜지 볼트행 · 웨브 볼트 · 웨브 이음판 두께·춤 · 볼트직경 · 부재한계 소요캡핑
 //   부재(F13.1·D2·전단항복 등)는 접합 보강 불가 → 소요를 부재강도로 캡핑(부분강도접합).
-//   탐색이력(history)에 매 반복 지배·DCR·조정을 기록(참고 엔진 optimize 이식).
+//   탐색이력(history)에 매 반복 지배·DCR·조정을 기록(최적화).
 // ────────────────────────────────────────────────────────────────────────────
 import type { DesignResult, DesignCondition } from '../types.ts';
 import { aiscRun } from './run.ts';
@@ -246,6 +246,16 @@ export function aiscOptimize(r0: DesignResult, cond: DesignCondition, limits: Op
         if (passOK()) trimmed = true;
         else { r.web.bolt = { m: mv0, n: r.web.bolt.n, count: mv0 * r.web.bolt.n };
           if (r.web.webPlate && wd0 != null) r.web.webPlate.w = wd0; }
+      }
+      // 부분강도(캡핑) 시: 웨브 볼트 행(n)도 캡핑된 소요에 맞춰 하강 — 전강도 단면은 미적용(기존 물량 보존).
+      const nv0 = r.web.bolt.n;
+      if (memberLimited && nv0 > 2) {
+        const wL0 = r.web.webPlate?.L;
+        r.web.bolt = { m: r.web.bolt.m, n: nv0 - 1, count: r.web.bolt.m * (nv0 - 1) };
+        if (r.web.webPlate) r.web.webPlate.L = webWidth(nv0 - 1);
+        if (passOK()) trimmed = true;
+        else { r.web.bolt = { m: r.web.bolt.m, n: nv0, count: r.web.bolt.m * nv0 };
+          if (r.web.webPlate && wL0 != null) r.web.webPlate.L = wL0; }
       }
       if (!trimmed) break;
     }

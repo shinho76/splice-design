@@ -1,7 +1,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 // 기하·단면 강도 헬퍼 (SI, 단위: mm / N / MPa)
 //   - 총·순단면적, 지압·찢김(J3.10), 압축좌굴(J4.4→E3)
-//   - 블록전단(J4.3) 요소별 케이스 A/B/C/D 열거기 (참고 엔진 케이스 라벨·Ubs 준수)
+//   - 블록전단(J4.3) 요소별 케이스 A/B/C/D 열거기 (케이스 라벨·Ubs 준수)
 // 반환값은 별도 표기 없으면 N (힘) 단위.
 // ────────────────────────────────────────────────────────────────────────────
 import { PHI, E_STEEL, K_BUCKLE, UBS, holeDia, netDeductPerHole } from './constants.ts';
@@ -165,13 +165,13 @@ export interface BlockShearParams {
   nLo: number;           // 내측열 볼트수(=floor(n), 엇모)
   staggered?: boolean;   // 엇모배치 — 내측열 off=45·전열 90피치(3D/DXF 정합), U블록 인장면 s²/4g
   gauge?: number;        // 인접열 게이지 g(mm)
-  region?: BsRegion;     // 요소 컨텍스트 — Path 명명(AISIsplice Appendix C)용
+  region?: BsRegion;     // 요소 컨텍스트 — Path 명명(블록전단 파단경로 분류)용
   fullShare?: boolean;   // 분담식: true=전 Path 요소 전체력(1.0), false=단일 L블록만 tributary(1/m)
 }
 
 // 엇모 3D/DXF 정합 상수(connParts stagOf): 내측열 응력방향 어긋남 45, 엇모 피치 90.
 export const BS_STAG_OFF = 45, BS_STAG_PITCH = 90;
-// ── AISIsplice Appendix C 파단경로(Path) 명명 — 요소×기하키 → Path 라벨 ──
+// ── 블록전단 파단경로 분류 파단경로(Path) 명명 — 요소×기하키 → Path 라벨 ──
 //   기하키(BlockCase.key):
 //     L1  외연 L블록  : 최외곽 게이지선 1전단면 + 그 선→연단 인장 (Ubs 0.5)
 //     U2a 전열 U블록  : 최외곽 2게이지선 전단(2면) + 두 선 사이 전폭 인장 (Ubs 1.0)
@@ -201,7 +201,7 @@ export function bsColGeom(x: number, p: BlockShearParams) {
 }
 
 /**
- * 요소별 블록전단 후보 Path 열거 (AISIsplice Appendix C).
+ * 요소별 블록전단 후보 Path 열거 (블록전단 파단경로 분류).
  *   플랜지(outer/inner/member-flange): 축력 인장 — 전단면 ∥ 하중, 인장면 ⊥ 하중.
  *     L1  외연 L블록  — 최외곽선 1전단 + 그 선→연단 인장           (Ubs 0.5)
  *     U2a 전열 U블록  — 최외곽 2전단 + 두 선 사이 전폭 인장         (Ubs 1.0)

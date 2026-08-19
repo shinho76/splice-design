@@ -42,7 +42,7 @@ export default function CalcReport({ result, cond, onClose, onAdd }: {
             <tbody>
               <tr><th>{L('부재 / 접합', 'Member / Joint')}</th><td>{tMember(cond.member, lang)} · {tJoint(cond.jointType, lang)}</td><th>{L('단면', 'Section')}</th><td>{result.section}</td></tr>
               <tr><th>{L('강종 / 볼트', 'Steel / Bolt')}</th><td>{L('H형강', 'H-beam')} {cond.steel} · {L('이음판', 'plate')} {cond.plateSteel ?? cond.steel} / {L('고력볼트', 'H.S. bolt')} {cond.bolt}</td><th>{L('부분강도비 α', 'Partial-strength ratio α')}</th><td>{pct}%</td></tr>
-              <tr><th>{L('설계기준', 'Design Code')}</th><td colSpan={3}>{L('KBC-09 한계상태설계법 · 한국강구조학회 고력볼트 표준접합 설계편람', 'KBC-09 LRFD · KSSC High-Strength Bolt Standard Connection Design Guide')}</td></tr>
+              <tr><th>{L('설계기준', 'Design Code')}</th><td colSpan={3}>{L('KBC-09 한계상태설계법 · 고력볼트 표준접합 설계', 'KBC-09 LRFD · high-strength bolt standard connection')}</td></tr>
             </tbody>
           </table>
         </div>

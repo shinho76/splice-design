@@ -15,7 +15,7 @@ export const HSC = 1.0;         // 구멍계수 (표준구멍)
 
 // [표 1.5] 볼트 구멍 지름 & 응력방향 중심거리  (M18·M24는 KS 공식 도출: hole=d+2)
 // M27·M30 추가: 실무 대형접합용(KS B 1010 호칭). 구멍=KDS 표준(d+3), Ab=π/4·d².
-// (기존 M16~M24는 편람 관례 d+2 유지 — 골든 보존)
+// (기존 M16~M24는 관례 d+2 유지 — 기존값 보존)
 export const BOLT_HOLE: Record<BoltName, { dia: number; hole: number; pitchStress: 60 }> = {
   M16: { dia: 16, hole: 18, pitchStress: 60 },
   M18: { dia: 18, hole: 20, pitchStress: 60 },

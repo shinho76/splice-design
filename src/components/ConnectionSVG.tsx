@@ -148,7 +148,7 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
           <DimH y={flPx / 2 + 16} cx={0} vals={flHCh} sc={sc2} />
         </g>
 
-        {/* ── 정보표 (MINI_BOX, JointDetailDWG 형식) ── */}
+        {/* ── 정보표 (MINI_BOX) ── */}
         <rect x={30} y={yTbl} width={W - 60} height={88} className="svg-cell" />
         {[1, 2, 3].map(i => <line key={i} x1={30} y1={yTbl + 22 * i} x2={W - 30} y2={yTbl + 22 * i} className="svg-dim-l" />)}
         {[108, 238, 316].map((x, i) => <line key={i} x1={x} y1={yTbl} x2={x} y2={yTbl + 88} className="svg-dim-l" />)}

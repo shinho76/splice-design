@@ -1,6 +1,6 @@
 // H형강 카탈로그 — 부록 I 「보/기둥 100% SHN490 F10T」(73종)
 // 단면성능(Ag,Sx,Zx,r) = KS D 3502 원표 확정값 주입(70종, ks_d3502.ts, propSource='ks').
-// KS 미수록 보강단면 3종(304x301, 310x305, 388x402)은 편람 Mu 캘리브레이션 계산값('calc').
+// KS 미수록 보강단면 3종(304x301, 310x305, 388x402)은 설계강도표 Mu 캘리브레이션 계산값('calc').
 import type { HSection } from './types.ts';
 import { Fy } from './materials.ts';
 import { flexuralMn } from './nominal.ts';
@@ -28,11 +28,11 @@ export function parseName(name: string) {
   return { H, B, tw, tf };
 }
 
-// 편람 설계강도표의 휨모멘트(Mu) — 필렛반경 캘리브레이션 타깃 (SHN490 기준)
+// 설계강도표의 휨모멘트(Mu) — 필렛반경 캘리브레이션 타깃 (SHN490 기준)
 const MU_TABLE = new Map(GOLDEN_BEAM100_SHN490_F10T.map(r => [r.name, r.Mu]));
 
 /**
- * 필렛반경 r을 이분탐색으로 캘리브레이션: 0.9·Mn(계산단면성능) = 편람 Mu.
+ * 필렛반경 r을 이분탐색으로 캘리브레이션: 0.9·Mn(계산단면성능) = 설계강도표 Mu.
  * Mu는 r에 대해 단조증가 → 유일 해. 결과 Zx/Sx는 KS 규격에 준함.
  */
 function calibrateR(H: number, B: number, tw: number, tf: number, targetMu: number, fy: number): number {
@@ -84,7 +84,7 @@ export function buildSection(name: string): HSection {
     // KS D 3502 원표 확정값 주입 (단위: mm²·mm³·mm)
     return { name, H, B, tw, tf, r: ks.r, Ag: ks.Ag, Aw: H * tw, Sx: ks.Sx, Zx: ks.Zx, propSource: 'ks' };
   }
-  // KS 미수록(보강단면 등): 필렛반경을 편람 Mu에 캘리브레이션한 계산값
+  // KS 미수록(보강단면 등): 필렛반경을 설계강도표 Mu에 캘리브레이션한 계산값
   const fyRef = Fy('SHN490', tf);
   const target = MU_TABLE.get(name);
   const r = target != null
@@ -101,7 +101,7 @@ export function buildSection(name: string): HSection {
 
 export const SECTIONS: HSection[] = RAW_NAMES.map(buildSection);
 
-// Profile 선택: H-Shape(편람 73종) / W-Shape(AISC v16.0 289종)
+// Profile 선택: H-Shape(73종) / W-Shape(W형강 289종)
 export type Profile = 'H' | 'W';
 // ── 자주 쓰는(Preferred) 단면 목록 ──  W=AISC 지정(label, 대문자 X) / H=metric name
 const PREFERRED_W = new Set<string>([

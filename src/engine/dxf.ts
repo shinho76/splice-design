@@ -1,4 +1,4 @@
-// DXF 생성기 — JointDetailDWG.exe(12=보이음/13=기둥이음) 도면 표현 규약 재현. 계산엔진 무관(결과만 소비).
+// DXF 생성기 — 보/기둥 이음 상세도 도면 표현 규약. 계산엔진 무관(결과만 소비).
 // 정식 DIMENSION(+지오메트리 블록)·이중치수·지시선(원형머리)·romans 스타일·레이어(MAIN/FLG_PL/WEB_PL/BOLT/VER_BOLT/DIM/MINI_BOX)
 // ·부재연장+파단선·외곽테두리·MINI_BOX 정보표. 보=가로배치, 기둥=세로배치(90° 회전). 단위 mm.
 import type { DesignResult, DesignCondition, Plate } from './types.ts';
@@ -32,7 +32,7 @@ function groupBySeries(rows: DesignResult[]): { key: string; items: DesignResult
 const round = Math.round;
 const TH = 20;   // 도면 문자높이
 const TB = 24;   // 정보표 문자높이(셀폭 150 내 라벨 수용 — 겹침 방지)
-const FONT = 'CellBody';  // 라벨/주기 문자 스타일 — 참조도면 맑은고딕(malgun) TrueType, 한글 렌더. 치수문자는 STANDARD. (R12 심볼명: 공백 불가 → CellBody)
+const FONT = 'CellBody';  // 라벨/주기 문자 스타일 — 표준 도면 맑은고딕(malgun) TrueType, 한글 렌더. 치수문자는 STANDARD. (R12 심볼명: 공백 불가 → CellBody)
 const ARROW = 5.0;                        // exe DIMSTYLE dimasz(41) = _ARCHTICK INSERT scale
 const PW = 0.6;                           // 이음판 선 폭(POLYLINE width) — 얇게(과다 굵기 방지)
 
@@ -181,7 +181,7 @@ function hexPoly(p: Pen, x: number, y: number, R: number, lay: string) {
   for (let k = 0; k < 6; k++) { const a = (90 + k * 60) * Math.PI / 180; v.push([x + R * Math.cos(a), y + R * Math.sin(a)]); }
   for (let k = 0; k < 6; k++) p.line(v[k][0], v[k][1], v[(k + 1) % 6][0], v[(k + 1) % 6][1], lay);
 }
-// 볼트 평면(⊕) — 참조도면 HEADED_HT_BOLT-PLAN 재현: 축원(dia/2) + 육각머리(0.84d) + 외접원(d,회색) + 나사 3아크 + 센터십자.
+// 볼트 평면(⊕) — 표준 도면 축원(dia/2) + 육각머리(0.84d) + 외접원(d,회색) + 나사 3아크 + 센터십자.
 function boltPlan(p: Pen, x: number, y: number, dia: number, hole: number) {
   p.circle(x, y, dia, 'BOLTG');                          // 외접원(회색)
   hexPoly(p, x, y, dia * 0.84, 'BOLT');                  // 육각 머리
@@ -245,7 +245,7 @@ function drawHProfile(p: Pen, cx: number, cy: number, H: number, B: number, tw: 
     p.arc(cx - wt2 - r, cy - yi + r, r, 270, 360, lay);
   }
 }
-// ── 단면(斷面) 뷰 : H형강 단면 + 외/내부 이음판 + 웨브 이음판 + 볼트 측면. 부재 우측에 배치(참조도면 우하). ──
+// ── 단면(斷面) 뷰 : H형강 단면 + 외/내부 이음판 + 웨브 이음판 + 볼트 측면. 부재 우측에 배치(표준 도면 우하). ──
 interface SecDims {
   H: number; B: number; tw: number; tf: number; oT: number; outerW: number; chum: number;
   colY: number[]; webRowY: number[]; innerCxAbs: number; dia: number; inner?: Plate;
@@ -277,7 +277,7 @@ function drawSection(doc: Doc, t: Xf, cx: number, cy: number, r: DesignResult, d
   // 웨브볼트(수평) — 행 y=webRowY, 웨브+양면 웨브 이음판 관통
   const wHalf = (tw + 2 * tpw) / 2;
   webRowY.forEach(yw => boltSide(p, cx, cy + yw, wHalf, false, dia));
-  // 치수(참조도면 캡처4): 게이지+폭B+외부 이음판폭(상단 3단) · 웨브피치+웨브스팬+춤H(우측 3단) · 판/부재 두께(좌·하)
+  // 치수(표준 도면 캡처4): 게이지+폭B+외부 이음판폭(상단 3단) · 웨브피치+웨브스팬+춤H(우측 3단) · 판/부재 두께(좌·하)
   const fyTop = cy + H / 2 + oT, exR = cx + Math.max(B, outerW) / 2, exL = cx - Math.max(B, outerW) / 2;
   // ── 상단: 플랜지 볼트 게이지 → 부재 폭 B → 외부 이음판 폭(이중치수) ──
   const gxs = [...colY].sort((a, b) => a - b);
@@ -316,7 +316,7 @@ export function layout(r: DesignResult, isCol: boolean) {
   const ext = Math.max(H, 300), memHalf = Lpf / 2 + ext;
   const boxRow = 54;
   if (!isCol) {
-    // 보: 평면(상단) → 입면+단면(중단) → 규격표(하단). 참조도면 [나의아저씨] BOLT CONNECTION DETAIL 배치.
+    // 보: 평면(상단) → 입면+단면(중단) → 규격표(하단). 표준 도면 BOLT CONNECTION DETAIL 배치.
     const rowH = 125, nRows = 3;                  // 표: WEB + FLG(EXT.) + FLG(INT.) (제목행은 도면 상단으로 이동)
     const boxHalf = Math.max(memHalf, 500) + 20;
     const secB = Math.max(B, outerW);
@@ -357,7 +357,7 @@ export function layout(r: DesignResult, isCol: boolean) {
 }
 
 // ── 사무소 종합도 셀 주기 : 좌상단 타이틀("BEAM SPLICE DETAIL"/"S=1/20"/"*.섹션") + 우측 콜아웃 블록 ──
-// 참조도면(BEAM-SPLICE.dwg) 규약. 테두리·표제란 없음. 값은 현 앱 계산(오버행 캡 반영) 그대로.
+// 표준 도면 포맷 규약. 테두리·표제란 없음. 값은 현 앱 계산(오버행 캡 반영) 그대로.
 function drawSheetCell(p: Pen, F: UniFrame, secLbl: string, outerLbl: string, innerLbl: string, webLbl: string, flBolt: string, wBolt: string) {
   const TT = TH * 1.4;                                   // 타이틀 문자높이
   const tx = F.frameL + 12;
@@ -380,7 +380,7 @@ function drawSheetCell(p: Pen, F: UniFrame, secLbl: string, outerLbl: string, in
   bolt(wBolt);
 }
 
-// ── 규격표(중단 밴드) : 참조도면 [나의아저씨] 셀. 제목행(전폭) + WEB/FLG(EXT.)/FLG(INT.) 3행(라벨|값). ──
+// ── 규격표(중단 밴드) : 표준 도면 셀. 제목행(전폭) + WEB/FLG(EXT.)/FLG(INT.) 3행(라벨|값). ──
 function drawSpecTable(p: Pen, x0: number, x1: number, tableBot: number, rowH: number,
   webS: string, flgExtS: string, flgIntS: string) {
   const rows = [0, 1, 2, 3].map(i => tableBot + i * rowH);   // 하→상, 3행(제목행 없음)
@@ -424,7 +424,7 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   const flCount = fB.m * round(fB.n) * 4, wCount = wB.m * wB.n * 2;
   const B = parseName(r.section).B;
   const secLbl = `H-${H}x${B}x${tw}x${tf}`;
-  // ── 참조도면 [나의아저씨] 규격표 문자열 : "{n}-M{d}(등급) / {L}x{w}x{t}t(재질, nEA)" (값은 현 앱 계산) ──
+  // ── 표준 도면 규격표 문자열 : "{n}-M{d}(등급) / {L}x{w}x{t}t(재질, nEA)" (값은 현 앱 계산) ──
   const mat = steelLabel(cond.plateSteel ?? cond.steel);
   const plRef = (pl: Plate | undefined) => pl ? `${pl.L}x${pl.w}x${pl.t}t` : '';
   // 도면 상단 단면 지정 — W형강: "W8X10(H-…, 강종)" / H형강: "H-… (강종)"
@@ -445,7 +445,7 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   const webLbl = office ? plO(r.web.webPlate, 'W.2PL') : gpl(r.web.webPlate, 2);
   const flBoltLbl = office ? `${flCount}-M${dia}x${flLen}` : btb(flCount);
   const wBoltLbl = office ? `${wCount}-M${dia}x${wLen}` : btb(wCount);
-  // 사무소 종합도(sheet) 콜아웃용 플랜지 볼트 표기: {열수}x{한쪽플랜지 총본수}-M…  (참조도면 "2x32-M20x110" 문법)
+  // 사무소 종합도(sheet) 콜아웃용 플랜지 볼트 표기: {열수}x{한쪽플랜지 총본수}-M…  (표준 도면 "2x32-M20x110" 문법)
   const flBoltSheet = `${fB.m}x${fB.m * round(fB.n) * 2}-M${dia}x${flLen}`;
   // 정보표 영문화(exe 폰트 OpenSansCondensed엔 한글 글리프 없음 → CAD 깨짐 방지)
   const jointLbl = `${cond.member === '기둥' ? 'Column' : 'Beam'} ${cond.jointType === '지압' ? 'Bearing' : 'Friction'}`;
@@ -478,7 +478,7 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   p.prect(-Lpf / 2, yW + H / 2, Lpf, oT, 'FLG_PL', PW); p.prect(-Lpf / 2, yW - H / 2 - oT, Lpf, oT, 'FLG_PL', PW);
   if (inner) { p.prect(-inner.L / 2, yW + H / 2 - tf - inner.t, inner.L, inner.t, 'FLG_PL', PW); p.prect(-inner.L / 2, yW - H / 2 + tf, inner.L, inner.t, 'FLG_PL', PW); }
   p.prect(-webWid / 2, yW - chum / 2, webWid, chum, 'WEB_PL', PW);
-  // 플랜지 볼트 입면 = 측면 육각볼트(머리·너트) — 참조도면 표기
+  // 플랜지 볼트 입면 = 측면 육각볼트(머리·너트) — 표준 도면 표기
   const iTe = inner?.t ?? 0, fHalfE = (oT + tf + iTe) / 2;
   fPosX.flatMap(x => [x, -x]).forEach(x => {
     boltSide(p, x, yW + H / 2 + (oT - tf - iTe) / 2, fHalfE, true, dia, 1);    // 상부: 머리 위
@@ -649,23 +649,23 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   tx(bl2, 3, 'Joint'); tx(bl2 + Lw, 3, jointLbl); tx(midX, 3, 'Flg Bolt'); tx(midX + Lw, 3, btbT(flCount));
 }
 
-// 레이어 표준 — 첨부 참조도면(BEAM-SPLICE) 포맷 준수: 이름·색·선종. [name, aci색, 선종].
+// 레이어 표준 — 표준 레이어 포맷 준수: 이름·색·선종. [name, aci색, 선종].
 const LAYERS: [string, number, string][] = [
   ['Steel', 2, 'CONTINUOUS'], ['Steel-Hidden', 2, 'DASHED0'],
   ['Plate', 3, 'CONTINUOUS'], ['Plate-Hidden', 3, 'DASHED0'],
-  ['Bolt', 2, 'CONTINUOUS'], ['Bolt-Center', 16, 'DASHDOTDOT0'], ['Bolt-Head', 8, 'CONTINUOUS'],   // 볼트=색2(황), 외접원=색8(회) — 참조도면 규약
+  ['Bolt', 2, 'CONTINUOUS'], ['Bolt-Center', 16, 'DASHDOTDOT0'], ['Bolt-Head', 8, 'CONTINUOUS'],   // 볼트=색2(황), 외접원=색8(회) — 표준 도면 규약
   ['Dimension', 1, 'CONTINUOUS'], ['Dimension_Section', 16, 'CONTINUOUS'],
   ['Table_Main', 2, 'CONTINUOUS'], ['Table_Sub', 7, 'CONTINUOUS'], ['Table_Etc', 8, 'CONTINUOUS'],
   ['TableText_Head', 6, 'CONTINUOUS'], ['TableText_RowHead', 9, 'CONTINUOUS'],   // R12 심볼명 규칙상 괄호 불가 → 언더스코어(AutoCAD 'Improper table entry name' 해소)
 ];
-// 내부 단축명 → 참조도면 레이어명(단일지점 변환: wrap()에서 전 엔티티 적용).
+// 내부 단축명 → 표준 도면 레이어명(단일지점 변환: wrap()에서 전 엔티티 적용).
 const LMAP: Record<string, string> = {
   MAIN: 'Steel', HIDDEN: 'Steel-Hidden', FLG_PL: 'Plate', WEB_PL: 'Plate',
   BOLT: 'Bolt', VER_BOLT: 'Bolt', BOLTG: 'Bolt-Head', DIM: 'Dimension', SECTION: 'Dimension_Section',
   MINI_BOX: 'Table_Main', NOTE: 'Table_Etc', TEXT: 'TableText_RowHead', MINI_HEAD: 'TableText_Head',
 };
 const LY = (k: string): string => LMAP[k] ?? k;
-// 문자 스타일(참조도면): 한글 malgun TrueType — 라벨/주기 한글 렌더. 치수문자는 STANDARD 유지.
+// 문자 스타일(표준 도면): 한글 malgun TrueType — 라벨/주기 한글 렌더. 치수문자는 STANDARD 유지.
 const TEXT_STYLE = 'CellBody';
 // _ARCHTICK 화살촉 블록(45° 단위 틱). INSERT scale로 크기 결정
 const ARCHTICK_BLOCK = ['0', 'BLOCK', '8', '0', '2', '_ARCHTICK', '70', '0', '10', '0', '20', '0', '30', '0', '3', '_ARCHTICK',
@@ -712,7 +712,7 @@ function assertR12(t: string[]): void {
 }
 
 function wrap(doc: Doc): string {
-  // STYLE(참조도면): STANDARD(micross)·TableHead(맑은고딕 Bold)·CellBody(맑은고딕) — 한글 렌더. (R12 심볼명 공백 불가)
+  // STYLE(표준 도면): STANDARD(micross)·TableHead(맑은고딕 Bold)·CellBody(맑은고딕) — 한글 렌더. (R12 심볼명 공백 불가)
   const styleT = ['0', 'TABLE', '2', 'STYLE', '70', '3',
     '0', 'STYLE', '2', 'STANDARD', '70', '0', '40', '0.0', '41', '1.0', '50', '0.0', '71', '0', '42', '2.5', '3', 'romans', '4', '',
     '0', 'STYLE', '2', 'TableHead', '70', '0', '40', '0.0', '41', '1.0', '50', '0.0', '71', '0', '42', '2.5', '3', 'malgunbd.ttf', '4', '',
@@ -734,7 +734,7 @@ function wrap(doc: Doc): string {
   const layT: string[] = ['0', 'TABLE', '2', 'LAYER', '70', String(LAYERS.length)];
   LAYERS.forEach(([n, c, lt]) => layT.push('0', 'LAYER', '2', n, '70', '0', '62', String(c), '6', lt));
   // 분해치수(DIMENSION 엔티티 미사용) 유지. 단, DIMSTYLE '테이블'은 AutoCAD 요구로 완전판 재도입(위 DIMSTYLE_TABLE).
-  // 내부 단축 레이어명 → 참조도면 표준 레이어명(단일지점 변환). 엔티티는 code/value 쌍이라 짝수 index=그룹코드.
+  // 내부 단축 레이어명 → 표준 도면 표준 레이어명(단일지점 변환). 엔티티는 code/value 쌍이라 짝수 index=그룹코드.
   const relayer = (arr: string[]) => { for (let i = 0; i + 1 < arr.length; i += 2) if (arr[i] === '8') arr[i + 1] = LY(arr[i + 1]); };
   relayer(doc.e); relayer(doc.blk);
   // 헤더: $INSUNITS(R12 비표준) 제거, $DIMSTYLE=STANDARD 추가(치수스타일 참조 명시).
@@ -838,7 +838,7 @@ export function toSVGDetail(r: DesignResult, cond: DesignCondition): string {
   const pad = 40, w = maxX - minX + 2 * pad, h = maxY - minY + 2 * pad;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${(minX - pad).toFixed(1)} ${(minY - pad).toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}" width="100%" style="max-width:100%;height:auto;background:#fff">\n${body.join('\n')}\n</svg>`;
 }
-// 다중 배치 : JointDetailDWG.exe 규약(도면 1건=도곽 시트) 참고.
+// 다중 배치 : 레거시 이음상세 툴 규약(도면 1건=도곽 시트) 참고.
 // 전 단면의 최대 도곽으로 균일 셀을 만들고 각 상세를 셀 중앙 배치 → 정렬된 시트세트(그리드).
 export function placeGrid(rows: DesignResult[], isCol: boolean, emit: (r: DesignResult, ox: number, oy: number) => void) {
   const COLS = 3, GAP = 400;
@@ -865,7 +865,7 @@ export function uniformFrame(rows: DesignResult[], isCol: boolean): UniFrame {
   return { frameL, frameRC, frameR: frameRC + csStrip, frameTop, frameBot };
 }
 
-/** H형강 깊이(공칭 춤) 시리즈 키 — "H-250" 등. 참조도면 [나의아저씨] 전부재도 열 구분용. */
+/** H형강 깊이(공칭 춤) 시리즈 키 — "H-250" 등. 표준 도면 전부재도 열 구분용. */
 function seriesDepthKey(r: DesignResult): string {
   const sec = sectionByName(r.section);
   if (sec?.label) { const m = sec.label.match(/^W\d+/i); return m ? m[0].toUpperCase() : sec.label; }
@@ -904,7 +904,7 @@ export function toDXFAll(rows: DesignResult[], cond: DesignCondition, office = f
     }
     return wrap(doc);
   }
-  // 보: 참조도면 [나의아저씨] — 시리즈(H-춤)별 세로 열, 좌→우 배치. 각 열 상단 헤더 박스.
+  // 보: 표준 도면 — 시리즈(H-춤)별 세로 열, 좌→우 배치. 각 열 상단 헤더 박스.
   const COLGAP = 500, ROWGAP = 340, HHDR = 260;
   let xCur = 0;
   for (const g of groupByDepth(rows)) {
@@ -923,7 +923,7 @@ export function toDXFAll(rows: DesignResult[], cond: DesignCondition, office = f
   return wrap(doc);
 }
 /**
- * 사무소 종합도 포맷(참조: BEAM-SPLICE.dwg) — 여러 형강을 한 시트에 그리드 배치.
+ * 사무소 종합도 포맷(참조: 표준 도면) — 여러 형강을 한 시트에 그리드 배치.
  * 셀마다 "BEAM SPLICE DETAIL / S=1/20 / *.섹션" 타이틀 + 우측 콜아웃(ExT/INT/W-PL·볼트) 블록.
  * 상단에 공통 주기(강종·볼트·Fy·축척). 치수·물량은 현 앱 계산값(W 오버행 캡 반영) 그대로.
  */
@@ -963,7 +963,7 @@ export function toDXFSheet(rows: DesignResult[], cond: DesignCondition): string 
   return wrap(doc);
 }
 /** 사무소 표준 포맷 — 앱 "전체 DXF 다운로드(사무소 표준 포맷)" 버튼.
- *  참조도면 BEAM-SPLICE.dwg: "BEAM SPLICE DETAIL" 셀 + FLANGE/WEB PLATE SIZE 콜아웃 그리드. */
+ *  표준 도면 표준 도면: "BEAM SPLICE DETAIL" 셀 + FLANGE/WEB PLATE SIZE 콜아웃 그리드. */
 export const toDXFAll2 = (rows: DesignResult[], cond: DesignCondition): string => toDXFSheet(rows, cond);
 export function downloadFile(filename: string, content: string | ArrayBuffer, mime: string) {
   const blob = new Blob([content], { type: mime });

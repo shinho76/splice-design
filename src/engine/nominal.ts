@@ -12,7 +12,7 @@ export function flangeLB_Mn(s: SectionGeom, fy: number): number {
   const My07 = 0.7 * fy * s.Sx;
   const lf = s.B / (2 * s.tf);
   const lpf = 0.38 * Math.sqrt(E / fy);
-  const lrf = 1.0 * Math.sqrt(E / fy);   // 편람 기준 (9.1 예제와 일치)
+  const lrf = 1.0 * Math.sqrt(E / fy);   // 기준 (9.1 예제와 일치)
   let Mn: number;
   if (lf <= lpf) Mn = Mp;
   else if (lf <= lrf) Mn = Mp - (Mp - My07) * (lf - lpf) / (lrf - lpf);
