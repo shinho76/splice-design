@@ -28,7 +28,7 @@ const DEFAULT: DesignCondition = {
 };
 const nf = (v?: number) => v == null ? '—' : v.toLocaleString('en-US');
 // 사용자 피드백 구글 폼 링크 — 아래 URL을 발급받은 폼 주소로 교체하세요.
-const FEEDBACK_URL = 'https://forms.gle/REPLACE_WITH_YOUR_FORM_ID';
+const FEEDBACK_URL = 'https://forms.gle/Qc8CztEGDeJXYyzf9';
 const plate = (p?: { t: number; w: number; L: number }) => p ? `${p.t}×${p.w}×${p.L}` : '—';
 
 // 도움말 목차 아코디언 항목 — 제목(t) 클릭 시 상세(children) 펼침
