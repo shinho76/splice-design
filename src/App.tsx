@@ -17,9 +17,11 @@ import { LangContext, type Lang, tMember, tJoint } from './i18n.ts';
 import { catalogFor, sectionByName } from './engine/sections.ts';
 import { usesLimitState } from './engine/std.ts';
 import { designConnection } from './engine/engine.ts';
-import { aiscAutoCorrect } from './engine/aisc/compat.ts';
+import { aiscAutoCorrect, aiscCheck } from './engine/aisc/compat.ts';
 import { toDXF, toDXFAll, toDXFAll2, downloadFile } from './engine/dxf.ts';
 import { toIFC } from './engine/ifcOut.ts';
+import { toTeklaMacro } from './engine/teklaOut.ts';
+import { downloadCalcSheet, type SheetRow } from './engine/calcSheet.ts';
 import { quantityOf } from './engine/quantity.ts';
 
 const DEFAULT: DesignCondition = {
@@ -128,6 +130,21 @@ export default function App() {
     downloadFile(`splice_전체_${cond.member}_${cond.jointType}_표준포맷.dxf`, toDXFAll2(allRowsForDXF(), cond), 'application/dxf');
   const exportOneDXF = (r: DesignResult) => downloadFile(`${r.section}_${cond.jointType}.dxf`, toDXF(r, cond), 'application/dxf');
   const exportOneIFC = (r: DesignResult) => downloadFile(`${r.section}_${cond.jointType}.ifc`, toIFC(r, cond), 'application/x-step');
+  // 구조계산요약(Excel) — 화면 결과와 동일 형상·검토(φRn·DCR)로 전 부재 1행씩 출력
+  const allSheetRows = (): SheetRow[] => {
+    const ls = usesLimitState(cond.designStd);
+    const af = ls && autoFix;
+    return catalogFor(cond.profile, cond.sectionSet).map((s, i) => ({ s, i })).filter(({ s }) => !hidden.has(s.name))
+      .map(({ s, i }) => {
+        const r0 = designConnection(cond, s, diaAt(i));
+        if (af) { const ac = aiscAutoCorrect(r0, cond); return { result: ac.result, checks: ac.report.checks, ok: ac.ok, flangeScale: ac.flangeScale, webScale: ac.webScale, memberLimited: ac.memberLimited }; }
+        if (ls) { const rep = aiscCheck(r0, cond); return { result: r0, checks: rep.checks, ok: rep.checks.every(c => c.ok !== false), flangeScale: 1, webScale: 1, memberLimited: false }; }
+        return { result: r0, checks: [], ok: !r0.steps.some(st => st.check === 'NG'), flangeScale: 1, webScale: 1, memberLimited: false };
+      });
+  };
+  const exportCalcSheet = () => downloadCalcSheet(allSheetRows(), cond, `구조계산요약_${cond.member}_${cond.jointType}.xlsx`);
+  const exportTekla = () =>   // Tekla Open API 임포트 매크로(.cs)
+    downloadFile(`splice_전체_${cond.member}_${cond.jointType}_tekla.cs`, toTeklaMacro(allRowsForDXF(), cond), 'text/plain;charset=utf-8');
   const isCol = cond.member === '기둥';
   const pct = Math.round(cond.strengthRatio * 100);
 
@@ -137,11 +154,31 @@ export default function App() {
       <aside className="rail">
         <span className="rlogo">S</span>
         <button className="rnav on" title={L('검토 결과', 'Results')}>▤</button>
-        <button className="rnav" title={L('물량산정', 'Quantities')} onClick={() => setShowQty(true)}>▦</button>
-        <button className="rnav" title={L('프로젝트', 'Project')} onClick={() => setShowProj(true)}>◫{project.length ? <em className="rbadge">{project.length}</em> : null}</button>
-        <button className="rnav" title={L('전체 DXF 다운로드', 'Download all DXF')} onClick={exportAllDXF}>⤓</button>
-        <button className="rnav" title={L('전체 DXF 다운로드 (사무소 표준 포맷)', 'Download all DXF2 (office format)')} onClick={exportAllDXF2}>⤓²</button>
+        {/* C·D1·D2·T·F — 초기엔 약자만, Hover 시 전체 명칭이 펼쳐진다 */}
+        <button className="rnav rx" onClick={exportCalcSheet} title="Calculation Sheet — 구조계산요약 Excel">
+          <b className="rab">C</b><span className="rlbl">Calculation Sheet</span></button>
+        <button className="rnav rx" onClick={exportAllDXF} title="Drawing1 — 전체 DXF">
+          <b className="rab">D1</b><span className="rlbl">Drawing1</span></button>
+        <button className="rnav rx" onClick={exportAllDXF2} title="Drawing2 — 전체 DXF(사무소 표준 포맷)">
+          <b className="rab">D2</b><span className="rlbl">Drawing2</span></button>
+        <button className="rnav rx" onClick={exportTekla} title="Tekla Data — Open API 임포트 매크로(.cs)">
+          <b className="rab">T</b><span className="rlbl">Tekla Data</span></button>
+        <a className="rnav rx rfb" href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer" title="FeedBack — 사용자 피드백(구글 폼)">
+          <b className="rab">F</b><span className="rlbl">FeedBack</span></a>
         <span className="rspace" />
+        {/* FeedBack 아래로 이동: 한/영 · 사용 안내(?) · 다크/화이트 */}
+        <div className="rail-ctl">
+          <button type="button" className={'rctl' + (showHelp ? ' on' : '')} onClick={() => setShowHelp(v => !v)}
+            aria-expanded={showHelp} aria-haspopup="dialog" title={L('사용 안내 · 이 서비스는?', 'Help · What is this?')}>?</button>
+          <div className="seg-theme rseg" role="group" aria-label={L('언어 전환', 'Language')}>
+            <button type="button" className={lang === 'ko' ? 'on' : ''} onClick={() => setLang('ko')} aria-pressed={lang === 'ko'} title="한국어">한</button>
+            <button type="button" className={lang === 'en' ? 'on' : ''} onClick={() => setLang('en')} aria-pressed={lang === 'en'} title="English">EN</button>
+          </div>
+          <div className="seg-theme rseg" role="group" aria-label={L('테마 전환', 'Theme')}>
+            <button type="button" className={dark ? 'on' : ''} onClick={() => setDark(true)} aria-pressed={dark} title={L('다크 모드', 'Dark')} aria-label={L('다크 모드', 'Dark')}>☾</button>
+            <button type="button" className={!dark ? 'on' : ''} onClick={() => setDark(false)} aria-pressed={!dark} title={L('화이트 모드', 'Light')} aria-label={L('화이트 모드', 'Light')}>☀</button>
+          </div>
+        </div>
       </aside>
 
       <div className="cmain">
@@ -149,11 +186,8 @@ export default function App() {
           <div className="cbrand">SPLICE<span className="accent">DESIGN</span></div>
           <div className="ctop-title">{L('고력볼트 표준접합 설계', 'H.S. Bolt Standard Connection Design')}</div>
           <span className="ctop-sp" />
+          {/* 사용 안내 팝오버 — 트리거(?)는 좌측 레일 하단으로 이동, 팝오버는 전체화면 오버레이 */}
           <div className="help-wrap">
-            <div className="seg-theme" role="group" aria-label={L('사용 안내', 'Help')}>
-              <button type="button" className={showHelp ? 'on' : ''} onClick={() => setShowHelp(v => !v)}
-                aria-expanded={showHelp} aria-haspopup="dialog" title={L('사용 안내 · 이 서비스는?', 'Help · What is this?')}>?</button>
-            </div>
             {showHelp && (
               <>
                 <div className="help-back" onClick={() => setShowHelp(false)} />
@@ -166,20 +200,14 @@ export default function App() {
                     'H·W형강 보/기둥 이음부를 KBC-09 / KDS 14 31 25 / AISC 360-16으로 전 단면 자동 설계 — 볼트배열·이음판·물량·상세도면(DXF)·계산서를 생성합니다. 아래 목차(화면 좌→우)를 클릭하면 상세 설명이 열립니다.',
                     'Auto-designs H/W beam & column splices per KBC-09 / KDS 14 31 25 / AISC 360-16 — bolt layout, plates, quantities, shop DXF and calc sheets. Click a topic below (screen left→right) to expand.')}</p>
 
-                  <div className="help-sec">{L('◱ 좌측 레일', '◱ Left rail')}</div>
-                  <HelpItem t={L('▤ 검토결과 · ▦ 물량산정 · ◫ 프로젝트', '▤ Results · ▦ Quantities · ◫ Project')}>
-                    {L('▤ 결과표 화면. ▦ 고력볼트 본수·중량과 강판 중량 집계(CSV 내보내기). ◫ 담아 둔 단면들의 프로젝트 목록(집계·저장).',
-                       '▤ Results table. ▦ Bolt count/weight and plate weight totals (CSV export). ◫ Project list of saved sections (totals, persistence).')}
+                  <div className="help-sec">{L('◱ 좌측 레일 (다운로드)', '◱ Left rail (downloads)')}</div>
+                  <HelpItem t={L('C 계산서 · D1·D2 도면 · T 테클라', 'C Calc sheet · D1·D2 drawings · T Tekla')}>
+                    {L('레일 버튼은 마우스를 올리면 전체 명칭이 펼쳐집니다. C=구조계산요약 Excel(전 부재 입력·설계강도·DCR). D1=전체 DXF, D2=전체 DXF(사무소 표준 포맷) — 모두 R12(AC1009). T=Tekla Open API 임포트 매크로(.cs).',
+                       'Hover a rail button to reveal its full name. C = calc-summary Excel (all members: inputs, φRn, DCR). D1 = all DXF, D2 = all DXF (office format) — both R12 (AC1009). T = Tekla Open API import macro (.cs).')}
                   </HelpItem>
-                  <HelpItem t={L('⤓ 전체 DXF · ⤓² 사무소 표준포맷', '⤓ All DXF · ⤓² Office format')}>
-                    {L('현재 조건의 전 단면 상세도면을 한 파일로 내보냅니다. ⤓²는 사무소 종합도 포맷. 모두 R12(AC1009)로 저장돼 AutoCAD·뷰어에서 열립니다.',
-                       'Exports detail drawings for all sections at once. ⤓² uses the office master-sheet format. Saved as R12 (AC1009) for AutoCAD and viewers.')}
-                  </HelpItem>
-
-                  <div className="help-sec">{L('▤ 상단 바', '▤ Top bar')}</div>
-                  <HelpItem t={L('? 도움말 · 한/EN 언어 · ☾/☀ 테마', '? Help · KO/EN · ☾/☀ Theme')}>
-                    {L('이 창(?)·한/영 전환·다크/화이트 테마. 모든 버튼은 마우스를 올리면 기능 설명(툴팁)이 나옵니다.',
-                       'This panel (?), KO/EN toggle, dark/light theme. Hover any button for a tooltip.')}
+                  <HelpItem t={L('F 피드백 · ? 안내 · 한/EN · ☾/☀', 'F Feedback · ? Help · KO/EN · ☾/☀')}>
+                    {L('레일 하단: F=사용자 피드백(구글 폼), ?=이 안내창, 한/EN=언어, ☾/☀=다크·화이트 테마.',
+                       'Rail bottom: F = user feedback (Google Form), ? = this panel, KO/EN = language, ☾/☀ = dark/light theme.')}
                   </HelpItem>
 
                   <div className="help-sec">{L('☰ 설계 조건 (좌측 패널)', '☰ Design conditions (left)')}</div>
@@ -265,16 +293,6 @@ export default function App() {
               </>
             )}
           </div>
-          <div className="seg-theme" role="group" aria-label={L('언어 전환', 'Language')}>
-            <button type="button" className={lang === 'ko' ? 'on' : ''} onClick={() => setLang('ko')} aria-pressed={lang === 'ko'} title="한국어">한</button>
-            <button type="button" className={lang === 'en' ? 'on' : ''} onClick={() => setLang('en')} aria-pressed={lang === 'en'} title="English">EN</button>
-          </div>
-          <div className="seg-theme" role="group" aria-label={L('테마 전환', 'Theme')}>
-            <button type="button" className={dark ? 'on' : ''} onClick={() => setDark(true)} aria-pressed={dark} title={L('다크 모드', 'Dark')} aria-label={L('다크 모드', 'Dark')}>☾</button>
-            <button type="button" className={!dark ? 'on' : ''} onClick={() => setDark(false)} aria-pressed={!dark} title={L('화이트 모드', 'Light')} aria-label={L('화이트 모드', 'Light')}>☀</button>
-          </div>
-          <a className="fb-btn" href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer"
-            title={L('사용자 피드백 (구글 폼, 새 탭)', 'User feedback (Google Form, new tab)')}>💬 {L('피드백', 'Feedback')}</a>
         </header>
 
         <div className="cbody">
