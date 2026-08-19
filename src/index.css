@@ -379,25 +379,51 @@ body {
 .rnav:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .rbadge { position: absolute; top: 1px; right: 1px; font-size: 8px; font-style: normal; font-weight: 800; background: var(--ng); color: #fff; border-radius: 8px; padding: 0 4px; }
 .rspace { flex: 1; }
-/* 다운로드 레일 버튼 — 초기엔 약자(C·D1·D2·T·F)만, Hover 시 전체 명칭이 오른쪽으로 펼쳐진다 */
-.rnav.rx { width: 36px; height: 36px; }
-.rnav.rx .rab { font-size: 13px; font-weight: 800; line-height: 1; }
-.rnav.rx .rlbl { position: absolute; left: calc(100% - 3px); top: 0; height: 36px; display: flex; align-items: center;
-  padding: 0 14px 0 9px; background: var(--accent-soft); color: var(--accent); border-radius: 0 10px 10px 0;
-  white-space: nowrap; font-size: 12px; font-weight: 700; box-shadow: var(--shadow);
+/* 통합 레일 버튼(.rbtn) — C·D1·D2·T·F·?·한·EN·☾·☀ 모두 '?'와 동일 색상.
+   초기엔 약자만 보이고, Hover 시 전체 명칭이 오른쪽으로 자연스럽게 펼쳐진다(연결형 라벨). */
+.rbtn { position: relative; box-sizing: border-box; width: 38px; height: 34px; border: 1px solid var(--line);
+  border-radius: 9px; background: var(--panel); color: var(--muted); font: inherit; font-weight: 800; font-size: 13px;
+  cursor: pointer; display: grid; place-items: center; text-decoration: none;
+  transition: background .15s, color .15s, border-color .15s, border-radius .16s; }
+.rbtn .rab { line-height: 1; }
+.rbtn:hover { border-color: var(--accent); color: var(--accent); border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.rbtn.on { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+.rbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rbtn .rlbl { position: absolute; left: calc(100% - 1px); top: 0; height: 34px; display: flex; align-items: center;
+  padding: 0 14px 0 10px; background: var(--panel); color: var(--accent); border: 1px solid var(--accent); border-left: 0;
+  border-radius: 0 9px 9px 0; white-space: nowrap; font-size: 12px; font-weight: 700; box-shadow: var(--shadow);
   opacity: 0; transform: translateX(-7px); pointer-events: none; transition: opacity .16s ease, transform .16s ease; z-index: 45; }
-.rnav.rx:hover { background: var(--accent-soft); color: var(--accent); border-radius: 9px 0 0 9px; }
-.rnav.rx:hover .rlbl { opacity: 1; transform: translateX(0); }
-.rnav.rfb { text-decoration: none; }
-.rnav.rfb .rab { color: var(--accent); }
+.rbtn:hover .rlbl { opacity: 1; transform: translateX(0); }
+/* F(Feedback): Hover 시 활성 세그먼트와 동일 색(accent 채움) — 버튼+라벨 일체 */
+.rbtn.rfb:hover { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.rbtn.rfb:hover .rlbl { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+
+/* 햄버거 메뉴 — Hover 시 'Splice Design' + 다운로드(Calculation·Drawing1·Drawing2·Tekla) 옆으로 펼침 */
+.rmenu { position: relative; display: flex; }
+.rmenu:hover .rham { border-color: var(--accent); color: var(--accent); border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.rmenu-pop { position: absolute; left: calc(100% - 1px); top: 0; min-width: 158px; box-sizing: border-box;
+  background: var(--panel); border: 1px solid var(--accent); border-left: 0; border-radius: 0 10px 10px 0; box-shadow: var(--shadow);
+  padding: 6px; display: flex; flex-direction: column; gap: 2px;
+  opacity: 0; transform: translateX(-7px); pointer-events: none; transition: opacity .16s ease, transform .16s ease; z-index: 46; }
+.rmenu:hover .rmenu-pop, .rmenu:focus-within .rmenu-pop { opacity: 1; transform: translateX(0); pointer-events: auto; }
+.rmenu-title { font-weight: 800; font-size: 13px; letter-spacing: -.02em; padding: 3px 8px 6px; color: var(--fg);
+  border-bottom: 1px solid var(--line-soft); margin-bottom: 3px; }
+.rmenu-title .accent { color: var(--accent); }
+.rmenu-item { border: 0; background: transparent; color: var(--fg); font: inherit; font-size: 12px; font-weight: 600;
+  text-align: left; padding: 7px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; transition: background .12s, color .12s; }
+.rmenu-item:hover { background: var(--accent); color: var(--on-accent); }
+
+/* 세로 세그먼트 컨트롤 — 한/EN · ☾/☀ */
+.vseg { display: flex; flex-direction: column; width: 38px; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; background: var(--panel); }
+.vseg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 700; font-size: 12px;
+  padding: 5px 0; cursor: pointer; transition: background .15s, color .15s; }
+.vseg button + button { border-top: 1px solid var(--line); }
+.vseg button.on { background: var(--accent); color: var(--on-accent); }
+.vseg button:not(.on):hover { color: var(--accent); }
+.vseg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
 /* 레일 하단 컨트롤: 사용 안내(?) · 한/EN · ☾/☀ */
 .rail-ctl { display: flex; flex-direction: column; align-items: center; gap: 6px; padding-bottom: 2px; }
-.rctl { width: 36px; height: 32px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel);
-  color: var(--muted); font-weight: 800; font-size: 14px; cursor: pointer; display: grid; place-items: center; transition: .15s; }
-.rctl:hover { border-color: var(--accent); color: var(--accent); }
-.rctl.on { background: var(--accent); color: var(--on-accent); border-color: transparent; }
-.rseg { flex-direction: column; }
-.rseg button { width: 36px; padding: 4px 0; justify-content: center; font-size: 11px; }
 
 .cmain { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
 .ctop { display: flex; align-items: center; gap: 10px; padding: 4px 14px; background: var(--bg2); border-bottom: 1px solid var(--line); flex-shrink: 0; }
@@ -640,8 +666,8 @@ body {
   .rail .rspace { display: none; }
   .rlogo { flex-shrink: 0; }
   .rail-ctl { flex-direction: row; gap: 6px; margin-left: auto; padding-bottom: 0; }
-  .rseg { flex-direction: row; }
-  .rnav.rx .rlbl { display: none; }             /* 좁은 폭에선 확장 라벨 대신 title 툴팁 */
+  .rbtn .rlbl { display: none; }                /* 좁은 폭에선 확장 라벨 대신 title 툴팁 */
+  .rmenu-pop { left: 0; top: calc(100% + 4px); border-left: 1px solid var(--accent); border-radius: 10px; }  /* 아래로 펼침 */
   .help-pop { left: 50%; right: auto; bottom: auto; top: 58px; transform: translateX(-50%); }
   .cmain { overflow: visible; }
   .cbody { display: flex; flex-direction: column; grid-template-columns: 1fr; min-height: 0; }

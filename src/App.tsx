@@ -153,28 +153,32 @@ export default function App() {
     <div className="console">
       <aside className="rail">
         <span className="rlogo">S</span>
-        <button className="rnav on" title={L('검토 결과', 'Results')}>▤</button>
-        {/* C·D1·D2·T·F — 초기엔 약자만, Hover 시 전체 명칭이 펼쳐진다 */}
-        <button className="rnav rx" onClick={exportCalcSheet} title="Calculation Sheet — 구조계산요약 Excel">
-          <b className="rab">C</b><span className="rlbl">Calculation Sheet</span></button>
-        <button className="rnav rx" onClick={exportAllDXF} title="Drawing1 — 전체 DXF">
-          <b className="rab">D1</b><span className="rlbl">Drawing1</span></button>
-        <button className="rnav rx" onClick={exportAllDXF2} title="Drawing2 — 전체 DXF(사무소 표준 포맷)">
-          <b className="rab">D2</b><span className="rlbl">Drawing2</span></button>
-        <button className="rnav rx" onClick={exportTekla} title="Tekla Data — Open API 임포트 매크로(.cs)">
-          <b className="rab">T</b><span className="rlbl">Tekla Data</span></button>
-        <a className="rnav rx rfb" href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer" title="FeedBack — 사용자 피드백(구글 폼)">
+        {/* 햄버거 메뉴 — Hover 시 'Splice Design'과 다운로드 항목이 옆으로 펼쳐진다 */}
+        <div className="rmenu">
+          <button type="button" className="rbtn rham" aria-haspopup="true" title={L('메뉴 · 다운로드', 'Menu · Downloads')}>
+            <b className="rab">☰</b></button>
+          <div className="rmenu-pop" role="menu">
+            <div className="rmenu-title">SPLICE<span className="accent">DESIGN</span></div>
+            <button type="button" className="rmenu-item" role="menuitem" onClick={exportCalcSheet} title={L('구조계산요약 Excel', 'Calc summary Excel')}>{L('계산 요약', 'Summary')}</button>
+            <button type="button" className="rmenu-item" role="menuitem" onClick={exportAllDXF} title={L('전체 DXF', 'All DXF')}>{L('시리즈 DXF', 'Series DXF')}</button>
+            <button type="button" className="rmenu-item" role="menuitem" onClick={exportAllDXF2} title={L('전체 DXF(사무소 표준 포맷)', 'All DXF (office format)')}>{L('기본도면 DXF', 'Standard DXF')}</button>
+            <button type="button" className="rmenu-item" role="menuitem" onClick={exportTekla} title={L('Tekla Open API 매크로(.cs)', 'Tekla Open API macro (.cs)')}>Tekla</button>
+          </div>
+        </div>
+        {/* Feedback — 단독 유지. Hover 시 라벨 펼침 + 활성 세그먼트와 동일 색(accent) */}
+        <a className="rbtn rfb" href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer" title="FeedBack — 사용자 피드백(구글 폼)">
           <b className="rab">F</b><span className="rlbl">FeedBack</span></a>
         <span className="rspace" />
-        {/* FeedBack 아래로 이동: 한/영 · 사용 안내(?) · 다크/화이트 */}
+        {/* 하단: 사용 안내(?) · 한/EN 세로 세그먼트 · ☾/☀ 세로 세그먼트 */}
         <div className="rail-ctl">
-          <button type="button" className={'rctl' + (showHelp ? ' on' : '')} onClick={() => setShowHelp(v => !v)}
-            aria-expanded={showHelp} aria-haspopup="dialog" title={L('사용 안내 · 이 서비스는?', 'Help · What is this?')}>?</button>
-          <div className="seg-theme rseg" role="group" aria-label={L('언어 전환', 'Language')}>
+          <button type="button" className={'rbtn' + (showHelp ? ' on' : '')} onClick={() => setShowHelp(v => !v)}
+            aria-expanded={showHelp} aria-haspopup="dialog" title={L('사용 안내 · 이 서비스는?', 'Help · What is this?')}>
+            <b className="rab">?</b><span className="rlbl">{L('사용 안내', 'Help')}</span></button>
+          <div className="vseg" role="group" aria-label={L('언어 전환', 'Language')}>
             <button type="button" className={lang === 'ko' ? 'on' : ''} onClick={() => setLang('ko')} aria-pressed={lang === 'ko'} title="한국어">한</button>
             <button type="button" className={lang === 'en' ? 'on' : ''} onClick={() => setLang('en')} aria-pressed={lang === 'en'} title="English">EN</button>
           </div>
-          <div className="seg-theme rseg" role="group" aria-label={L('테마 전환', 'Theme')}>
+          <div className="vseg" role="group" aria-label={L('테마 전환', 'Theme')}>
             <button type="button" className={dark ? 'on' : ''} onClick={() => setDark(true)} aria-pressed={dark} title={L('다크 모드', 'Dark')} aria-label={L('다크 모드', 'Dark')}>☾</button>
             <button type="button" className={!dark ? 'on' : ''} onClick={() => setDark(false)} aria-pressed={!dark} title={L('화이트 모드', 'Light')} aria-label={L('화이트 모드', 'Light')}>☀</button>
           </div>
