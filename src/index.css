@@ -433,13 +433,16 @@ body {
 .help-d { color: var(--muted); padding: 0 2px 9px 16px; font-size: 11.5px; line-height: 1.5; }
 .help-d b { color: var(--fg); }
 
-.kpi-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: var(--line); border-bottom: 1px solid var(--line); flex-shrink: 0; }
-.kpi { background: var(--bg2); padding: 9px 16px; }
-.kpi .k { font-size: 9.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
-.kpi .v { font-size: 22px; font-weight: 800; letter-spacing: -.02em; margin-top: 2px; }
-.kpi .v small { font-size: 12px; color: var(--muted); font-weight: 700; }
+/* KPI 요약: 4칸 한 줄, 폰트는 SPLICEDESIGN(14px)보다 두 단계 작게(12px).
+   칸 너비는 아래 결과표 열 경계(단면치수끝 138 / 설계강도끝 334 / 내부이음판끝 636 / 우측 784)에 맞춘 비율. */
+.kpi-strip { display: flex; flex-wrap: nowrap; gap: 0; background: var(--bg2); border-bottom: 1px solid var(--line); flex-shrink: 0; overflow: hidden; scrollbar-gutter: stable; }
+.kpi { display: inline-flex; align-items: baseline; gap: 5px; background: var(--bg2); padding: 6px 8px; border-right: 1px solid var(--line); white-space: nowrap; overflow: hidden; box-sizing: border-box; }
+.kpi.k1 { flex: 0 0 17.6%; } .kpi.k2 { flex: 0 0 25.0%; } .kpi.k3 { flex: 0 0 38.5%; } .kpi.k4 { flex: 0 0 18.9%; border-right: 0; }
+.kpi .k { font-size: 11px; letter-spacing: 0; text-transform: none; color: var(--muted); font-weight: 700; }
+.kpi .v { font-size: 12px; font-weight: 800; letter-spacing: -.01em; margin: 0; }
+.kpi .v small { font-size: 11px; color: var(--muted); font-weight: 700; }
 .kpi .v.ok { color: var(--ok); } .kpi .v.ng { color: var(--ng); }
-.kpi .d { font-size: 10px; font-weight: 700; margin-top: 1px; color: var(--faint); }
+.kpi .d { font-size: 11px; font-weight: 600; margin: 0; color: var(--faint); }
 .kpi .d.ok { color: var(--ok); } .kpi .d.ng { color: var(--ng); }
 
 .cbody { flex: 1; display: grid; grid-template-columns: 272px 1fr 312px; min-height: 0; }
@@ -624,13 +627,10 @@ body {
   .cgrid { overflow: visible; }
   .tablewrap { max-height: 62vh; }        /* 표는 내부 스크롤(가로·세로), 나머지는 페이지 스크롤 */
   .cdetail { border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
-  .kpi-strip { grid-template-columns: repeat(3, 1fr); }
   .ctop { flex-wrap: wrap; row-gap: 4px; }
 }
 @media (max-width: 560px) {
-  .kpi-strip { grid-template-columns: repeat(2, 1fr); }
-  .kpi { padding: 6px 9px; }
-  .kpi .v { font-size: 15px; }
+  .kpi { padding: 5px 9px; }
   .cbrand { font-size: 12px; }
   .ctop-title { display: none; }               /* 좁은 폭에서 부제 숨김 */
   .cfilters .fld > label { width: 46px; font-size: 9px; }

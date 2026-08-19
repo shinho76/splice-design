@@ -291,11 +291,10 @@ export default function App() {
 
           <div className="ccenter">
             <div className="kpi-strip">
-              <div className="kpi"><div className="k">{L('검토 부재', 'Members')}</div><div className="v num">{stats.total}</div><div className="d">{tMember(cond.member, lang)} · {tJoint(cond.jointType, lang)}</div></div>
-              <div className="kpi"><div className="k">{L('적합', 'Pass')}</div><div className="v num ok">{stats.ok}</div><div className="d ok">{stats.total ? Math.round(stats.ok / stats.total * 100) : 0}%</div></div>
-              <div className="kpi"><div className="k">{L('부적합', 'Fail')}</div><div className="v num ng">{stats.total - stats.ok}</div><div className="d ng">{stats.total - stats.ok ? L('재검토', 'recheck') : '—'}</div></div>
-              <div className="kpi"><div className="k">{L('고력볼트', 'H.S. Bolts')}</div><div className="v num">{nf(stats.bolts)}<small> {L('본', 'ea')}</small> / {(stats.boltWt / 1000).toFixed(2)}<small> t</small></div><div className="d">{cond.bolt}</div></div>
-              <div className="kpi"><div className="k">{L('강재 물량', 'Steel Qty')}</div><div className="v num">{(stats.wt / 1000).toFixed(2)}<small> t</small></div><div className="d">{L('이음판', 'plates')}</div></div>
+              <div className="kpi k1"><span className="k">{L('검토 부재', 'Members')}</span> <span className="v num">{stats.total}</span> <span className="d">{tMember(cond.member, lang)} · {tJoint(cond.jointType, lang)}</span></div>
+              <div className="kpi k2"><span className="k">{L('적합', 'Pass')}</span> <span className="v num ok">{stats.ok}</span> <span className="d ok">{stats.total ? Math.round(stats.ok / stats.total * 100) : 0}%</span> <span className="k">{L('부적합', 'Fail')}</span> <span className="v num ng">{stats.total - stats.ok}</span></div>
+              <div className="kpi k3"><span className="k">{L('고력볼트', 'Bolts')}</span> <span className="v num">{nf(stats.bolts)}<small> {L('본', 'ea')}</small> / {(stats.boltWt / 1000).toFixed(2)}<small> ton</small></span> <span className="d">{cond.bolt}</span></div>
+              <div className="kpi k4"><span className="k">{L('이음판', 'Plates')}</span> <span className="v num">{(stats.wt / 1000).toFixed(2)}<small> ton</small></span></div>
             </div>
             <div className="cgrid"><ResultTable cond={cond} onSelect={setSelected} onView3D={setView3D} custom={boltMode === 'Custom'} diaAt={diaAt} onSetDia={setDiaAt} selectedSection={selected?.section} autoFix={autoFix} hidden={hidden} onHide={hideSection} onResetHidden={resetHidden} onDcrClick={setDcrView} /></div>
           </div>
