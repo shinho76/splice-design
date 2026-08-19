@@ -1,13 +1,8 @@
 import type { DesignCondition, Member, JointType, SteelGrade, BoltGrade } from '../engine/types.ts';
+import { nearestPlate } from '../engine/materials.ts';
 import { useLang } from '../i18n.ts';
 
 const PRESETS = [100, 95, 90, 85, 80, 75, 70, 65, 60, 50];
-
-// H형강(모재) 강종 → 이음판 기본 강종 자동선택 (예 A992 → A572 Gr50, SN355 → SM355)
-const PLATE_FOR: Record<string, SteelGrade> = {
-  SS275: 'SS275', SM275: 'SM275', SM355: 'SM355', SN355: 'SM355',
-  A36: 'A36', A572: 'A572', A992: 'A572',
-};
 
 export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
   cond: DesignCondition; onChange: (c: DesignCondition) => void;
@@ -47,23 +42,36 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
       <div className="fgrp">
         <div className="fld">
           <label>{L('H형강', 'H-Beam')}</label>
-          <select value={cond.steel} onChange={e => { const v = e.target.value as SteelGrade; onChange({ ...cond, steel: v, plateSteel: PLATE_FOR[v] ?? v }); }}>
-            <optgroup label="KS">
-              <option value="SS275">SS275</option><option value="SM275">SM275</option><option value="SM355">SM355</option><option value="SN355">SN355</option>
+          {/* H형강 재질 선택 시 이음판은 유사재질(없으면 Fy 최근접)로 자동 선택 */}
+          <select value={cond.steel} onChange={e => { const v = e.target.value as SteelGrade; onChange({ ...cond, steel: v, plateSteel: nearestPlate(v) }); }}>
+            <optgroup label="KS D3503">
+              <option value="SS275">SS275</option>
+            </optgroup>
+            <optgroup label="KS D3515">
+              <option value="SM275">SM275</option><option value="SM355">SM355</option><option value="SM420">SM420</option><option value="SM460">SM460</option>
+            </optgroup>
+            <optgroup label="KS D3866">
+              <option value="SHN275">SHN275</option><option value="SHN355">SHN355</option><option value="SHN400">SHN400</option><option value="SHN490">SHN490</option>
             </optgroup>
             <optgroup label="ASTM">
-              <option value="A36">A36</option><option value="A992">A992</option><option value="A572">A572 Gr50</option>
+              <option value="A36">A36</option><option value="A572">A572 Gr.50</option><option value="A992">A992</option><option value="A913_50">A913 Gr.50</option>
             </optgroup>
           </select>
         </div>
         <div className="fld">
           <label>{L('이음판', 'Plate')}</label>
           <select value={cond.plateSteel ?? cond.steel} onChange={e => set('plateSteel', e.target.value as SteelGrade)}>
-            <optgroup label="KS">
-              <option value="SS275">SS275</option><option value="SM275">SM275</option><option value="SM355">SM355</option>
-            </optgroup>
             <optgroup label="ASTM">
-              <option value="A36">A36</option><option value="A572">A572 Gr50</option>
+              <option value="A36">A36</option><option value="A572">A572 Gr.50</option>
+            </optgroup>
+            <optgroup label="KS D3503">
+              <option value="SS275">SS275</option>
+            </optgroup>
+            <optgroup label="KS D3515">
+              <option value="SM275">SM275</option><option value="SM355">SM355</option><option value="SM420">SM420</option><option value="SM460">SM460</option>
+            </optgroup>
+            <optgroup label="KS D3861">
+              <option value="SN275">SN275</option><option value="SN355">SN355</option><option value="SN400">SN400</option><option value="SN490">SN490</option>
             </optgroup>
           </select>
         </div>

@@ -4,6 +4,7 @@
 import * as XLSX from 'xlsx';
 import type { DesignCondition, DesignResult } from './types.ts';
 import type { AiscCheck } from './aisc/types.ts';
+import { steelLabel } from './materials.ts';
 
 /** 한 부재의 계산 요약(엔진 결과 + 한계상태 검토). */
 export interface SheetRow {
@@ -89,7 +90,7 @@ export function buildCalcWorkbook(rows: SheetRow[], cond: DesignCondition): XLSX
     const dcrs = row.checks.map(c => c.dcr).filter((d): d is number => d != null && isFinite(d));
     const maxDcr = dcrs.length ? Math.max(...dcrs) : undefined;
     const input: (string | number)[] = [
-      i + 1, r.section, cond.steel, cond.plateSteel || cond.steel,
+      i + 1, r.section, steelLabel(cond.steel), steelLabel(cond.plateSteel || cond.steel),
       `${cond.bolt}-M${r.boltDia}`, cond.threadCond || 'N', cond.jointType, cond.designStd || 'AISC',
       Math.round(cond.strengthRatio * 100), scale < 1 ? Math.round(scale * 100) : 100, row.ok ? 'OK' : 'NG',
       bolt(r.flange.bolt), gauge(r.flange.gauge), bolt(r.web.bolt),
@@ -109,7 +110,7 @@ export function buildCalcWorkbook(rows: SheetRow[], cond: DesignCondition): XLSX
 
   // ── 제목 + 조립 ──────────────────────────────────────────────────────
   const title = `구조계산요약 — 고력볼트 표준접합  |  ${cond.member} · ${cond.jointType} · ${cond.designStd || 'AISC'}`
-    + `  |  모재 ${cond.steel} · 볼트 ${cond.bolt} · α${Math.round(cond.strengthRatio * 100)}%`;
+    + `  |  모재 ${steelLabel(cond.steel)} · 볼트 ${cond.bolt} · α${Math.round(cond.strengthRatio * 100)}%`;
   const totalCols = head.length;
   const aoa: (string | number)[][] = [[title], band, head, ...body];
   const ws = XLSX.utils.aoa_to_sheet(aoa);

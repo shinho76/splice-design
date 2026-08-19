@@ -5,11 +5,9 @@ import type { DesignResult, DesignCondition, Plate } from './types.ts';
 import { parseName, sectionByName } from './sections.ts';
 import { BOLT_HOLE, boltNameByDia } from './bolts.ts';
 import { standardLength, gripFlange, gripWeb } from './bolt_spec.ts';
-import { Fy } from './materials.ts';
+import { Fy, steelLabel } from './materials.ts';
 import { nominalOf } from './hbeam_catalog.ts';
 
-/** 강종 도면 표기 라벨 — 콤보 value 'A572' → 'A572 Gr. 50'(도면 표기). 그 외 원문 유지. */
-const steelLabel = (s: string): string => (s === 'A572' ? 'A572 Gr. 50' : s);
 
 /** 시리즈 키 — W형강: 호칭 접두(W12 등) / H형강: 공칭치수(400×300 등). 전체도면 그룹핑용. */
 function seriesKey(r: DesignResult): string {

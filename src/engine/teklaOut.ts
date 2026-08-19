@@ -19,9 +19,11 @@ function teklaProfile(r: DesignResult): string {
 
 // KS/ASTM 강종 → Tekla 재질명(모델 프로파일 카탈로그에 맞게 조정 가능).
 const MAT: Record<string, string> = {
-  SS275: 'SS275', SM275: 'SM275', SM355: 'SM355', SN355: 'SN355', SS400: 'SS400',
-  SM490: 'SM490', SM520: 'SM520', SM570: 'SM570', SN490: 'SN490', SHN490: 'SHN490',
-  A36: 'A36', A572: 'A572-50', A992: 'A992', A588: 'A588',
+  SS275: 'SS275', SM275: 'SM275', SM355: 'SM355', SM420: 'SM420', SM460: 'SM460', SS400: 'SS400',
+  SM490: 'SM490', SM520: 'SM520', SM570: 'SM570',
+  SN275: 'SN275', SN355: 'SN355', SN400: 'SN400', SN490: 'SN490',
+  SHN275: 'SHN275', SHN355: 'SHN355', SHN400: 'SHN400', SHN490: 'SHN490',
+  A36: 'A36', A572: 'A572-50', A992: 'A992', A588: 'A588', A913_50: 'A913-50',
 };
 
 interface TeklaRow {
