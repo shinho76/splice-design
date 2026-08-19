@@ -455,7 +455,7 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
   const fp = r.flange.pitch ?? 60, wp = r.web.pitch ?? 60;   // 엔진 피치(Custom 대구경 상향)
   const fBolts: { x: number; y: number }[] = [];
   const maxAbsCy = Math.max(...colY.map(v => Math.abs(v)));   // 엇모: 외측 게이지선이 이음부 첫 볼트(웨브 대칭)
-  const stagOf = (cy: number) => { const isOut = Math.abs(cy) >= maxAbsCy - 0.5; return { off: isOut ? 0 : 45, rows: isOut ? nHi : nLo }; };
+  const stagOf = (cy: number) => { const isOut = Math.abs(cy) >= maxAbsCy - 0.5; return { off: isOut ? 45 : 0, rows: isOut ? nHi : nLo }; };
   ([1, -1] as const).forEach(s => colY.forEach((cy) => {
     if (!stag) for (let i = 0; i < nHi; i++) fBolts.push({ x: s * (base + i * fp), y: cy });
     else { const { off, rows } = stagOf(cy); for (let j = 0; j < rows; j++) fBolts.push({ x: s * (base + off + j * 90), y: cy }); }

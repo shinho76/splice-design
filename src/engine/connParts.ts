@@ -41,7 +41,7 @@ export function connParts(r: DesignResult): ConnParts {
   const flangeZof = (cy: number) => {
     if (!stag) return Array.from({ length: nHi }, (_, i) => base + i * fp);
     const isOut = Math.abs(cy) >= maxAbsCy - 0.5;
-    const off = isOut ? 0 : 45, rows = isOut ? nHi : nLo;
+    const off = isOut ? 45 : 0, rows = isOut ? nHi : nLo;
     return Array.from({ length: rows }, (_, j) => base + off + j * 90);
   };
   const Pc = r.web.Pc ?? 60;

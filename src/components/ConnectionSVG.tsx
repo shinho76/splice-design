@@ -28,7 +28,7 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
   const maxAbsCy = Math.max(...colY.map(v => Math.abs(v)));   // 엇모: 외측 게이지선이 이음부 첫 볼트(웨브 대칭)
   ([1, -1] as const).forEach(s => colY.forEach((cy) => {
     if (!stag) for (let i = 0; i < nHi; i++) fBolts.push({ x: s * (base + i * fp), y: cy });
-    else { const isOut = Math.abs(cy) >= maxAbsCy - 0.5, off = isOut ? 0 : 45, rows = isOut ? nHi : nLo; for (let j = 0; j < rows; j++) fBolts.push({ x: s * (base + off + j * 90), y: cy }); }
+    else { const isOut = Math.abs(cy) >= maxAbsCy - 0.5, off = isOut ? 45 : 0, rows = isOut ? nHi : nLo; for (let j = 0; j < rows; j++) fBolts.push({ x: s * (base + off + j * 90), y: cy }); }
   }));
   const fPosX = [...new Set(fBolts.filter(b => b.x > 0).map(b => b.x))].sort((a, b) => a - b);
 

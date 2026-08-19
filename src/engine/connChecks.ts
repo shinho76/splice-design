@@ -24,7 +24,7 @@ export function connChecks(r: DesignResult): ConnChecks {
   const pitchF = stag ? 90 : (r.flange.pitch ?? 60); // 플랜지 볼트 피치(엇모=90, Custom 대구경 상향)
   const colY = fB.m === 2 ? [-g1 / 2, g1 / 2] : [-(g1 / 2 + g2), -g1 / 2, g1 / 2, g1 / 2 + g2];
   const flangeZ = Array.from({ length: nHi }, (_, i) => base + i * pitchF);   // 대표(짝수열)
-  const zEndStag = stag ? base + 45 + (nLo - 1) * 90 : 0;
+  const zEndStag = stag ? base + 45 + (nHi - 1) * 90 : 0;   // 외측열(off45·nHi행)이 최외곽
   const zEnd = Math.max(flangeZ[flangeZ.length - 1], zEndStag);   // 최외곽 볼트 Z
   const Pc = r.web.Pc ?? 60;
   const webY = Array.from({ length: wB.m }, (_, i) => (i - (wB.m - 1) / 2) * Pc);

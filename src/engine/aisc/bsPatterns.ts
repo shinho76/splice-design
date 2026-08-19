@@ -27,7 +27,7 @@ export interface BsInput {
   lines: number[];      // 게이지선 y(부호). 1열=[±a], 2열/엇모=[±aIn,±aOut]. 웨브=축열(±c)
   n: number;            // 열당 볼트수(정렬 기준)
   pitch: number; edge: number;
-  staggered?: boolean;  // 엇모: 외곽선 off0·내측선 off45, 피치 90
+  staggered?: boolean;  // 엇모: 외측열 off45(최외곽 볼트=외측)·내측열 off0, 피치 90
   nHi?: number; nLo?: number;      // 외곽·내측 행수(엇모). 기본 n
   ym: number;           // 판/부재 반폭(외부·부재·웨브). 인장 외측 연단
   innerEdge?: number; outerEdge?: number;  // 내부판 스트립 [끝선, 외측연단]
@@ -44,7 +44,7 @@ const NON = 0.5, UNI = 1.0;
 function geom(p: BsInput) {
   const mx = Math.max(...p.lines.map(Math.abs));
   const isOut = (y: number) => Math.abs(Math.abs(y) - mx) < 0.5;
-  const off = (y: number) => (p.staggered && !isOut(y) ? STAG_OFF : 0);
+  const off = (y: number) => (p.staggered && isOut(y) ? STAG_OFF : 0);
   const pit = p.staggered ? STAG_PITCH : p.pitch;
   const rows = (y: number) => (p.staggered ? (isOut(y) ? (p.nHi ?? p.n) : (p.nLo ?? p.n)) : p.n);
   const last = (y: number) => p.edge + off(y) + Math.max(0, rows(y) - 1) * pit;

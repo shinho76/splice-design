@@ -83,10 +83,10 @@ export function netSectionCases(width: number, t: number, cols: { x: number; off
   return { cases, gov };
 }
 
-/** 열 x좌표 → 길이방향 오프셋(엇모: 최외곽열=0, 내측열=45mm 엇갈림). 정렬이면 전부 0. */
+/** 열 x좌표 → 길이방향 오프셋(엇모: 최외곽열=45mm 엇갈림[최외곽 볼트=외측], 내측열=0). 정렬이면 전부 0. */
 export function colOffsets(cols: number[], staggered: boolean): { x: number; off: number }[] {
   const maxAbs = Math.max(...cols.map(v => Math.abs(v)));
-  return cols.map(x => ({ x, off: staggered && Math.abs(x) < maxAbs - 0.5 ? 45 : 0 }));
+  return cols.map(x => ({ x, off: staggered && Math.abs(x) >= maxAbs - 0.5 ? 45 : 0 }));
 }
 
 /**
@@ -169,7 +169,7 @@ export interface BlockShearParams {
   fullShare?: boolean;   // 분담식: true=전 Path 요소 전체력(1.0), false=단일 L블록만 tributary(1/m)
 }
 
-// 엇모 3D/DXF 정합 상수(connParts stagOf): 내측열 응력방향 어긋남 45, 엇모 피치 90.
+// 엇모 3D/DXF 정합 상수(connParts stagOf): 외측열 응력방향 어긋남 45(최외곽 볼트=외측), 엇모 피치 90.
 export const BS_STAG_OFF = 45, BS_STAG_PITCH = 90;
 // ── 블록전단 파단경로 분류 파단경로(Path) 명명 — 요소×기하키 → Path 라벨 ──
 //   기하키(BlockCase.key):
@@ -194,7 +194,7 @@ export function bsColGeom(x: number, p: BlockShearParams) {
   const maxAbs = Math.max(...p.cols.map(v => Math.abs(v)));
   const isOut = Math.abs(x) >= maxAbs - 0.5;
   const rows = p.staggered ? (isOut ? p.nHi : p.nLo) : p.nHi;
-  const off = (p.staggered && !isOut) ? BS_STAG_OFF : 0;
+  const off = (p.staggered && isOut) ? BS_STAG_OFF : 0;
   const pit = p.staggered ? BS_STAG_PITCH : p.pitch;
   const Lv = p.edge + off + Math.max(0, rows - 1) * pit;   // 자유단→그 열 마지막 볼트
   return { isOut, rows, off, Lv };
@@ -216,7 +216,7 @@ export function blockShear(p: BlockShearParams): { cases: BlockCase[]; gov?: Blo
   const { t, Fy, Fu, d, halfWidth, cols, region } = p;
   const dh = holeDia(d);
   const web = region === 'web-plate' || region === 'member-web';
-  // 열별 전단면(3D/DXF stagOf 정합): 외측열 nHi행·off0, 내측열 nLo행·off45.
+  // 열별 전단면(3D/DXF stagOf 정합): 외측열 nHi행·off45(최외곽 볼트=외측), 내측열 nLo행·off0.
   const gLine = (x: number) => { const g = bsColGeom(x, p); const nSh = g.rows - 0.5; return { Agv: g.Lv * t, Anv: Math.max(0, g.Lv - nSh * dh) * t }; };
   const absC = cols.map(Math.abs);
   const xOut = Math.max(...absC);

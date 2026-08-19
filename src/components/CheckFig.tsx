@@ -37,7 +37,7 @@ function BsPanel({ c, geom }: { c: BlockCase; geom: BlockShearGeom }) {
   const vertical = !!geom.vertical, stag = !!geom.staggered;
   const nHi = geom.nHi ?? geom.nrow, nLo = geom.nLo ?? geom.nrow;
   const mx = Math.max(...geom.cols.map(v => Math.abs(v)));
-  const stagOf = (cv: number) => { const isOut = Math.abs(cv) >= mx - 0.5; const rows = stag ? (isOut ? nHi : nLo) : geom.nrow; const off = (stag && !isOut) ? 45 : 0; const pit = stag ? 90 : geom.pitch; return { rows, off, pit }; };
+  const stagOf = (cv: number) => { const isOut = Math.abs(cv) >= mx - 0.5; const rows = stag ? (isOut ? nHi : nLo) : geom.nrow; const off = (stag && isOut) ? 45 : 0; const pit = stag ? 90 : geom.pitch; return { rows, off, pit }; };
   const iE = (geom as any).innerEdge as number | undefined;   // 내부판 끝선(웨브측)
   const wb = (geom as any).webBar as number | undefined;
   // (x,y) bbox — viz + 판폭/판단 + 볼트. 웨브는 축좌표 이음면(0)→외곽(양수, 한쪽 절반).
