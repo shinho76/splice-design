@@ -33,15 +33,14 @@ function finalize(c: AiscCheck): AiscCheck {
 //   → 검토 유지(원본 보수식). false로 두면 전단이음 간주로 WI1·WI2를 결과에서 제외(비보수·비권장).
 const WEB_MOMENT_INTERACTION = true;
 //
-//  [기록] 순단면적·정밀화 검토 (분석만 — 현 계산에는 미적용, 원본 보수식 유지).
-//   steel-connection-engineer 검증 요약:
-//   (1) 순단면 볼트구멍폭 = dh + 2mm (AISC 360-16 B4.3b, Design Example 확인). 현 코드 반영(holeDia+2).
-//       ※ 블록전단(WP1 등)은 현재 dh(=d+2)만 사용 — 엄밀히는 B4.3b상 +2 추가(26) 여지 있음(미적용).
-//   (2) WI2 파단 정밀화 옵션(미적용): 순단면은 첫 볼트열(x=j0)에 위치 → 그 위치 모멘트
-//       M_net = Vu·(e − j0) = Vu·(nHoriz−1)·webP/2 사용 가능(단열이면 0 → 순수전단). WI1은 Vu·e 유지.
-//       Anv 0.25dp·Inet 0.4Ig 인위적 하한은 조밀 볼트배치 시 비보수 → 실제 순단면 사용이 옳음.
-//       효과(측정): 웨브 이음판 두께 합계 원본 1325 → 정밀화 932mm(약 −30%), 검토 유지·안전.
-//       ICR(순간회전중심)은 볼트군 강도에만 적용, 판 Mux(정역학 고정)에는 부적용.
+//  [적용] WI2 파단 정밀화 (steel-connection-engineer 검증):
+//   · WI2 파단 모멘트 = 순단면(첫 볼트열 x=j0) 위치 모멘트 M_net = Vu·(e−j0) = Vu·(nHoriz−1)·webP/2.
+//     (WI1 항복은 총단면·이음면 CL이라 Vu·e 유지. AISC Manual Part 10 단면분리 원칙 부합.)
+//   · Anv 0.25dp·Inet 0.4Ig 인위적 하한 제거 → 실제 순단면 사용(하한은 조밀배치 시 비보수).
+//   효과: 웨브 이음판 두께 대형단면 위주 경량화(측정 −27~30%), 검토 유지·안전.
+//   순단면 구멍폭 = dh + 2mm(B4.3b, Design Example 확인)는 기존대로 반영.
+//   ※ ICR(순간회전중심)은 볼트군 강도 전용, 판 Mux(정역학 고정)엔 부적용.
+//   ※ 부재웨브 전단파단(WM2, J4.2b 순단면)을 신규 추가(WM1 전단항복과 병행).
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet): AiscCheck[] {
@@ -143,9 +142,10 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
     // 순단면: 수직선상 nVert개 구멍 공제(파단)
     const yPos = Array.from({ length: nVert }, (_, i) => (i - (nVert - 1) / 2) * Pc);
     const Ihole = yPos.reduce((s, y) => s + nHoriz * (dh * tp) * y * y, 0) * 2; // 2매
-    const Inet = Math.max(0.4 * Ipl, Ipl - Ihole);          // 순단면 관성 하한 0.4Ig(붕괴 방지)
+    const Inet = Math.max(0, Ipl - Ihole);                  // 실제 순단면 관성(인위적 하한 0.4Ig 제거 — 하한은 비보수)
     const Snet = Inet / (dp / 2);
-    const Anv = 2 * Math.max(0.25 * dp, dp - nVert * dh) * tp; // 순전단폭 하한 0.25dp
+    const netWv = Math.max(0, dp - nVert * dh);             // 실제 순전단폭(인위적 하한 0.25dp 제거 — 하한은 비보수)
+    const Anv = 2 * netWv * tp;
 
     // 항복 상호작용 (φ=0.9 휨, φv=1.0 전단항복)
     const phiMnY = PHI.F * pFy * Zpl, phiVnY = PHI.SH * 0.6 * pFy * Awpl;
@@ -162,34 +162,45 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
         S('Design shear φVn (connecting element)', 'φv·0.6·Fy·Aw (φv=1.0)', `1.0·0.6·${pFy}·${Awpl.toFixed(0)}`, kN(phiVnY), 'kN', 'J4.2(a)'),
         S('Interaction (convention, not a single Spec eq.)', '√[(Mux/φMn)² + (Vu/φVn)²] ≤ 1', `√[(${kNm(Mux)}/${kNm(phiMnY)})²+(${kN(Vu)}/${kN(phiVnY)})²]`, +Math.sqrt(yLHS).toFixed(2), 'ratio', 'J4.2'),
       ] }));
-    // 파단 상호작용 (φ=0.75)
+    // 파단 상호작용 (φ=0.75) — 순단면은 첫 볼트열(x=j0) 위치 → 그 위치 모멘트 M_net=Vu·(e−j0) 적용
+    //   (AISC Manual Part 10 단면분리 원칙 부합. 단열이면 e=j0 → M_net=0 → 순수전단 수렴)
+    const MuxNet = Vu * Math.max(0, e - j0);
     const phiMnR = PHI.V * pFu * Snet, phiVnR = PHI.V * 0.6 * pFu * Anv;
-    const rLHS = (Mux / phiMnR) ** 2 + (Vu / phiVnR) ** 2;
+    const rLHS = (MuxNet / phiMnR) ** 2 + (Vu / phiVnR) ** 2;
     checks.push(finalize({ id: 'WI2', region: 'web', group: g, label: '파단 상호작용', clause: 'J4.2(b)',
-      detail: `√[(Mux/φMnₙₑₜ)²+(Vu/φVnₙₑₜ)²] = √[(${kNm(Mux)}/${kNm(phiMnR)})²+(${kN(Vu)}/${kN(phiVnR)})²]`,
-      phiRn: 1.0, demand: +Math.sqrt(rLHS).toFixed(2), unit: 'ratio',
+      detail: `√[(Mₙₑₜ/φMnₙₑₜ)²+(Vu/φVnₙₑₜ)²] = √[(${kNm(MuxNet)}/${kNm(phiMnR)})²+(${kN(Vu)}/${kN(phiVnR)})²]`,
+      phiRn: 1.0, demand: +Math.sqrt(rLHS).toFixed(2), unit: 'ratio', note: `M_net=Vu·(e−j0), j0=${j0.toFixed(0)}mm (순단면 위치 모멘트)`,
       steps: [
-        S('Net shear width', 'dp − nVert·dₕ (floor 0.25dp)', `${dp} − ${nVert}·${dh}`, +Math.max(0.25 * dp, dp - nVert * dh).toFixed(0), 'mm'),
-        S('Net shear area Anv (2 plates)', '2·(net width)·t', `2·${Math.max(0.25 * dp, dp - nVert * dh).toFixed(0)}·${tp}`, +Anv.toFixed(0), 'mm²', 'B4.3b'),
-        S('Net elastic modulus Snet', 'Inet/(dp/2), Inet=Ig−Iholes', `holes at ±y deducted`, +Snet.toFixed(0), 'mm³'),
+        S('Net-section moment M_net', 'Vu·(e − j0)  (순단면=첫 볼트열 위치)', `${kN(Vu)}·(${e.toFixed(0)}−${j0.toFixed(0)})`, kNm(MuxNet), 'kN·m', 'Part 10'),
+        S('Net shear width', 'dp − nVert·dₕ', `${dp} − ${nVert}·${dh}`, +netWv.toFixed(0), 'mm', 'B4.3b'),
+        S('Net shear area Anv (2 plates)', '2·(net width)·t', `2·${netWv.toFixed(0)}·${tp}`, +Anv.toFixed(0), 'mm²', 'B4.3b'),
+        S('Net elastic modulus Snet', 'Inet/(dp/2), Inet=Ig−Iholes (하한 없음)', `holes at ±y deducted`, +Snet.toFixed(0), 'mm³'),
         S('Design flexural rupture φMn', 'φ·Fu·Snet', `0.75·${pFu}·${Snet.toFixed(0)}`, kNm(phiMnR), 'kN·m', 'J4.2'),
         S('Design shear rupture φVn', 'φ·0.6·Fu·Anv', `0.75·0.6·${pFu}·${Anv.toFixed(0)}`, kN(phiVnR), 'kN', 'J4.2'),
-        S('Interaction', '√[(Mux/φMn)² + (Vu/φVn)²] ≤ 1', `√[(${kNm(Mux)}/${kNm(phiMnR)})²+(${kN(Vu)}/${kN(phiVnR)})²]`, +Math.sqrt(rLHS).toFixed(2), 'ratio'),
+        S('Interaction', '√[(M_net/φMn)² + (Vu/φVn)²] ≤ 1', `√[(${kNm(MuxNet)}/${kNm(phiMnR)})²+(${kN(Vu)}/${kN(phiVnR)})²]`, +Math.sqrt(rLHS).toFixed(2), 'ratio'),
       ] }));
   }
 
   // ── WM. 부재 웨브 ──
-  //   ※ 부재웨브 블록전단(구 WM2)은 검토하지 않는다: 부재웨브는 상·하 플랜지와 일체(연속)로
+  //   ※ 부재웨브 블록전단(구 WM2 블록전단)은 검토하지 않는다: 부재웨브는 상·하 플랜지와 일체(연속)로
   //     블록이 분리될 자유단(연단)이 없어 블록전단 파단면이 형성되지 않는다. 웨브 이음판(WP1)만
-  //     자유단을 가지므로 블록전단 대상이다. (수직전단 항복 WM1만 유지)
+  //     자유단을 가지므로 블록전단 대상이다. (전단 항복 WM1 + 전단 파단 WM2 유지)
   {
     const gm = 'F. 부재 웨브';
-    const Aw = H * tw;
+    const Aw = H * tw;                                    // 총전단면적
     checks.push(finalize({ id: 'WM1', region: 'member', group: gm, label: '웨브 전단항복', clause: 'G2.1',
       detail: `φv·0.6·Fy·Aw = 1.0·0.6·${mFy}·${Aw.toFixed(0)}`, phiRn: kN(PHI.SH * 0.6 * mFy * Aw), demand: kN(Vu), unit: 'kN',
       steps: [
         S('Gross web area Aw', 'H·tw', `${H}·${tw}`, +Aw.toFixed(0), 'mm²'),
         S('Design shear yield φVn', 'φv·0.6·Fy·Aw', `1.0·0.6·${mFy}·${Aw.toFixed(0)}`, kN(PHI.SH * 0.6 * mFy * Aw), 'kN', 'G2.1'),
+      ] }));
+    // WM2. 부재웨브 전단파단 — 웨브 이음볼트 구멍(수직 nVert개)을 지난 순단면 전단파단(J4.2b)
+    const AnvW = Math.max(0, H - nVert * dh) * tw;        // 부재웨브 순전단면적(수직 볼트공제)
+    checks.push(finalize({ id: 'WM2', region: 'member', group: gm, label: '웨브 전단파단', clause: 'J4.2(b)',
+      detail: `φ·0.6·Fu·Anv = 0.75·0.6·${mFu}·${AnvW.toFixed(0)}`, phiRn: kN(PHI.V * 0.6 * mFu * AnvW), demand: kN(Vu), unit: 'kN',
+      steps: [
+        S('Net web shear area Anv', '(H − nVert·dₕ)·tw', `(${H} − ${nVert}·${dh})·${tw}`, +AnvW.toFixed(0), 'mm²', 'B4.3b'),
+        S('Design shear rupture φVn', 'φ·0.6·Fu·Anv (φ=0.75)', `0.75·0.6·${mFu}·${AnvW.toFixed(0)}`, kN(PHI.V * 0.6 * mFu * AnvW), 'kN', 'J4.2(b)'),
       ] }));
   }
 

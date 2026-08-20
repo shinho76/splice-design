@@ -174,7 +174,7 @@ export function aiscOptimize(r0: DesignResult, cond: DesignCondition, limits: Op
       case 'WP1': tryLevers(addWebVert, bumpWebT, capWeb); break;
       case 'WI1': case 'WI2': tryLevers(bumpWebT, addWebVert, capWeb); break;
       case 'WM1': tryLevers(capWeb); break;
-      case 'WM2': tryLevers(addWebVert, capWeb); break;
+      case 'WM2': tryLevers(capWeb); break;   // 부재웨브 전단파단(순단면) — 부재 지배라 부분강도 캡핑
       default: tryLevers(bumpOuter, addRow, bumpWebT);
     }
     if (!done2) {

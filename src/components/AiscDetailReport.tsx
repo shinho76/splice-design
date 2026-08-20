@@ -68,9 +68,9 @@ const INTRO: Record<string, [string, string]> = {
   WR1: ['웨브 볼트는 부재웨브와 이음판 2매에 지압하며, 약한 쪽이 지배한다.', 'The web bolts bear on the beam web and on the two splice plates; the weaker of the two governs.'],
   WP1: ['웨브 이음판(Web Splice Plate)이 수직전단 V로 뜯길 수 있어 Path 1을 검토한다. 수평력 H=0이므로 H블록은 제외.', 'The web splice plate could tear out under the vertical shear V (Path 1); horizontal H=0, so H-blocks are excluded.'],
   WI1: ['웨브 이음판은 전단 Vu와 편심모멘트 Mux를 함께 받으며, 항복을 상호작용으로 검토한다. 이용률 √[(Mux/φMn)²+(Vu/φVn)²]≤1 — 두 작용의 조합비로, 1.0이 한계(원점~단위원 안이면 안전). 이음판(connecting element) 전단항복 φv=1.0은 J4.2(a). ※ AISC 단일 규정식이 아닌 관용 조합식.', 'The web plates carry shear Vu with the eccentric moment Mux; yielding is checked by an interaction. Utilisation √[(Mux/φMn)²+(Vu/φVn)²]≤1 combines the two actions (1.0 = limit). Shear yield of the connecting element uses φv=1.0 per J4.2(a). Note: a convention, not a single Spec equation.'],
-  WI2: ['동일 전단+휨 조합을 웨브 이음판 순단면 파단으로 검토한다(φ=0.75, J4.2(b)). 이용률의 의미는 WI1과 동일.', 'The same shear+moment combination is checked against net-section rupture (φ=0.75, J4.2(b)); utilisation meaning as in WI1.'],
+  WI2: ['동일 전단+휨 조합을 웨브 이음판 순단면 파단으로 검토한다(φ=0.75, J4.2(b)). 순단면은 첫 볼트열 위치이므로 그 위치 모멘트 M_net=Vu·(e−j0)를 사용(AISC Manual Part 10 단면분리 원칙). 이용률 의미는 WI1과 동일.', 'The same shear+moment combination is checked against net-section rupture (φ=0.75, J4.2(b)). Since the net section is at the first bolt line, the moment there M_net=Vu·(e−j0) is used (AISC Manual Part 10 section-separation principle). Utilisation meaning as in WI1.'],
   WM1: ['부재 웨브 자체의 전단항복을 검토한다.', 'The beam web itself is checked for shear yielding.'],
-  WM2: ['거더 웨브(Girder Web)의 수직전단 V에 대한 블록전단 뜯김을 Path 4·5(좌·우 거더)로 검토한다.', 'Block-shear tear-out of the girder web under vertical shear V (Path 4·5, left/right girder).'],
+  WM2: ['부재 웨브가 이음볼트 구멍(수직 nVert개)을 지난 순단면에서 전단파단하는지 검토한다(φ·0.6·Fu·Anv, φ=0.75, J4.2(b)). WM1(총단면 항복)과 병행하며, 보통 파단강도가 항복보다 약간 낮아 지배할 수 있다.', 'The beam web is checked for shear rupture across the net section through the splice-bolt holes (φ·0.6·Fu·Anv, φ=0.75, J4.2(b)), in parallel with WM1 (gross-section yield); rupture is often slightly lower than yield and may govern.'],
 };
 
 function Steps({ steps, lang }: { steps: AiscStep[]; lang: Lang }) {
