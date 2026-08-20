@@ -61,9 +61,6 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
         <div className="fld">
           <label>{L('이음판', 'Plate')}</label>
           <select value={cond.plateSteel ?? cond.steel} onChange={e => set('plateSteel', e.target.value as SteelGrade)}>
-            <optgroup label="ASTM">
-              <option value="A36">A36</option><option value="A572">A572 Gr.50</option>
-            </optgroup>
             <optgroup label="KS D3503">
               <option value="SS275">SS275</option>
             </optgroup>
@@ -72,6 +69,9 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
             </optgroup>
             <optgroup label="KS D3861">
               <option value="SN275">SN275</option><option value="SN355">SN355</option><option value="SN400">SN400</option><option value="SN490">SN490</option>
+            </optgroup>
+            <optgroup label="ASTM">
+              <option value="A36">A36</option><option value="A572">A572 Gr.50</option>
             </optgroup>
           </select>
         </div>
