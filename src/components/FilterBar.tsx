@@ -24,7 +24,7 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
 
       {/* Ⓐ-2 단면 범위 (전체 / 자주 쓰는 단면) */}
       <div className="fgrp">
-        <Seg label={L('단면', 'Sections')} value={cond.sectionSet ?? 'all'} opts={['all', 'preferred']} optLabels={[L('전체', 'All'), 'Preferred']} onPick={v => set('sectionSet', v as 'all' | 'preferred')} />
+        <Seg label={L('단면', 'Sections')} value={cond.sectionSet ?? 'all'} opts={['all', 'preferred']} optLabels={[L('전체', 'All'), L('상용', 'Preferred')]} onPick={v => set('sectionSet', v as 'all' | 'preferred')} />
       </div>
 
       {/* ⓪ 설계기준 */}

@@ -204,19 +204,19 @@ export default function App() {
                     'H·W형강 보/기둥 이음부를 KBC-09 / KDS 14 31 25 / AISC 360-16으로 전 단면 자동 설계 — 볼트배열·이음판·물량·상세도면(DXF)·계산서를 생성합니다. 아래 목차(화면 좌→우)를 클릭하면 상세 설명이 열립니다.',
                     'Auto-designs H/W beam & column splices per KBC-09 / KDS 14 31 25 / AISC 360-16 — bolt layout, plates, quantities, shop DXF and calc sheets. Click a topic below (screen left→right) to expand.')}</p>
 
-                  <div className="help-sec">{L('◱ 좌측 레일 (다운로드)', '◱ Left rail (downloads)')}</div>
-                  <HelpItem t={L('C 계산서 · D1·D2 도면 · T 테클라', 'C Calc sheet · D1·D2 drawings · T Tekla')}>
-                    {L('레일 버튼은 마우스를 올리면 전체 명칭이 펼쳐집니다. C=구조계산요약 Excel(전 부재 입력·설계강도·DCR). D1=전체 DXF, D2=전체 DXF(사무소 표준 포맷) — 모두 R12(AC1009). T=Tekla Open API 임포트 매크로(.cs).',
-                       'Hover a rail button to reveal its full name. C = calc-summary Excel (all members: inputs, φRn, DCR). D1 = all DXF, D2 = all DXF (office format) — both R12 (AC1009). T = Tekla Open API import macro (.cs).')}
+                  <div className="help-sec">{L('◱ 좌측 레일', '◱ Left rail')}</div>
+                  <HelpItem t={L('☰ 메뉴 — 계산·도면·Tekla 다운로드', '☰ Menu — Calc · Drawing · Tekla')}>
+                    {L('☰에 마우스를 올리면 「SPLICEDESIGN」 메뉴가 펼쳐집니다. ▸계산 요약(Summary)=전 부재 구조계산요약 Excel(입력·설계강도 φRn·DCR). ▸시리즈 DXF(Series DXF)=전 단면 상세도를 한 파일로. ▸기본도면 DXF(Standard DXF)=사무소 표준(종합도) 포맷. ▸Tekla=Open API 임포트 매크로(.cs). DXF는 모두 R12(AC1009)로 저장돼 AutoCAD·뷰어에서 열립니다.',
+                       'Hover ☰ to open the “SPLICEDESIGN” menu. ▸Summary = calc-summary Excel for all members (inputs, φRn, DCR). ▸Series DXF = all detail drawings in one file. ▸Standard DXF = office master-sheet format. ▸Tekla = Open API import macro (.cs). All DXF saved as R12 (AC1009) for AutoCAD and viewers.')}
                   </HelpItem>
                   <HelpItem t={L('F 피드백 · ? 안내 · 한/EN · ☾/☀', 'F Feedback · ? Help · KO/EN · ☾/☀')}>
-                    {L('레일 하단: F=사용자 피드백(구글 폼), ?=이 안내창, 한/EN=언어, ☾/☀=다크·화이트 테마.',
-                       'Rail bottom: F = user feedback (Google Form), ? = this panel, KO/EN = language, ☾/☀ = dark/light theme.')}
+                    {L('레일 하단: F=사용자 피드백(구글 폼, 새 탭). ?=이 안내창. 한/EN=언어 세로 토글. ☾/☀=다크·화이트 테마 세로 토글. 각 버튼은 마우스를 올리면 이름이 옆으로 펼쳐지고, 활성 항목은 강조색으로 표시됩니다.',
+                       'Rail bottom: F = user feedback (Google Form, new tab). ? = this panel. 한/EN = language (vertical toggle). ☾/☀ = dark/light theme (vertical toggle). Hover any button to reveal its name; the active item is shown in the accent color.')}
                   </HelpItem>
 
                   <div className="help-sec">{L('☰ 설계 조건 (좌측 패널)', '☰ Design conditions (left)')}</div>
-                  <HelpItem t={L('형강(H/W) · 단면(전체/Preferred)', 'Profile (H/W) · Sections (All/Preferred)')}>
-                    {L('H형강 73종, W형강 289종. 「Preferred」는 자주 쓰는 단면만(H 21·W 53) 추립니다.',
+                  <HelpItem t={L('형강(H/W) · 단면(전체/상용)', 'Profile (H/W) · Sections (All/Preferred)')}>
+                    {L('H형강 73종, W형강 289종. 「상용(Preferred)」은 자주 쓰는 단면만(H 21·W 53) 추립니다.',
                        'H-shape 73 sections, W-shape 289. “Preferred” narrows to common sections (H 21 / W 53).')}
                   </HelpItem>
                   <HelpItem t={L('설계기준 (AISC 16 / KDS 22 / KBC-09)', 'Standard (AISC 16 / KDS 22 / KBC-09)')}>
@@ -227,25 +227,25 @@ export default function App() {
                     {L('마찰접합은 미끄럼과 함께 볼트전단·지압도 검토하고, 지압접합은 미끄럼을 생략합니다(AISC).',
                        'Slip-critical checks slip plus bolt shear/bearing; bearing-type skips the slip check (AISC).')}
                   </HelpItem>
-                  <HelpItem t={L('재질 (H형강 · 이음판)', 'Steel (H-shape · plate)')}>
-                    {L('KS/ASTM 드롭다운. H형강 재질을 고르면 이음판 재질이 자동 선택됩니다(예 A992→A572 Gr50).',
-                       'KS/ASTM dropdowns. Choosing the H-shape grade auto-selects the plate grade (e.g. A992 → A572 Gr50).')}
+                  <HelpItem t={L('재질 (H형강 · 이음판) · 자동선택', 'Steel (H-shape · plate) · auto-select')}>
+                    {L('H형강: KS D3503(SS275)·D3515(SM275·355·420·460)·D3866(SHN275·355·400·490)·ASTM(A36·A572 Gr.50·A992·A913 Gr.50). 이음판: 여기에 KS D3861(SN275·355·400·490) 추가. H형강을 고르면 이음판이 「유사재질 우선, 없으면 항복강도(Fy) 최근접」으로 자동 선택됩니다(예 A992→A572 Gr.50, SHN355→SN355, A913 Gr.65→SM460). 이음판은 수동 변경 가능.',
+                       'H-shape: KS D3503 (SS275), D3515 (SM275/355/420/460), D3866 (SHN275/355/400/490), ASTM (A36 / A572 Gr.50 / A992 / A913 Gr.50). Plate: same plus KS D3861 (SN275/355/400/490). Picking the H-shape auto-selects the plate by “same family first, else nearest yield Fy” (e.g. A992→A572 Gr.50, SHN355→SN355, A913 Gr.65→SM460). Plate can be overridden.')}
                   </HelpItem>
                   <HelpItem t={L('볼트 · 나사부(N/X)', 'Bolt · Thread (N/X)')}>
                     {L('KS(F10T·S10T·F13T)·ASTM(A325·F1852·A490·F2280). 나사부 N=전단면 통과(0.45Fu)·X=제외(0.563Fu) — AISC/KDS에서만 표시.',
                        'KS (F10T/S10T/F13T), ASTM (A325/F1852/A490/F2280). Thread N = included (0.45Fu), X = excluded (0.563Fu) — shown for AISC/KDS.')}
                   </HelpItem>
                   <HelpItem t={L('볼트직경(표준/지정) · 엇모 · 이음판두께', 'Bolt Ø · Stagger · Plate t')}>
-                    {L('「지정」은 행별 직경을 직접 선택. 엇모=지그재그 배치(순단면 B4.3b). 이음판두께 「동일」=내·외 동일두께 설계.',
-                       '“Custom” sets diameter per row. Stagger = zig-zag layout (net section B4.3b). Plate t “Equal” = same inner/outer thickness.')}
+                    {L('「지정」은 행별 직경을 직접 선택. 엇모=플랜지볼트 지그재그 배치(순단면 B4.3b, s²/4g 보정). 이음판두께 「동일」=내·외 동일두께 설계. ※웨브는 부재 춤이 작아(H<200, 제1열 볼트~내첨판 간격 l<60mm) 렌치(체결공구)가 간섭하면 웨브볼트를 절반피치(30mm) 자동 엇갈림하고 첨판폭을 +60 보정합니다(KBC-09 그림3.4).',
+                       '“Custom” sets diameter per row. Stagger = zig-zag flange bolts (net section B4.3b, s²/4g). Plate t “Equal” = same inner/outer thickness. Note: for shallow members (H<200 and first web-bolt-to-inner-plate l<60mm) where the wrench interferes, web bolts auto-stagger by half pitch (30mm) with +60 plate width (KBC-09 Fig 3.4).')}
                   </HelpItem>
                   <HelpItem t={L('강도비 α · 갭', 'Ratio α · Gap')}>
                     {L('α=발현시킬 부재강도 비율(부분강도접합). 갭=이음 이격(0·5·10mm).',
                        'α = fraction of member strength to develop (partial-strength). Gap = splice opening (0/5/10 mm).')}
                   </HelpItem>
-                  <HelpItem t={L('⚙ 최적화 (AISC/KDS)', '⚙ Optimize (AISC/KDS)')}>
-                    {L('켜면 철판 물량 최소로 DCR≤1.0을 맞춥니다. 볼트로 전강도를 못 내는 초대형 단면은 부분강도(%)로 표시.',
-                       'On: minimizes plate steel to reach DCR≤1.0. Jumbo sections that cannot develop full strength show a partial-strength ratio (%).')}
+                  <HelpItem t={L('⚙ 최적화 ↔ KBC09 검토 (토글)', '⚙ Optimize ↔ KBC09 check (toggle)')}>
+                    {L('AISC/KDS에서만 표시되는 토글. 켜면 「AISC16 최적화」 또는 「KDS22 최적화」 — 철판 물량 최소로 DCR≤1.0을 맞춥니다(볼트로 전강도를 못 내는 초대형 단면은 부분강도 %로 표시). 끄면 「KBC09 검토」 — 표준접합(비최적화) 형상으로 검토합니다.',
+                       'Toggle shown for AISC/KDS. On = “AISC16 Optimize” or “KDS22 Optimize”: minimizes plate steel to reach DCR≤1.0 (jumbo sections that cannot develop full strength show a partial-strength %). Off = “KBC09 Check”: standard-connection (non-optimized) geometry.')}
                   </HelpItem>
 
                   <div className="help-sec">{L('◧ 중앙 결과표', '◧ Center results')}</div>
@@ -305,7 +305,7 @@ export default function App() {
             <FilterBar cond={cond} onChange={setCond} boltMode={boltMode} onBoltMode={setBoltMode} />
             {usesLimitState(cond.designStd) && (
               <div className="cf-autofix">
-                <button type="button" className={autoFix ? 'on' : ''} onClick={() => setAutoFix(v => !v)} aria-pressed={autoFix} title={L('전체 부재 AISC 최적화 — 철판 물량 최소로 DCR≤1.0 달성(부재지배는 부분강도)', 'Optimize all members — minimum plate to reach DCR≤1.0 (member-governed → partial strength)')}>⚙ {L('최적화', 'Optimize')}</button>
+                <button type="button" className={autoFix ? 'on' : ''} onClick={() => setAutoFix(v => !v)} aria-pressed={autoFix} title={autoFix ? L('한계상태설계 최적화 — 철판 물량 최소로 DCR≤1.0 달성(부재지배는 부분강도). 끄면 KBC-09 표준접합 검토', 'Limit-state optimize — minimum plate to reach DCR≤1.0 (member-governed → partial strength). Off = KBC-09 standard-connection check') : L('현재 KBC-09 표준접합 검토(비최적화). 켜면 한계상태설계 최적화', 'Currently KBC-09 standard check (no optimize). On = limit-state optimize')}>⚙ {autoFix ? `${cond.designStd === 'KDS' ? 'KDS22' : 'AISC16'} ${L('최적화', 'Optimize')}` : `KBC09 ${L('검토', 'Check')}`}</button>
               </div>
             )}
             <div className="cfilters-hint">▸ {L('조건을 바꾸면 결과표가 즉시 갱신됩니다.', 'Changing conditions updates the table instantly.')}</div>
