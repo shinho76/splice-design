@@ -26,6 +26,24 @@ function finalize(c: AiscCheck): AiscCheck {
   return c;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  웨브 이음판 편심휨(Mux=Vu·e) 상호작용 검토 WI1(항복)·WI2(파단) — 활성.
+//   전단이음이라도 전단 Vu는 볼트군 도심에서, 힘 전달은 이음면(gap CL)에서 이뤄져 편심 e만큼
+//   떨어지므로 판 평면내 국부 휨 Mux=Vu·e 가 정역학상 필연 발생(양면 대칭판은 상쇄가 아니라 분담).
+//   → 검토 유지(원본 보수식). false로 두면 전단이음 간주로 WI1·WI2를 결과에서 제외(비보수·비권장).
+const WEB_MOMENT_INTERACTION = true;
+//
+//  [기록] 순단면적·정밀화 검토 (분석만 — 현 계산에는 미적용, 원본 보수식 유지).
+//   steel-connection-engineer 검증 요약:
+//   (1) 순단면 볼트구멍폭 = dh + 2mm (AISC 360-16 B4.3b, Design Example 확인). 현 코드 반영(holeDia+2).
+//       ※ 블록전단(WP1 등)은 현재 dh(=d+2)만 사용 — 엄밀히는 B4.3b상 +2 추가(26) 여지 있음(미적용).
+//   (2) WI2 파단 정밀화 옵션(미적용): 순단면은 첫 볼트열(x=j0)에 위치 → 그 위치 모멘트
+//       M_net = Vu·(e − j0) = Vu·(nHoriz−1)·webP/2 사용 가능(단열이면 0 → 순수전단). WI1은 Vu·e 유지.
+//       Anv 0.25dp·Inet 0.4Ig 인위적 하한은 조밀 볼트배치 시 비보수 → 실제 순단면 사용이 옳음.
+//       효과(측정): 웨브 이음판 두께 합계 원본 1325 → 정밀화 932mm(약 −30%), 검토 유지·안전.
+//       ICR(순간회전중심)은 볼트군 강도에만 적용, 판 Mux(정역학 고정)에는 부적용.
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet): AiscCheck[] {
   const wp = r.web.webPlate;
   const checks: AiscCheck[] = [];
@@ -116,8 +134,9 @@ export function webChecks(r: DesignResult, cond: DesignCondition, dem: DemandSet
       bsGeom: { cols: colsAxis, nrow: nVert, pitch: Pc, edge, halfWidth: vHalf, dh, plates: 2, vertical: true, loadDir: 'V' } }));
   }
 
-  // ── WI. 이음판 항복/파단 상호작용 (2매 합성단면, Mux+Vu) ──
-  {
+  // ── WI. 이음판 항복/파단 상호작용 (2매 합성단면, Mux=Vu·e + Vu) ──
+  //   활성(WEB_MOMENT_INTERACTION=true). 정밀화·순단면 분석은 상단 [기록] 참조(현 계산 미적용).
+  if (WEB_MOMENT_INTERACTION) {
     const Zpl = 2 * (tp * dp * dp / 4);        // 소성단면계수(2매)
     const Ipl = 2 * (tp * dp ** 3 / 12);
     const Awpl = 2 * dp * tp;                  // 전단면적(2매)
