@@ -9,6 +9,7 @@ const AiscCalcReport = lazy(() => import('./components/AiscCalcReport.tsx'));
 const AiscDetailReport = lazy(() => import('./components/AiscDetailReport.tsx'));
 const KbcDetailReport = lazy(() => import('./components/KbcDetailReport.tsx'));
 const QuantityPanel = lazy(() => import('./components/QuantityPanel.tsx'));
+const SensitivityPanel = lazy(() => import('./components/SensitivityPanel.tsx'));
 const ProjectPanel = lazy(() => import('./components/ProjectPanel.tsx'));
 const ThreeViewer = lazy(() => import('./components/ThreeViewer.tsx'));
 const DcrPopup = lazy(() => import('./components/DcrPopup.tsx'));
@@ -44,6 +45,7 @@ export default function App() {
   const [showReport, setShowReport] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const [showQty, setShowQty] = useState(false);
+  const [showSens, setShowSens] = useState(false);   // 물량 민감도 분석 팝업
   const [showProj, setShowProj] = useState(false);
   const [view3D, setView3D] = useState<DesignResult | null>(null);
   const [zoomPrev, setZoomPrev] = useState(false);   // 접합 상세도 확대 보기
@@ -159,6 +161,7 @@ export default function App() {
             <b className="rab">☰</b></button>
           <div className="rmenu-pop" role="menu">
             <div className="rmenu-title">SPLICE<span className="accent">DESIGN</span></div>
+            <button type="button" className="rmenu-item" role="menuitem" onClick={() => setShowSens(true)} title={L('물량 절감 민감도 시각화', 'Material savings sensitivity')}>{L('물량 민감도 분석', 'Sensitivity')}</button>
             <button type="button" className="rmenu-item" role="menuitem" onClick={exportCalcSheet} title={L('구조계산요약 Excel', 'Calc summary Excel')}>{L('계산 요약', 'Summary')}</button>
             <button type="button" className="rmenu-item" role="menuitem" onClick={exportAllDXF} title={L('전체 DXF', 'All DXF')}>{L('시리즈 DXF', 'Series DXF')}</button>
             <button type="button" className="rmenu-item" role="menuitem" onClick={exportAllDXF2} title={L('전체 DXF(사무소 표준 포맷)', 'All DXF (office format)')}>{L('기본도면 DXF', 'Standard DXF')}</button>
@@ -379,6 +382,7 @@ export default function App() {
           ? <AiscDetailReport result={selEff} cond={cond} onClose={() => setShowDetail(false)} />
           : <KbcDetailReport result={selEff} cond={cond} onClose={() => setShowDetail(false)} />)}
         {showQty && <QuantityPanel cond={cond} diaAt={diaAt} autoFix={autoFix} onClose={() => setShowQty(false)} />}
+        {showSens && <SensitivityPanel onClose={() => setShowSens(false)} />}
         {showProj && <ProjectPanel items={project} onChange={setProject} onClose={() => setShowProj(false)} />}
         {view3D && <ThreeViewer r={view3D} cond={cond} onClose={() => setView3D(null)} />}
         {dcrView && <DcrPopup r={dcrView.r} cond={cond} fScale={dcrView.fScale} wScale={dcrView.wScale} onClose={() => setDcrView(null)} />}
