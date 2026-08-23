@@ -57,6 +57,38 @@ const ALPHA = [
   { a: '0.6', apct: 60, kg: 5305, save: 3567, pct: -40.2 },
 ];
 
+// ── [보완] 상용(Preferred) H 21종 분석 — 단면군에 따라 최적 레버가 달라짐 ──
+// 상용 H 기준선 1,449 kg. 지배 FM2(플랜지 부재 휨파단) 43% 압도.
+// 개별 레버(상용 H, 기준 대비)
+const PREF_LEVERS = [
+  { ko: '이음판 강종 SM460', en: 'Plate grade SM460', pct: -11.5 },
+  { ko: '엇모 배치 제외', en: 'No stagger', pct: -8.1 },
+  { ko: '볼트직경 M20', en: 'Bolt Ø M20', pct: -7.2 },
+  { ko: '이음판 강종 SM420', en: 'Plate grade SM420', pct: -6.1 },
+  { ko: '이음판 분담(면적비)', en: 'Plate share by area', pct: -4.9 },
+  { ko: '볼트등급 F13T', en: 'Bolt F13T', pct: -1.2 },
+];
+// 전체 H vs 상용 H 항목별 비교(정성)
+const CMP = [
+  { k: ['기준선', 'Baseline'], all: '8,872 kg / 73종', pref: '1,449 kg / 21종' },
+  { k: ['지배항목', 'Governing'], all: ['FI2 순단면 인장파단 최다', 'FI2 net-section, mixed'], pref: ['FM2 플랜지 부재 휨파단 43%', 'FM2 flange rupture 43%'] },
+  { k: ['1위 레버', 'Top lever'], all: ['엇모 제외 −11.6%', 'No-stagger −11.6%'], pref: ['판 강종 SM460 −11.5%', 'Plate SM460 −11.5%'] },
+  { k: ['볼트 M20', 'Bolt M20'], all: '−3.9%', pref: '−7.2%' },
+  { k: ['F13T', 'F13T'], all: '−3.1%', pref: '−1.2%' },
+  { k: ['판 강종 상향', 'Plate grade'], all: ['미검토(SM355 고정)', 'not tested'], pref: ['최대 레버로 부상', 'top lever'] },
+  { k: ['강도비 α 0.7 / 0.6', 'Ratio α 0.7 / 0.6'], all: '−26.9% / −40.2%', pref: '−24.8% / −39.7%' },
+  { k: ['최적 조합', 'Best combo'], all: ['개별 최대 −11.6%', 'single −11.6%'], pref: ['−25.1% (조합)', '−25.1% (stacked)'] },
+];
+const PREF_BEST = 25.1; // 상용 H 최적조합 절감률(%)
+
+// 권장 설계(추천) — 실무·규준 관점 우선순위
+const RECO: { tier: string; cls: string; ko: string; en: string }[] = [
+  { tier: '✅', cls: 'go', ko: '우선 적용 — 엇모 배치 제외(정렬) · 볼트 M20 · 이음판 분담 area. 규준상 안전하고 제작성이 좋아 대부분 부재에서 즉시 절감(≈ −15~19%).', en: 'Apply first — no-stagger, bolt M20, area-based plate share. Code-safe and shop-friendly, immediate savings on most members (≈ −15–19%).' },
+  { tier: '◐', cls: 'cond', ko: '조건부 — 이음판 강종 SM460 상향(물량 최대 절감이나 고강도판 수급·용접성·연성 확인) · F13T(볼트·미끄럼 지배 부재에서만 효과) · 갭 0mm(상세·시공 허용 시).', en: 'Conditional — upgrade plate to SM460 (largest saving, but check supply/weldability/ductility) · F13T (only where bolt/slip governs) · gap 0 mm (if detailing allows).' },
+  { tier: '✕', cls: 'no', ko: '지양 — 볼트직경 확대(M22 이상, 구멍 페널티) · 연단거리 축소(지압 저하로 볼트 증가, 중립~역효과).', en: 'Avoid — larger bolt Ø (M22+, hole penalty) · reduced edge distance (bolts increase from lower bearing; neutral–negative).' },
+  { tier: '⚠', cls: 'warn', ko: '별도 판단 — 강도비 α는 이음부 발현강도(구조 요구·규준)로 결정. 물량만 보고 임의로 낮추지 말 것(자유 절감 아님).', en: 'Separate — set α by the required developed strength (structural/code demand). Never lower it just to save weight (not a free lever).' },
+];
+
 const nf = (v: number) => Math.abs(v).toLocaleString('en-US');
 
 export default function SensitivityPanel({ onClose }: { onClose: () => void }) {
@@ -191,9 +223,60 @@ export default function SensitivityPanel({ onClose }: { onClose: () => void }) {
           '※ α는 설계 요구(부재에 걸리는 예상 하중)를 줄이므로 큰 절감 효과가 있습니다. 다만 구조 규준 준수·설계 판단이 필수이며, 자유로운 최적화가 아닙니다.',
           '※ α reduces design demand (expected member load), giving larger savings. However, this requires code compliance and engineering judgment—not automatic optimization.')}</p>
 
+        {/* ── 7. [보완] 전체 H vs 상용 H 비교 ────────────────────── */}
+        <div className="sens-sec">{L('⑦ 상용(Preferred) H 비교 — 단면군에 따라 최적 레버가 달라진다', '⑦ Preferred-H comparison — best lever shifts by section set')}</div>
+
+        {/* 상용 H 개별 레버 막대 */}
+        <div className="sens-bars" style={{ marginBottom: 10 }}>
+          {PREF_LEVERS.map((v, i) => (
+            <div className="sens-row" key={v.en}>
+              <span className="sens-rank">{i + 1}</span>
+              <span className="sens-lbl">{L(v.ko, v.en)}</span>
+              <span className="sens-track">
+                <span className="sens-fill save" style={{ width: `${(Math.abs(v.pct) / 11.5) * 100}%` }} />
+              </span>
+              <span className="sens-val save">−{Math.abs(v.pct).toFixed(1)}%</span>
+            </div>
+          ))}
+        </div>
+
+        {/* 전체 H vs 상용 H 비교표 */}
+        <div className="sens-cmp">
+          <div className="sens-cmp-h">
+            <span>{L('항목', 'Item')}</span>
+            <span>{L('전체 H (73종)', 'All H (73)')}</span>
+            <span>{L('상용 H (21종)', 'Preferred H (21)')}</span>
+          </div>
+          {CMP.map(r => (
+            <div className="sens-cmp-r" key={r.k[0]}>
+              <span className="sens-cmp-k">{L(r.k[0], r.k[1])}</span>
+              <span>{Array.isArray(r.all) ? L(r.all[0], r.all[1]) : r.all}</span>
+              <span className="hi">{Array.isArray(r.pref) ? L(r.pref[0], r.pref[1]) : r.pref}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="sens-callout">
+          <b>{L('상용 H 최적 조합', 'Preferred-H best combo')} −{PREF_BEST.toFixed(1)}%</b>
+          <span>{L(
+            '이음판 SM460 + 엇모 제외 + 볼트 M20·F13T + 분담 area + 갭 0mm → 1,085 kg (전 부재 DCR ≤ 1.0)',
+            'Plate SM460 + no-stagger + M20·F13T + area share + gap 0 → 1,085 kg (all DCR ≤ 1.0)')}</span>
+        </div>
+
         <div className="sens-foot">{L(
-          '결론: 실질 절감 레버는 ①엇모제외(−11.6%) · ②판분담(−4.2%) · ③M20(−3.9%) · ④F13T(−3.1%). 연단거리·피치는 이미 최소이거나 지압·간격 제약으로 상쇄되어 절감 효과가 없음.',
-          'Bottom line: real levers are no-stagger (−11.6%), plate share (−4.2%), M20 (−3.9%), F13T (−3.1%). Edge/pitch give nothing — already minimal or offset by bearing/spacing.')}</div>
+          '결론: 전체 H는 순단면(구멍) 인장파단이 지배 → 엇모제외·볼트직경이 핵심. 상용 H는 플랜지 부재 휨파단이 지배 → 이음판이 물량의 74%라 「이음판 강종 상향(SM460)」이 최대 레버로 부상(−11.5%). 판 강종은 원 민감도(SM355 고정)에서 빠진 숨은 최대 레버이며, 엇모제외·M20·판분담은 두 경우 모두 유효. 볼트직경 확대는 둘 다 역효과.',
+          'Bottom line: All-H is net-section-governed → no-stagger & bolt Ø dominate. Preferred-H is flange-member-governed → since plates are 74% of weight, upgrading plate grade (SM460) becomes the top lever (−11.5%) — a hidden lever the original study fixed at SM355. No-stagger, M20 and area-share help in both; larger bolt Ø hurts in both.')}</div>
+
+        {/* ── 권장 설계 (추천) ──────────────────────────────────── */}
+        <div className="sens-sec">{L('◎ 권장 설계 (추천)', '◎ Recommended design')}</div>
+        <div className="sens-reco">
+          {RECO.map(r => (
+            <div className={'sens-reco-r ' + r.cls} key={r.tier + r.cls}>
+              <span className="sens-reco-t">{r.tier}</span>
+              <span className="sens-reco-d">{L(r.ko, r.en)}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
