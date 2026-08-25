@@ -16,6 +16,7 @@ const DcrPopup = lazy(() => import('./components/DcrPopup.tsx'));
 import { loadProject, persistProject, newItem, type ProjectItem } from './engine/project.ts';
 import { LangContext, type Lang, tMember, tJoint } from './i18n.ts';
 import { catalogFor, sectionByName } from './engine/sections.ts';
+import { catalogForCond, standardDiaAt, applyStdPlates } from './engine/standard/schedule.ts';
 import { usesLimitState } from './engine/std.ts';
 import { designConnection } from './engine/engine.ts';
 import { aiscAutoCorrect, aiscCheck } from './engine/aisc/compat.ts';
@@ -91,11 +92,12 @@ export default function App() {
 
   // Custom 볼트직경 해석 : 해당 행 이상에서 가장 가까운 지정값(위 행을 따름)
   const diaAt = useCallback((i: number): number | undefined => {
+    if (cond.mode === 'S') return standardDiaAt(cond.member, i);   // 표준도: 표준 볼트직경
     if (boltMode !== 'Custom') return undefined;
     let bestK: number | undefined;
     for (const k of Object.keys(boltOv).map(Number)) if (k <= i && (bestK === undefined || k > bestK)) bestK = k;
     return bestK === undefined ? undefined : boltOv[bestK];
-  }, [boltMode, boltOv]);
+  }, [boltMode, boltOv, cond.mode, cond.member]);
   const setDiaAt = (i: number, d: number) => setBoltOv(o => ({ ...o, [i]: d }));
 
   // KPI 집계 (조건·Custom 변경 시)
@@ -103,11 +105,12 @@ export default function App() {
     let bolts = 0, wt = 0, boltWt = 0, ok = 0;
     const af = usesLimitState(cond.designStd) && autoFix;
     let total = 0;
-    catalogFor(cond.profile, cond.sectionSet).forEach((s, i) => {
+    catalogForCond(cond).forEach((s, i) => {
       if (hidden.has(s.name)) return;                 // 제거된 단면은 집계 제외
       total++;
       let r = designConnection(cond, s, diaAt(i)), okThis: boolean;
-      if (af) { const ac = aiscAutoCorrect(r, cond); r = ac.result; okThis = ac.ok; }
+      if (cond.mode === 'S') { r = applyStdPlates(r, cond); okThis = aiscCheck(r, cond).govDcr <= 1; }  // 표준형상 고정 + DCR검토
+      else if (af) { const ac = aiscAutoCorrect(r, cond); r = ac.result; okThis = ac.ok; }
       else okThis = !r.steps.some(st => st.check === 'NG');
       const q = quantityOf(r, cond);
       bolts += q.boltCount; wt += q.plateWeightKg; boltWt += q.boltWeightKg;
@@ -117,13 +120,13 @@ export default function App() {
   }, [cond, diaAt, autoFix, hidden]);
 
   // 자동보정 ON(AISC) 시 선택 부재를 보정 형상으로 표시
-  const selEff = (usesLimitState(cond.designStd) && autoFix && selected) ? aiscAutoCorrect(selected, cond).result : selected;
+  const selEff = (usesLimitState(cond.designStd) && autoFix && cond.mode !== 'S' && selected) ? aiscAutoCorrect(selected, cond).result : selected;
   const detailQ = useMemo(() => (selEff ? quantityOf(selEff, cond) : null), [selEff, cond]);
 
   const addToProject = (r: DesignResult) => setProject(p => [...p, newItem(r.section, cond)]);
   const allRowsForDXF = () => {                                    // DXF는 테이블과 동일 형상(최적화 반영)으로 출력
     const af = usesLimitState(cond.designStd) && autoFix;
-    return catalogFor(cond.profile, cond.sectionSet).map((s, i) => ({ s, i })).filter(({ s }) => !hidden.has(s.name))
+    return catalogForCond(cond).map((s, i) => ({ s, i })).filter(({ s }) => !hidden.has(s.name))
       .map(({ s, i }) => { const r = designConnection(cond, s, diaAt(i)); return af ? aiscAutoCorrect(r, cond).result : r; });
   };
   const exportAllDXF = () =>
@@ -136,7 +139,7 @@ export default function App() {
   const allSheetRows = (): SheetRow[] => {
     const ls = usesLimitState(cond.designStd);
     const af = ls && autoFix;
-    return catalogFor(cond.profile, cond.sectionSet).map((s, i) => ({ s, i })).filter(({ s }) => !hidden.has(s.name))
+    return catalogForCond(cond).map((s, i) => ({ s, i })).filter(({ s }) => !hidden.has(s.name))
       .map(({ s, i }) => {
         const r0 = designConnection(cond, s, diaAt(i));
         if (af) { const ac = aiscAutoCorrect(r0, cond); return { result: ac.result, checks: ac.report.checks, ok: ac.ok, flangeScale: ac.flangeScale, webScale: ac.webScale, memberLimited: ac.memberLimited }; }

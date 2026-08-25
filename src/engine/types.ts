@@ -33,6 +33,8 @@ export interface HSection {
 
 /** 설계조건 (필터 → 엔진 입력) */
 export interface DesignCondition {
+  /** 구분: A=현행(AISC 한계상태) · S=표준도(모멘트접합 표준부재+DCR검토) · H=향후 */
+  mode?: 'A' | 'S' | 'H';
   member: Member;
   jointType: JointType;
   steel: SteelGrade;        // H형강(모재) 강종 — 부재강도(Mn·Puf·Vu) 산정

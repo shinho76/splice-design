@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { DesignCondition, DesignResult, Plate, BoltArray } from '../engine/types.ts';
-import { catalogFor } from '../engine/sections.ts';
+import { catalogForCond, applyStdPlates } from '../engine/standard/schedule.ts';
 import { designConnection } from '../engine/engine.ts';
 import { aiscCheck, aiscAutoCorrect } from '../engine/aisc/compat.ts';
 import { kbcCheck } from '../engine/kbcCheck.ts';
@@ -29,9 +29,11 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
   const isAisc = usesLimitState(cond.designStd);   // AISC·KDS = 한계상태 엔진(aiscCheck)
   // 원본 인덱스(i) 유지 — Custom 직경 지정(diaAt/onSetDia)은 카탈로그 순번 기준.
   // 최적화(자동보정) 기본 ON → 행별 옵티마이저를 memo로 캐시(선택 등 재렌더 시 재계산 방지).
-  const allRows = useMemo(() => catalogFor(cond.profile, cond.sectionSet).map((s, i) => {
-    const r = designConnection(cond, s, diaAt?.(i));
-    const ac = (isAisc && autoFix) ? aiscAutoCorrect(r, cond) : null;
+  const isStd = cond.mode === 'S';
+  const allRows = useMemo(() => catalogForCond(cond).map((s, i) => {
+    let r = designConnection(cond, s, diaAt?.(i));
+    if (isStd) r = applyStdPlates(r, cond);                 // 표준 판치수 덮어쓰기
+    const ac = (isAisc && autoFix && !isStd) ? aiscAutoCorrect(r, cond) : null;  // S=최적화 안함(표준형상 고정)
     const dr = ac ? ac.result : r;                       // 표시 형상(최적화 반영)
     const govDcr = ac ? ac.report.govDcr : (isAisc ? aiscCheck(r, cond).govDcr : kbcCheck(r, cond).govDcr);
     const partial = ac && ac.memberLimited ? Math.min(ac.flangeScale, ac.webScale) : null;  // 부분강도 최대비율

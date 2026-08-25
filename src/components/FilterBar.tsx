@@ -15,22 +15,47 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
   const pct = Math.round(cond.strengthRatio * 100);
   const setAlpha = (p: number) => set('strengthRatio', Math.min(100, Math.max(10, p)) / 100);
 
+  const mode = cond.mode ?? 'A';
+  const isS = mode === 'S';
+  const stdMat = cond.steel === 'SHN275' ? '275' : '355';   // S모드 재질(275계/355계)
+  const pickMode = (m: 'A' | 'S' | 'H') => {
+    if (m === 'S') onChange({ ...cond, mode: 'S', profile: 'H', jointType: '마찰', steel: 'SHN355', plateSteel: 'SM355' });
+    else onChange({ ...cond, mode: m });
+  };
+
   return (
     <div className="filterbar">
-      {/* Ⓐ 형강 프로파일 (H형강 / W형강) */}
+      {/* 구분 : A(현행) / S(표준도) / H(향후) */}
       <div className="fgrp">
-        <Seg label={L('형강', 'Profile')} value={cond.profile ?? 'H'} opts={['H', 'W']} optLabels={['H-Shape', 'W-Shape']} onPick={v => set('profile', v as 'H' | 'W')} />
+        <Seg label={L('구분', 'Mode')} value={mode} opts={['A', 'S', 'H']}
+          optLabels={['A', 'S', 'H']} onPick={v => pickMode(v as 'A' | 'S' | 'H')} />
       </div>
 
-      {/* Ⓐ-2 단면 범위 (전체 / 자주 쓰는 단면) */}
-      <div className="fgrp">
-        <Seg label={L('단면', 'Sections')} value={cond.sectionSet ?? 'all'} opts={['all', 'preferred']} optLabels={[L('전체', 'All'), L('상용', 'Preferred')]} onPick={v => set('sectionSet', v as 'all' | 'preferred')} />
-      </div>
+      {isS ? (
+        /* 표준도(S): 재질 275계/355계 2택 (부재/이음판 강종 동시 설정) */
+        <div className="fgrp">
+          <Seg label={L('재질', 'Grade')} value={stdMat} opts={['275', '355']}
+            optLabels={['SHN275/SS275', 'SHN355/SM355']}
+            onPick={v => onChange({ ...cond, steel: v === '275' ? 'SHN275' : 'SHN355', plateSteel: v === '275' ? 'SS275' : 'SM355' })} />
+        </div>
+      ) : (
+        <>
+          {/* Ⓐ 형강 프로파일 (H형강 / W형강) */}
+          <div className="fgrp">
+            <Seg label={L('형강', 'Profile')} value={cond.profile ?? 'H'} opts={['H', 'W']} optLabels={['H-Shape', 'W-Shape']} onPick={v => set('profile', v as 'H' | 'W')} />
+          </div>
 
-      {/* ⓪ 설계기준 */}
-      <div className="fgrp">
-        <Seg label={L('설계기준', 'Std')} value={cond.designStd ?? 'AISC'} opts={['AISC', 'KDS', 'KBC']} optLabels={['AISC 16', 'KDS 22', 'KBC-09']} onPick={v => set('designStd', v as 'KBC' | 'KDS' | 'AISC')} />
-      </div>
+          {/* Ⓐ-2 단면 범위 (전체 / 자주 쓰는 단면) */}
+          <div className="fgrp">
+            <Seg label={L('단면', 'Sections')} value={cond.sectionSet ?? 'all'} opts={['all', 'preferred']} optLabels={[L('전체', 'All'), L('상용', 'Preferred')]} onPick={v => set('sectionSet', v as 'all' | 'preferred')} />
+          </div>
+
+          {/* ⓪ 설계기준 */}
+          <div className="fgrp">
+            <Seg label={L('설계기준', 'Std')} value={cond.designStd ?? 'AISC'} opts={['AISC', 'KDS', 'KBC']} optLabels={['AISC 16', 'KDS 22', 'KBC-09']} onPick={v => set('designStd', v as 'KBC' | 'KDS' | 'AISC')} />
+          </div>
+        </>
+      )}
 
       {/* ① 기본 조건 (부재→접합) */}
       <div className="fgrp">
