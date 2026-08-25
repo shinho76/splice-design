@@ -7,9 +7,13 @@
 import type { HSection, Member, DesignCondition, DesignResult } from '../types.ts';
 import { buildSection, catalogFor } from '../sections.ts';
 import { STD_PLATE_BEAM, STD_PLATE_COLUMN } from './plateData.ts';
+import { HD_BEAM, HD_COLUMN, HD_PLATE } from './hyundaiData.ts';
+
+/** 표준(S·H) 모드 여부 */
+export const isStdMode = (m?: string): boolean => m === 'S' || m === 'H';
 
 export type ArrType = 'A' | 'B' | 'C';
-export interface StdEntry { name: string; dia: number; type: ArrType; }
+export interface StdEntry { name: string; dia: number; type?: ArrType; }
 
 /** 보(GIRDER) 이음 표준 부재 — 29종 */
 export const STD_BEAM: StdEntry[] = [
@@ -85,25 +89,31 @@ export const STD_COLUMN: StdEntry[] = [
 
 /** 표준 스케줄(부재별) */
 export const stdSchedule = (member: Member): StdEntry[] => (member === '기둥' ? STD_COLUMN : STD_BEAM);
+/** 현대제철 스케줄(부재별) */
+export const hdSchedule = (member: Member): StdEntry[] => (member === '기둥' ? HD_COLUMN : HD_BEAM);
+/** 활성 모드(S=표준도 / H=현대제철) 스케줄 */
+export const activeSchedule = (cond: DesignCondition): StdEntry[] =>
+  cond.mode === 'H' ? hdSchedule(cond.member) : stdSchedule(cond.member);
 
 /** 표준 단면(HSection[]) — 카탈로그 외 단면도 buildSection으로 생성 */
 const _cache = new Map<string, HSection>();
-export function standardSections(member: Member): HSection[] {
-  return stdSchedule(member).map(e => {
-    let s = _cache.get(e.name);
-    if (!s) { s = buildSection(e.name); _cache.set(e.name, s); }
-    return s;
-  });
+const secOf = (name: string): HSection => {
+  let s = _cache.get(name);
+  if (!s) { s = buildSection(name); _cache.set(name, s); }
+  return s;
+};
+export function standardSections(cond: DesignCondition): HSection[] {
+  return activeSchedule(cond).map(e => secOf(e.name));
 }
 
-/** 표준 볼트직경(부재·인덱스) */
-export function standardDiaAt(member: Member, i: number): number | undefined {
-  return stdSchedule(member)[i]?.dia;
+/** 표준 볼트직경(구분·인덱스) */
+export function standardDiaAt(cond: DesignCondition, i: number): number | undefined {
+  return activeSchedule(cond)[i]?.dia;
 }
 
-/** 구분(mode) 반영 단면 소스 — S=표준 부재리스트, 그 외=일반 카탈로그 */
+/** 구분(mode) 반영 단면 소스 — S·H=표준 부재리스트, 그 외=일반 카탈로그 */
 export function catalogForCond(cond: DesignCondition): HSection[] {
-  return cond.mode === 'S' ? standardSections(cond.member) : catalogFor(cond.profile, cond.sectionSet);
+  return isStdMode(cond.mode) ? standardSections(cond) : catalogFor(cond.profile, cond.sectionSet);
 }
 
 /** S모드 재질키 (275계/355계) — 부재/이음판 강종으로 판별 */
@@ -112,6 +122,7 @@ export const stdMatKey = (cond: DesignCondition): '275' | '355' =>
 
 /** S모드: 표준도 플랜지 판데이터(외판 t3×a×b, 내판 t4)를 결과에 덮어씀. 데이터 없으면 원본 유지. */
 export function applyStdPlates(r: DesignResult, cond: DesignCondition): DesignResult {
+  if (cond.mode === 'H') return applyHdPlates(r, cond);
   if (cond.mode !== 'S') return r;
   const tbl = cond.member === '기둥' ? STD_PLATE_COLUMN : STD_PLATE_BEAM;
   const pd = tbl[stdMatKey(cond)]?.[r.section];
@@ -124,6 +135,16 @@ export function applyStdPlates(r: DesignResult, cond: DesignCondition): DesignRe
     ? { ...r.web.webPlate, t: pd.t5, ...(pd.wh > 0 ? { w: pd.wh } : {}) }
     : r.web.webPlate;
   return { ...r, flange: { ...f, outerPlate: outer, innerPlate: inner }, web: { ...r.web, webPlate: wp } };
+}
+
+/** H(현대제철): 플랜지 외판(o)·내판(i) t×W×L 적용. 웨브판은 앱 산정 유지. */
+function applyHdPlates(r: DesignResult, cond: DesignCondition): DesignResult {
+  const pd = HD_PLATE[stdMatKey(cond)]?.[r.section];
+  if (!pd) return r;
+  const f = r.flange;
+  const outer = f.outerPlate ? { t: pd.o[0], w: pd.o[1], L: pd.o[2] } : f.outerPlate;
+  const inner = f.innerPlate && pd.i ? { t: pd.i[0], w: pd.i[1], L: pd.i[2] } : f.innerPlate;
+  return { ...r, flange: { ...f, outerPlate: outer, innerPlate: inner } };
 }
 
 /** S모드 표준 판데이터 보유 여부(플래그용) */

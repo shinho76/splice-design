@@ -16,10 +16,10 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
   const setAlpha = (p: number) => set('strengthRatio', Math.min(100, Math.max(10, p)) / 100);
 
   const mode = cond.mode ?? 'A';
-  const isS = mode === 'S';
-  const stdMat = cond.steel === 'SHN275' ? '275' : '355';   // S모드 재질(275계/355계)
+  const isS = mode === 'S' || mode === 'H';   // 표준(S)·현대제철(H) 공통 UI
+  const stdMat = cond.steel === 'SHN275' ? '275' : '355';   // 표준 재질(275계/355계)
   const pickMode = (m: 'A' | 'S' | 'H') => {
-    if (m === 'S') onChange({ ...cond, mode: 'S', profile: 'H', jointType: '마찰', steel: 'SHN355', plateSteel: 'SM355' });
+    if (m === 'S' || m === 'H') onChange({ ...cond, mode: m, profile: 'H', jointType: '마찰', steel: 'SHN355', plateSteel: 'SM355' });
     else onChange({ ...cond, mode: m });
   };
 

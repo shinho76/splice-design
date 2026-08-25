@@ -16,7 +16,7 @@ const DcrPopup = lazy(() => import('./components/DcrPopup.tsx'));
 import { loadProject, persistProject, newItem, type ProjectItem } from './engine/project.ts';
 import { LangContext, type Lang, tMember, tJoint } from './i18n.ts';
 import { catalogFor, sectionByName } from './engine/sections.ts';
-import { catalogForCond, standardDiaAt, applyStdPlates } from './engine/standard/schedule.ts';
+import { catalogForCond, standardDiaAt, applyStdPlates, isStdMode } from './engine/standard/schedule.ts';
 import { usesLimitState } from './engine/std.ts';
 import { designConnection } from './engine/engine.ts';
 import { aiscAutoCorrect, aiscCheck } from './engine/aisc/compat.ts';
@@ -92,7 +92,7 @@ export default function App() {
 
   // Custom 볼트직경 해석 : 해당 행 이상에서 가장 가까운 지정값(위 행을 따름)
   const diaAt = useCallback((i: number): number | undefined => {
-    if (cond.mode === 'S') return standardDiaAt(cond.member, i);   // 표준도: 표준 볼트직경
+    if (isStdMode(cond.mode)) return standardDiaAt(cond, i);
     if (boltMode !== 'Custom') return undefined;
     let bestK: number | undefined;
     for (const k of Object.keys(boltOv).map(Number)) if (k <= i && (bestK === undefined || k > bestK)) bestK = k;
@@ -109,8 +109,8 @@ export default function App() {
       if (hidden.has(s.name)) return;                 // 제거된 단면은 집계 제외
       total++;
       let r = designConnection(cond, s, diaAt(i)), okThis: boolean;
-      if (af) { const ac = aiscAutoCorrect(r, cond); r = ac.result; okThis = ac.ok; }  // 최적화ON(S 포함): 옵티마이저
-      else if (cond.mode === 'S') { r = applyStdPlates(r, cond); okThis = aiscCheck(r, cond).govDcr <= 1; }  // S·OFF: 표준형상 고정+검토
+      if (af) { const ac = aiscAutoCorrect(r, cond); r = ac.result; okThis = ac.ok; }  // 최적화ON(S·H 포함): 옵티마이저
+      else if (isStdMode(cond.mode)) { r = applyStdPlates(r, cond); okThis = aiscCheck(r, cond).govDcr <= 1; }  // S·H·OFF: 표준형상 고정+검토
       else okThis = !r.steps.some(st => st.check === 'NG');
       const q = quantityOf(r, cond);
       bolts += q.boltCount; wt += q.plateWeightKg; boltWt += q.boltWeightKg;

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { DesignCondition, DesignResult, Plate, BoltArray } from '../engine/types.ts';
-import { catalogForCond, applyStdPlates } from '../engine/standard/schedule.ts';
+import { catalogForCond, applyStdPlates, isStdMode } from '../engine/standard/schedule.ts';
 import { designConnection } from '../engine/engine.ts';
 import { aiscCheck, aiscAutoCorrect } from '../engine/aisc/compat.ts';
 import { kbcCheck } from '../engine/kbcCheck.ts';
@@ -29,7 +29,7 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
   const isAisc = usesLimitState(cond.designStd);   // AISC·KDS = 한계상태 엔진(aiscCheck)
   // 원본 인덱스(i) 유지 — Custom 직경 지정(diaAt/onSetDia)은 카탈로그 순번 기준.
   // 최적화(자동보정) 기본 ON → 행별 옵티마이저를 memo로 캐시(선택 등 재렌더 시 재계산 방지).
-  const isStd = cond.mode === 'S';
+  const isStd = isStdMode(cond.mode);
   const allRows = useMemo(() => catalogForCond(cond).map((s, i) => {
     let r = designConnection(cond, s, diaAt?.(i));
     if (isStd && !autoFix) r = applyStdPlates(r, cond);     // S·최적화OFF=표준 판 고정
