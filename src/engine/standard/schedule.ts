@@ -119,7 +119,11 @@ export function applyStdPlates(r: DesignResult, cond: DesignCondition): DesignRe
   const f = r.flange;
   const outer = f.outerPlate ? { t: pd.t3, w: pd.a, L: pd.b } : f.outerPlate;
   const inner = f.innerPlate ? { ...f.innerPlate, t: pd.t4, L: pd.b } : f.innerPlate;
-  return { ...r, flange: { ...f, outerPlate: outer, innerPlate: inner } };
+  // 웨브 이음판: 두께 t5 · 높이(춤) wh 표준값 적용(길이는 앱 산정 유지)
+  const wp = r.web.webPlate && pd.t5 > 0
+    ? { ...r.web.webPlate, t: pd.t5, ...(pd.wh > 0 ? { w: pd.wh } : {}) }
+    : r.web.webPlate;
+  return { ...r, flange: { ...f, outerPlate: outer, innerPlate: inner }, web: { ...r.web, webPlate: wp } };
 }
 
 /** S모드 표준 판데이터 보유 여부(플래그용) */
