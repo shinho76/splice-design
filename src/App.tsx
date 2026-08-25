@@ -109,8 +109,8 @@ export default function App() {
       if (hidden.has(s.name)) return;                 // 제거된 단면은 집계 제외
       total++;
       let r = designConnection(cond, s, diaAt(i)), okThis: boolean;
-      if (cond.mode === 'S') { r = applyStdPlates(r, cond); okThis = aiscCheck(r, cond).govDcr <= 1; }  // 표준형상 고정 + DCR검토
-      else if (af) { const ac = aiscAutoCorrect(r, cond); r = ac.result; okThis = ac.ok; }
+      if (af) { const ac = aiscAutoCorrect(r, cond); r = ac.result; okThis = ac.ok; }  // 최적화ON(S 포함): 옵티마이저
+      else if (cond.mode === 'S') { r = applyStdPlates(r, cond); okThis = aiscCheck(r, cond).govDcr <= 1; }  // S·OFF: 표준형상 고정+검토
       else okThis = !r.steps.some(st => st.check === 'NG');
       const q = quantityOf(r, cond);
       bolts += q.boltCount; wt += q.plateWeightKg; boltWt += q.boltWeightKg;
@@ -120,7 +120,7 @@ export default function App() {
   }, [cond, diaAt, autoFix, hidden]);
 
   // 자동보정 ON(AISC) 시 선택 부재를 보정 형상으로 표시
-  const selEff = (usesLimitState(cond.designStd) && autoFix && cond.mode !== 'S' && selected) ? aiscAutoCorrect(selected, cond).result : selected;
+  const selEff = (usesLimitState(cond.designStd) && autoFix && selected) ? aiscAutoCorrect(selected, cond).result : selected;
   const detailQ = useMemo(() => (selEff ? quantityOf(selEff, cond) : null), [selEff, cond]);
 
   const addToProject = (r: DesignResult) => setProject(p => [...p, newItem(r.section, cond)]);

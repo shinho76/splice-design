@@ -32,8 +32,8 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
   const isStd = cond.mode === 'S';
   const allRows = useMemo(() => catalogForCond(cond).map((s, i) => {
     let r = designConnection(cond, s, diaAt?.(i));
-    if (isStd) r = applyStdPlates(r, cond);                 // 표준 판치수 덮어쓰기
-    const ac = (isAisc && autoFix && !isStd) ? aiscAutoCorrect(r, cond) : null;  // S=최적화 안함(표준형상 고정)
+    if (isStd && !autoFix) r = applyStdPlates(r, cond);     // S·최적화OFF=표준 판 고정
+    const ac = (isAisc && autoFix) ? aiscAutoCorrect(r, cond) : null;  // 최적화ON=옵티마이저(판두께·볼트수 조절→중량최소·DCR≤1)
     const dr = ac ? ac.result : r;                       // 표시 형상(최적화 반영)
     const govDcr = ac ? ac.report.govDcr : (isAisc ? aiscCheck(r, cond).govDcr : kbcCheck(r, cond).govDcr);
     const partial = ac && ac.memberLimited ? Math.min(ac.flangeScale, ac.webScale) : null;  // 부분강도 최대비율
