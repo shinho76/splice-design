@@ -32,7 +32,7 @@ const TH = 20;   // 도면 문자높이
 const TB = 24;   // 정보표 문자높이(셀폭 150 내 라벨 수용 — 겹침 방지)
 const FONT = 'CellBody';  // 라벨/주기 문자 스타일 — 표준 도면 맑은고딕(malgun) TrueType, 한글 렌더. 치수문자는 STANDARD. (R12 심볼명: 공백 불가 → CellBody)
 const ARROW = 5.0;                        // exe DIMSTYLE dimasz(41) = _ARCHTICK INSERT scale
-const PW = 0.6;                           // 이음판 선 폭(POLYLINE width) — 얇게(과다 굵기 방지)
+const PW = 0;                             // 이음판 선 폭(POLYLINE width) — 다른 선과 동일 두께(입면·단면 판)
 
 // ── 좌표 변환(회전+평행이동) : 보 deg=0, 기둥 deg=90 ──
 interface Xf { c: number; s: number; ox: number; oy: number; deg: number; }
@@ -311,7 +311,7 @@ export function layout(r: DesignResult, isCol: boolean) {
   const webL = Math.max(webWid, 2 * (base + (wB.n - 1) * 60) + 40) + 40;
   const contentHalf = Math.max(Lpf, webL) / 2;
   const hf = outerW / 2, hw = H / 2 + oT;
-  const ext = Math.max(H, 300), memHalf = Lpf / 2 + ext;
+  const ext = 400, memHalf = Lpf / 2 + ext;   // 이음판 끝에서 파단선까지 연장(고정 400)
   const boxRow = 54;
   if (!isCol) {
     // 보: 평면(상단) → 입면+단면(중단) → 규격표(하단). 표준 도면 BOLT CONNECTION DETAIL 배치.
@@ -534,8 +534,7 @@ export function emitMember(doc: Doc, r: DesignResult, cond: DesignCondition, ox:
     // ── 상단 타이틀 배너 "BOLT CONNECTION DETAIL" + 단면 지정 텍스트(평면·입면·단면 상단) ──
     const bandY = F.frameTop - 130;                                    // 배너 밴드 하단(도면과 구분선)
     pff.line(F.frameL, bandY, F.frameRC, bandY, 'MINI_BOX');           // 배너↔도면 구분선(황)
-    pff.text((F.frameL + F.frameRC) / 2, (F.frameTop + bandY) / 2 - 35, 70, 'BOLT CONNECTION DETAIL', 'MINI_HEAD', { align: 'c' });
-    pff.text((F.frameL + F.frameRC) / 2, bandY - 62, TH * 1.5, desigTop, 'FLG_PL', { align: 'c' });   // 단면 지정(도면 상단)
+    pff.text((F.frameL + F.frameRC) / 2, (F.frameTop + bandY) / 2 - 35, 70, desigTop, 'MINI_HEAD', { align: 'c' });   // 제목 = 단면(재질)
     // ── 규격표(하단, 3행: WEB/FLG(EXT.)/FLG(INT.)) + 외곽 테두리 ──
     drawSpecTable(pff, F.frameL, F.frameRC, L.tableBot + cdy, L.rowH, webS, flgExtS, flgIntS);
     pff.rect(F.frameL, F.frameBot, F.frameRC - F.frameL, F.frameTop - F.frameBot, 'MINI_BOX');
@@ -902,15 +901,17 @@ export function toDXFAll(rows: DesignResult[], cond: DesignCondition, office = f
     }
     return wrap(doc);
   }
-  // 보: 표준 도면 — 시리즈(H-춤)별 세로 열, 좌→우 배치. 각 열 상단 헤더 박스.
-  const COLGAP = 500, ROWGAP = 340, HHDR = 260;
+  // 보: 표준 도면 — 시리즈(H-춤)별 세로 열, 좌→우 배치. 각 열 상단 대형 소제목(H-900). 상단 공통 주기.
+  const COLGAP = 500, ROWGAP = 340, HHDR = 520, HDRH = 380;      // 소제목 밴드(샘플 참고 대형)
+  const NOTE = '* 프로젝트 적용시 반드시 담당 구조 설계자 혹은 건축 구조 기술사에게 검토 후 사용하세요.';
+  p.text(0, 300, 300, NOTE, 'MINI_HEAD', { align: 'l' });        // 상단 공통 주의문구
   let xCur = 0;
   for (const g of groupByDepth(rows)) {
     const uni = uniformFrame(g.items, false);
     const fw = uni.frameR - uni.frameL, fh = uni.frameTop - uni.frameBot;
-    const hTop = -20, hBot = -HHDR + 60;                          // 헤더 박스(열 상단)
+    const hTop = -60, hBot = -HHDR + 60;                          // 소제목 밴드(열 상단)
     p.rect(xCur, hBot, fw, hTop - hBot, 'MINI_BOX');
-    p.text(xCur + fw / 2, (hTop + hBot) / 2 - 80, 160, g.key, 'MINI_HEAD', { align: 'c' });
+    p.text(xCur + fw / 2, (hTop + hBot) / 2 - HDRH / 2, HDRH, g.key, 'MINI_HEAD', { align: 'c' });   // H-900 대형
     let yTop = -HHDR;                                             // 첫 셀 frameTop 위치
     for (const r of g.items) {
       emitMember(doc, r, cond, xCur - uni.frameL, yTop - uni.frameTop, uni, office);
