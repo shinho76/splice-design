@@ -6,8 +6,9 @@ import type { ReactNode } from 'react';
 import type { AiscCheck, BlockCase, BlockShearGeom, NetPath, NetSectionGeom } from '../engine/aisc/types.ts';
 import type { Lang } from '../i18n.ts';
 
-const SHEAR = '#d1495b', TENSION = '#2c6fbb', BLOCKF = 'rgba(245,184,71,.18)', BLOCKS = '#e0a92e',
-  HOLE = '#8b93a0', PLATE = '#9aa1ab', LOAD = '#12a794', INK = '#333';
+// 계산서 테마(보라 accent)와 조화: 인장=보라, 배경=패널, 잉크=currentColor(테마 대응).
+const SHEAR = '#cf3b4f', TENSION = '#7267c4', BLOCKF = 'rgba(184,134,11,.16)', BLOCKS = '#c99a3c',
+  HOLE = '#8b93a0', PLATE = '#9aa1ab', LOAD = '#1f9d84', INK = 'currentColor';
 
 type Pt = [number, number];
 // 다각형 45° 해치(해석적 클리핑) — 어떤 렌더러/인쇄에서도 안전
@@ -68,7 +69,7 @@ function BsPanel({ c, geom }: { c: BlockCase; geom: BlockShearGeom }) {
   }
   return (
     <div style={{ textAlign: 'center' }}>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" style={{ width: '100%', maxWidth: W, height: 'auto', background: '#fff', borderRadius: 5 }}>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" style={{ width: '100%', maxWidth: W, height: 'auto', background: 'var(--panel2)', color: 'var(--fg)', borderRadius: 5 }}>
         <title>{c.path ?? ''}</title>
         {vertical ? (() => {
           // 웨브: 판 좌측선(외측단, Vu 화살표 우측)만 점선, 상·우·하 3면 실선
@@ -82,7 +83,7 @@ function BsPanel({ c, geom }: { c: BlockCase; geom: BlockShearGeom }) {
           <rect x={plate.x} y={plate.y} width={plate.w} height={plate.h} fill="none" stroke={c.gov ? BLOCKS : PLATE} strokeWidth={c.gov ? 1.5 : 1} />
         )}
         {/* WEB 바(내부·부재) */}
-        {wb ? (() => { const a = map(0, wb), b = map(Xj, -wb); return <rect x={Math.min(a[0], b[0])} y={Math.min(a[1], b[1])} width={Math.abs(b[0] - a[0])} height={Math.abs(b[1] - a[1])} fill="#2b3038" opacity={0.5} />; })() : null}
+        {wb ? (() => { const a = map(0, wb), b = map(Xj, -wb); return <rect x={Math.min(a[0], b[0])} y={Math.min(a[1], b[1])} width={Math.abs(b[0] - a[0])} height={Math.abs(b[1] - a[1])} fill="currentColor" opacity={0.28} />; })() : null}
         {/* 끝선(웨브측 판단부) — ±iE 실선. 내부판=내부판 끝선, 부재=웨브 경계 */}
         {iE != null && !vertical ? [iE, -iE].map((ye, k) => { const a = map(0, ye), b = map(Xj, ye); return <line key={`ie${k}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke={BLOCKS} strokeWidth={1.3} />; }) : null}
         {/* 탈락블록 */}
@@ -150,7 +151,7 @@ function NetPanel({ path, geom, govKey }: { path: NetPath; geom: NetSectionGeom;
   const col = gov ? BLOCKS : PLATE;
   return (
     <div style={{ textAlign: 'center' }}>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" style={{ width: '100%', maxWidth: W, height: 'auto', background: '#fff', borderRadius: 5 }}>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" style={{ width: '100%', maxWidth: W, height: 'auto', background: 'var(--panel2)', color: 'var(--fg)', borderRadius: 5 }}>
         <title>{path.label}</title>
         {/* 판 */}
         {(() => { const a = map(0, yTop), b = map(uEnd, yBot); return <rect x={a[0]} y={a[1]} width={b[0] - a[0]} height={b[1] - a[1]} fill="none" stroke={col} strokeWidth={gov ? 1.6 : 1} />; })()}
@@ -164,7 +165,7 @@ function NetPanel({ path, geom, govKey }: { path: NetPath; geom: NetSectionGeom;
         {allLines.map((l, li) => Array.from({ length: l.rows }, (_, k) => {
           const [bx, by] = map(edge + l.off + k * pitch, l.y);
           const isCut = cut(l) && k === l.rows - 1;    // 파단선이 지나는 행
-          return <circle key={`${li}-${k}`} cx={bx} cy={by} r={br} fill={isCut ? 'rgba(44,111,187,.12)' : 'none'} stroke={isCut ? TENSION : HOLE} strokeWidth={isCut ? 1.3 : 0.85} />;
+          return <circle key={`${li}-${k}`} cx={bx} cy={by} r={br} fill={isCut ? 'rgba(114,103,196,.15)' : 'none'} stroke={isCut ? TENSION : HOLE} strokeWidth={isCut ? 1.3 : 0.85} />;
         }))}
         {/* 파단선(파랑 계단/직선) */}
         <polyline points={poly.map(p => p.join(',')).join(' ')} fill="none" stroke={TENSION} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />

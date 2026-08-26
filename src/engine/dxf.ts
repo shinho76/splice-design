@@ -749,12 +749,14 @@ export function toDXF(r: DesignResult, cond: DesignCondition): string {
 
 // ── 상세계산서용 SVG 상세도 : 개별 DXF와 동일 엔티티(emitMember)를 SVG로 렌더(비침습·기하 동일 보장) ──
 //   doc.e(내부 단축 레이어명) 엔티티를 순회 변환. DXF y-up → SVG y-down(Y부호 반전). 배경 white 가독 팔레트.
+// 계산서 화면(테마) 조화용 — CSS 변수로 라이트/다크 자동 대응(ConnectionSVG 레이어색과 통일: 플랜지=ok·웨브=wn·볼트=accent·치수=ng).
+// 실제 DXF 파일 익스포트(레이어 ACI 색상)와는 무관한 미리보기(toSVGDetail) 전용 스타일.
 const SVG_STYLE: Record<string, { s: string; w: number; dash?: boolean; head?: boolean }> = {
-  MAIN: { s: '#33383f', w: 1 }, HIDDEN: { s: '#8b93a0', w: 0.9, dash: true },
-  FLG_PL: { s: '#1a7a3e', w: 1.4 }, WEB_PL: { s: '#1668a8', w: 1.4 },   // 플랜지=녹/웨브=청(앱 3D 범례 정합)
-  BOLT: { s: '#33383f', w: 0.8 }, BOLTG: { s: '#9aa1ab', w: 0.8 }, VER_BOLT: { s: '#33383f', w: 0.8 },
-  DIM: { s: '#c0392b', w: 0.7 }, SECTION: { s: '#b5651d', w: 1 },
-  MINI_BOX: { s: '#555', w: 1 }, MINI_HEAD: { s: '#1a7a3e', w: 1, head: true }, TEXT: { s: '#333', w: 1, head: true }, NOTE: { s: '#555', w: 1, head: true },
+  MAIN: { s: 'var(--fg)', w: 1 }, HIDDEN: { s: 'var(--muted)', w: 0.9, dash: true },
+  FLG_PL: { s: 'var(--ok)', w: 1.4 }, WEB_PL: { s: 'var(--wn)', w: 1.4 },
+  BOLT: { s: 'var(--fg)', w: 0.8 }, BOLTG: { s: 'var(--muted)', w: 0.8 }, VER_BOLT: { s: 'var(--accent)', w: 0.8 },
+  DIM: { s: 'var(--ng)', w: 0.7 }, SECTION: { s: 'var(--wn)', w: 1 },
+  MINI_BOX: { s: 'var(--muted)', w: 1 }, MINI_HEAD: { s: 'var(--ok)', w: 1, head: true }, TEXT: { s: 'var(--fg)', w: 1, head: true }, NOTE: { s: 'var(--muted)', w: 1, head: true },
 };
 const decodeEnc = (s: string) => s.replace(/\\U\+([0-9A-Fa-f]{4})/g, (_, h) => String.fromCodePoint(parseInt(h, 16)));
 const xmlEsc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
@@ -767,7 +769,7 @@ export function toSVGDetail(r: DesignResult, cond: DesignCondition): string {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   const Y = (y: number) => -y;                                   // DXF y-up → SVG y-down
   const acc = (x: number, y: number) => { if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; };
-  const st = (lay: string) => SVG_STYLE[lay] ?? { s: '#33383f', w: 1 };
+  const st = (lay: string) => SVG_STYLE[lay] ?? { s: 'var(--fg)', w: 1 };
   const dashAttr = (sty: { dash?: boolean }, hidden: boolean) => (sty.dash || hidden) ? ' stroke-dasharray="7 4"' : '';
 
   // ── 엔티티 파서(그룹코드 평면배열) ──
@@ -833,7 +835,7 @@ export function toSVGDetail(r: DesignResult, cond: DesignCondition): string {
   }
 
   const pad = 40, w = maxX - minX + 2 * pad, h = maxY - minY + 2 * pad;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${(minX - pad).toFixed(1)} ${(minY - pad).toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}" width="100%" style="max-width:100%;height:auto;background:#fff">\n${body.join('\n')}\n</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${(minX - pad).toFixed(1)} ${(minY - pad).toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}" width="100%" style="max-width:100%;height:auto;background:var(--panel2)">\n${body.join('\n')}\n</svg>`;
 }
 // 다중 배치 : 레거시 이음상세 툴 규약(도면 1건=도곽 시트) 참고.
 // 전 단면의 최대 도곽으로 균일 셀을 만들고 각 상세를 셀 중앙 배치 → 정렬된 시트세트(그리드).
