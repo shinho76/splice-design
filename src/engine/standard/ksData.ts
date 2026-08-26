@@ -144,6 +144,9 @@ export const KS_ALL: KsEntry[] = ENTRIES;
 /** 단면명 → 계열(WIDE/MIDDLE/NARROW) 조회 (결과표 계열 구분밴드용) */
 const CLS_MAP = new Map<string, KsClass>(ENTRIES.map(e => [e.name, e.cls]));
 export const ksClassOf = (name: string): KsClass | undefined => CLS_MAP.get(name);
+/** 단면명 → KS LABEL(공칭 호칭 "nH×nB") 조회 (결과표 병합 열용) */
+const LBL_MAP = new Map<string, string>(ENTRIES.map(e => [e.name, `${e.nH}×${e.nB}`]));
+export const ksLabelOf = (name: string): string | undefined => LBL_MAP.get(name);
 /** 계열 밴드 표기 라벨 */
 export const ksClassLabel = (c: KsClass): string =>
   c === 'WIDE' ? 'WIDE FLANGE (광폭)' : c === 'MIDDLE' ? 'MIDDLE FLANGE (중폭)' : 'NARROW FLANGE (세폭)';

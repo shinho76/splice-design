@@ -1,7 +1,7 @@
 import { useState, useMemo, Fragment } from 'react';
 import type { DesignCondition, DesignResult, Plate, BoltArray } from '../engine/types.ts';
 import { catalogForCond, applyStdPlates, isStdMode, ksUsedHB } from '../engine/standard/schedule.ts';
-import { ksClassOf, ksClassLabel } from '../engine/standard/ksData.ts';
+import { ksClassOf, ksClassLabel, ksLabelOf } from '../engine/standard/ksData.ts';
 import { designConnection } from '../engine/engine.ts';
 import { aiscCheck, aiscAutoCorrect } from '../engine/aisc/compat.ts';
 import { kbcCheck } from '../engine/kbcCheck.ts';
@@ -59,6 +59,7 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
     <div className="tablewrap">
       <table className="design-table">
         <colgroup>
+          {isK && <col style={{ width: 78 }} />}
           <col style={{ width: 138 }} /><col style={{ width: 34 }} /><col style={{ width: 32 }} /><col style={{ width: 40 }} />
           <col style={{ width: 46 }} /><col style={{ width: 44 }} />
           <col style={{ width: dbW }} />
@@ -68,6 +69,7 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
         </colgroup>
         <thead>
           <tr>
+            {isK && <th rowSpan={2} className="g-info" style={{ textAlign: 'center' }}>KS<br /><span className="unit">LABEL</span></th>}
             <th rowSpan={2} className="col-name g-info">
               <span className="cn-head">{L('단면치수', 'Section')}</span>
               <span className="col-tools">
@@ -111,16 +113,26 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
             const cls = isK ? ksClassOf(s.name) : undefined;
             const prevCls = isK && idx > 0 ? ksClassOf(rows[idx - 1].s.name) : undefined;
             const showBand = !!cls && cls !== prevCls;
+            // K 모드: KS LABEL(공칭 호칭) 병합 — 연속 동일 호칭의 첫 행에만 rowSpan 셀 출력
+            const ksLabel = isK ? ksLabelOf(s.name) : undefined;
+            const labelFirst = isK && ksLabel !== (idx > 0 ? ksLabelOf(rows[idx - 1].s.name) : undefined);
+            let labelSpan = 1;
+            if (labelFirst) for (let j = idx + 1; j < rows.length && ksLabelOf(rows[j].s.name) === ksLabel; j++) labelSpan++;
             return (
               <Fragment key={r.section}>
               {showBand && (
                 <tr className="cls-band">
-                  <td colSpan={15} style={{ fontWeight: 800, textAlign: 'left', padding: '5px 10px', fontSize: '11.5px', letterSpacing: '0.4px', background: 'rgba(127,127,127,0.16)' }}>
+                  <td colSpan={16} style={{ fontWeight: 800, textAlign: 'left', padding: '5px 10px', fontSize: '11.5px', letterSpacing: '0.4px', background: 'rgba(127,127,127,0.16)' }}>
                     {ksClassLabel(cls!)}
                   </td>
                 </tr>
               )}
               <tr onClick={() => onSelect(dr)} className={`${newSeries ? 'series-top' : ''}${sel ? ' row-sel' : ''}`}>
+                {isK && labelFirst && (
+                  <td rowSpan={labelSpan} className="ks-label" style={{ textAlign: 'center', verticalAlign: 'middle', fontWeight: 500, background: 'rgba(127,127,127,0.06)', borderRight: '0.5px solid var(--border, #ccc)' }}>
+                    {ksLabel}
+                  </td>
+                )}
                 <td className="col-name">
                   <input type="checkbox" className="row-chk" checked={checked.has(s.name)}
                     title={L('삭제 선택', 'Mark for deletion')} onClick={e => e.stopPropagation()}
