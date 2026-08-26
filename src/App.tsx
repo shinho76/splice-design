@@ -92,11 +92,15 @@ export default function App() {
 
   // Custom 볼트직경 해석 : 해당 행 이상에서 가장 가까운 지정값(위 행을 따름)
   const diaAt = useCallback((i: number): number | undefined => {
-    if (isStdMode(cond.mode)) return standardDiaAt(cond, i);
-    if (boltMode !== 'Custom') return undefined;
-    let bestK: number | undefined;
-    for (const k of Object.keys(boltOv).map(Number)) if (k <= i && (bestK === undefined || k > bestK)) bestK = k;
-    return bestK === undefined ? undefined : boltOv[bestK];
+    const stdDia = isStdMode(cond.mode) ? standardDiaAt(cond, i) : undefined;   // S·H·K 표준 볼트직경
+    // 지정 가능 모드: A(엔진기본에서 지정) · K(S규칙값에서 지정). S·H는 표준 강제.
+    const allowCustom = cond.mode === 'K' || !isStdMode(cond.mode);
+    if (boltMode === 'Custom' && allowCustom) {
+      let bestK: number | undefined;
+      for (const k of Object.keys(boltOv).map(Number)) if (k <= i && (bestK === undefined || k > bestK)) bestK = k;
+      return bestK === undefined ? stdDia : boltOv[bestK];   // 지정 없는 행: K=S규칙값 / A=엔진기본(undefined)
+    }
+    return stdDia;   // 표준(Default): S·H·K 표준값 / A=엔진기본(undefined)
   }, [boltMode, boltOv, cond.mode, cond.member]);
   const setDiaAt = (i: number, d: number) => setBoltOv(o => ({ ...o, [i]: d }));
 
@@ -324,7 +328,7 @@ export default function App() {
               <div className="kpi k3"><span className="k">{L('고력볼트', 'Bolts')}</span> <span className="v num">{nf(stats.bolts)}<small> {L('본', 'ea')}</small> / {(stats.boltWt / 1000).toFixed(2)}<small> ton</small></span> <span className="d">{cond.bolt}</span></div>
               <div className="kpi k4"><span className="k">{L('이음판', 'Plates')}</span> <span className="v num">{(stats.wt / 1000).toFixed(2)}<small> ton</small></span></div>
             </div>
-            <div className="cgrid"><ResultTable cond={cond} onSelect={setSelected} onView3D={setView3D} custom={boltMode === 'Custom'} diaAt={diaAt} onSetDia={setDiaAt} selectedSection={selected?.section} autoFix={autoFix} hidden={hidden} onHide={hideSection} onResetHidden={resetHidden} onDcrClick={setDcrView} /></div>
+            <div className="cgrid"><ResultTable cond={cond} onSelect={setSelected} onView3D={setView3D} custom={boltMode === 'Custom' && (cond.mode === 'K' || !isStdMode(cond.mode))} diaAt={diaAt} onSetDia={setDiaAt} selectedSection={selected?.section} autoFix={autoFix} hidden={hidden} onHide={hideSection} onResetHidden={resetHidden} onDcrClick={setDcrView} /></div>
           </div>
 
           <aside className="cdetail">
