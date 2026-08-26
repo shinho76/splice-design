@@ -8,9 +8,10 @@ import type { HSection, Member, DesignCondition, DesignResult } from '../types.t
 import { buildSection, catalogFor } from '../sections.ts';
 import { STD_PLATE_BEAM, STD_PLATE_COLUMN } from './plateData.ts';
 import { HD_BEAM, HD_COLUMN, HD_PLATE } from './hyundaiData.ts';
+import { KS_BEAM, KS_COLUMN } from './ksData.ts';
 
-/** 표준(S·H) 모드 여부 */
-export const isStdMode = (m?: string): boolean => m === 'S' || m === 'H';
+/** 표준(S·H·K) 모드 여부 — 표준 부재리스트+표준 볼트직경 사용. 판 오버라이드는 S·H만(applyStdPlates). */
+export const isStdMode = (m?: string): boolean => m === 'S' || m === 'H' || m === 'K';
 
 export type ArrType = 'A' | 'B' | 'C';
 export interface StdEntry { name: string; dia: number; type?: ArrType; }
@@ -91,9 +92,22 @@ export const STD_COLUMN: StdEntry[] = [
 export const stdSchedule = (member: Member): StdEntry[] => (member === '기둥' ? STD_COLUMN : STD_BEAM);
 /** 현대제철 스케줄(부재별) */
 export const hdSchedule = (member: Member): StdEntry[] => (member === '기둥' ? HD_COLUMN : HD_BEAM);
-/** 활성 모드(S=표준도 / H=현대제철) 스케줄 */
+/** KS D3502:2022 스케줄(부재별) — 기둥=WIDE, 보=MIDDLE+NARROW */
+export const ksSchedule = (member: Member): StdEntry[] => (member === '기둥' ? KS_COLUMN : KS_BEAM);
+/** 활성 모드(S=표준도 / H=현대제철 / K=KS전단면) 스케줄 */
 export const activeSchedule = (cond: DesignCondition): StdEntry[] =>
-  cond.mode === 'H' ? hdSchedule(cond.member) : stdSchedule(cond.member);
+  cond.mode === 'H' ? hdSchedule(cond.member)
+    : cond.mode === 'K' ? ksSchedule(cond.member)
+    : stdSchedule(cond.member);
+
+/** K 모드 — S·H 표준도 채택단면을 실치수 H×B 키로 보유(결과표 굵은글씨 표기용).
+ *  KS2022 웹두께 개정(6.5→7 등)으로 단면명이 달라져도 동일 H×B면 채택으로 인정. */
+const hbKey = (name: string): string => { const m = name.match(/H-(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)/); return m ? `${m[1]}_${m[2]}` : name; };
+export const KS_USED: Set<string> = new Set(
+  [...STD_BEAM, ...STD_COLUMN, ...HD_BEAM, ...HD_COLUMN].map(e => hbKey(e.name))
+);
+/** 실치수 H,B가 S·H 채택단면인지 */
+export const ksUsedHB = (H: number, B: number): boolean => KS_USED.has(`${H}_${B}`);
 
 /** 표준 단면(HSection[]) — 카탈로그 외 단면도 buildSection으로 생성 */
 const _cache = new Map<string, HSection>();
@@ -137,7 +151,8 @@ export function applyStdPlates(r: DesignResult, cond: DesignCondition): DesignRe
   return { ...r, flange: { ...f, outerPlate: outer, innerPlate: inner }, web: { ...r.web, webPlate: wp } };
 }
 
-/** H(현대제철): 플랜지 외판(o)·내판(i) t×W×L 적용. 웨브판은 앱 산정 유지. */
+/** H(현대제철): 플랜지 외판(o)·내판(i) t×W×L 적용. 볼트배치 m×n은 데이터 보유하나
+ *  현대제철 표준도가 스케줄 전용(볼트 좌표·게이지 미수록)이라 도면정합 override는 미적용. */
 function applyHdPlates(r: DesignResult, cond: DesignCondition): DesignResult {
   const pd = HD_PLATE[stdMatKey(cond)]?.[r.section];
   if (!pd) return r;

@@ -16,19 +16,19 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
   const setAlpha = (p: number) => set('strengthRatio', Math.min(100, Math.max(10, p)) / 100);
 
   const mode = cond.mode ?? 'A';
-  const isS = mode === 'S' || mode === 'H';   // 표준(S)·현대제철(H) 공통 UI
+  const isS = mode === 'S' || mode === 'H' || mode === 'K';   // 표준(S)·현대제철(H)·KS전단면(K) 공통 UI
   const stdMat = cond.steel === 'SHN275' ? '275' : '355';   // 표준 재질(275계/355계)
-  const pickMode = (m: 'A' | 'S' | 'H') => {
-    if (m === 'S' || m === 'H') onChange({ ...cond, mode: m, profile: 'H', jointType: '마찰', steel: 'SHN355', plateSteel: 'SM355' });
+  const pickMode = (m: 'A' | 'S' | 'H' | 'K') => {
+    if (m === 'S' || m === 'H' || m === 'K') onChange({ ...cond, mode: m, profile: 'H', jointType: '마찰', steel: 'SHN355', plateSteel: 'SM355' });
     else onChange({ ...cond, mode: m });
   };
 
   return (
     <div className="filterbar">
-      {/* 구분 : A(현행) / S(표준도) / H(향후) */}
+      {/* 구분 : A(현행) / S(표준도) / H(현대제철) / K(KS D3502:2022 전단면) */}
       <div className="fgrp">
-        <Seg label={L('구분', 'Mode')} value={mode} opts={['A', 'S', 'H']}
-          optLabels={['A', 'S', 'H']} onPick={v => pickMode(v as 'A' | 'S' | 'H')} />
+        <Seg label={L('구분', 'Mode')} value={mode} opts={['A', 'S', 'H', 'K']}
+          optLabels={['A', 'S', 'H', 'K']} onPick={v => pickMode(v as 'A' | 'S' | 'H' | 'K')} />
       </div>
 
       {isS ? (

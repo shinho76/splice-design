@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { DesignCondition, DesignResult, Plate, BoltArray } from '../engine/types.ts';
-import { catalogForCond, applyStdPlates, isStdMode } from '../engine/standard/schedule.ts';
+import { catalogForCond, applyStdPlates, isStdMode, ksUsedHB } from '../engine/standard/schedule.ts';
 import { designConnection } from '../engine/engine.ts';
 import { aiscCheck, aiscAutoCorrect } from '../engine/aisc/compat.ts';
 import { kbcCheck } from '../engine/kbcCheck.ts';
@@ -30,6 +30,7 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
   // 원본 인덱스(i) 유지 — Custom 직경 지정(diaAt/onSetDia)은 카탈로그 순번 기준.
   // 최적화(자동보정) 기본 ON → 행별 옵티마이저를 memo로 캐시(선택 등 재렌더 시 재계산 방지).
   const isStd = isStdMode(cond.mode);
+  const isK = cond.mode === 'K';   // KS전단면 모드 — S·H 채택단면 굵게
   const allRows = useMemo(() => catalogForCond(cond).map((s, i) => {
     let r = designConnection(cond, s, diaAt?.(i));
     if (isStd && !autoFix) r = applyStdPlates(r, cond);     // S·최적화OFF=표준 판 고정
@@ -112,7 +113,8 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
                     title={L('삭제 선택', 'Mark for deletion')} onClick={e => e.stopPropagation()}
                     onChange={e => { e.stopPropagation(); toggleCheck(s.name); }} />
                   <span className={`st-dot${ng ? ' ng' : ''}`} title={ng ? '재검토' : '적합'} />
-                  <button className="cn-txt" title={s.label ? `${s.label} · ${r.section}` : L('선택 + 3D 형상 보기', 'Select + view 3D shape')} onClick={e => { e.stopPropagation(); onSelect(dr); onView3D(dr); }}>
+                  <button className="cn-txt" style={isK ? { fontWeight: ksUsedHB(s.H, s.B) ? 800 : 400 } : undefined}
+                    title={isK && ksUsedHB(s.H, s.B) ? `${r.section} · S·H 표준 채택단면` : (s.label ? `${s.label} · ${r.section}` : L('선택 + 3D 형상 보기', 'Select + view 3D shape'))} onClick={e => { e.stopPropagation(); onSelect(dr); onView3D(dr); }}>
                     {s.label
                       ? <span className="cn-two"><span className="cn-nom">{s.label}</span><span className="cn-mm">{r.section}</span></span>
                       : r.section}</button>
