@@ -136,6 +136,8 @@ export const KS_BEAM: KsEntry[] = [
   ...ENTRIES.filter(e => e.cls === 'MIDDLE').sort(bySize),
   ...ENTRIES.filter(e => e.cls === 'NARROW').sort(bySize),
 ];
+/** 전 단면(보·기둥 공통) — WIDE→MIDDLE→NARROW 순, 각 계열 오름차순. K 모드 부재리스트. */
+export const KS_FULL: KsEntry[] = [...KS_COLUMN, ...KS_BEAM];
 /** 전체(참조용) */
 export const KS_ALL: KsEntry[] = ENTRIES;
 

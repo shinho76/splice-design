@@ -8,7 +8,7 @@ import type { HSection, Member, DesignCondition, DesignResult } from '../types.t
 import { buildSection, catalogFor } from '../sections.ts';
 import { STD_PLATE_BEAM, STD_PLATE_COLUMN } from './plateData.ts';
 import { HD_BEAM, HD_COLUMN, HD_PLATE } from './hyundaiData.ts';
-import { KS_BEAM, KS_COLUMN } from './ksData.ts';
+import { KS_FULL } from './ksData.ts';
 
 /** 표준(S·H·K) 모드 여부 — 표준 부재리스트+표준 볼트직경 사용. 판 오버라이드는 S·H만(applyStdPlates). */
 export const isStdMode = (m?: string): boolean => m === 'S' || m === 'H' || m === 'K';
@@ -92,8 +92,8 @@ export const STD_COLUMN: StdEntry[] = [
 export const stdSchedule = (member: Member): StdEntry[] => (member === '기둥' ? STD_COLUMN : STD_BEAM);
 /** 현대제철 스케줄(부재별) */
 export const hdSchedule = (member: Member): StdEntry[] => (member === '기둥' ? HD_COLUMN : HD_BEAM);
-/** KS D3502:2022 스케줄(부재별) — 기둥=WIDE, 보=MIDDLE+NARROW */
-export const ksSchedule = (member: Member): StdEntry[] => (member === '기둥' ? KS_COLUMN : KS_BEAM);
+/** KS D3502:2022 스케줄 — 보·기둥 공통 전 단면(WIDE→MIDDLE→NARROW). 부재는 설계(휨/압축)만 좌우. */
+export const ksSchedule = (_member: Member): StdEntry[] => KS_FULL;
 /** 활성 모드(S=표준도 / H=현대제철 / K=KS전단면) 스케줄 */
 export const activeSchedule = (cond: DesignCondition): StdEntry[] =>
   cond.mode === 'H' ? hdSchedule(cond.member)
