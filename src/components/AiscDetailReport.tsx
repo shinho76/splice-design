@@ -275,6 +275,7 @@ export default function AiscDetailReport({ result, cond, onClose }: { result: De
           </p>
         </div>
 
+        <div className="doc-body">
         {/* 0. 설계조건 + 접합 상세도 */}
         <section className="doc-sec">
           <h3><span className="sec-no">0.</span>{L('설계조건 · 접합 상세도', 'Design conditions & connection detail')}</h3>
@@ -399,6 +400,7 @@ export default function AiscDetailReport({ result, cond, onClose }: { result: De
             'Prepared to AISC 360-16 (15th ed.), LRFD. φ = 0.90 (yielding), 0.75 (rupture / bolt shear / bearing / block shear), 0.90 (compression). Net areas use the effective-hole allowance d + 2 mm for standard holes plus 2 mm damage (B4.3b). Block shear evaluates ')}
           φR<sub>n</sub> = 0.75·[min(0.6F<sub>u</sub>A<sub>nv</sub>, 0.6F<sub>y</sub>A<sub>gv</sub>) + U<sub>bs</sub>F<sub>u</sub>A<sub>nt</sub>]{L('를 산정한다.', ' for every element case.')}
         </p>
+        </div>
       </div>
     </div>
   );
