@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import type { DesignCondition, DesignResult, Plate, BoltArray } from '../engine/types.ts';
 import { catalogForCond, applyStdPlates, isStdMode, ksUsedHB } from '../engine/standard/schedule.ts';
+import { ksClassOf, ksClassLabel } from '../engine/standard/ksData.ts';
 import { designConnection } from '../engine/engine.ts';
 import { aiscCheck, aiscAutoCorrect } from '../engine/aisc/compat.ts';
 import { kbcCheck } from '../engine/kbcCheck.ts';
@@ -106,8 +107,20 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
             const inner = fmtPlate(dr.flange.innerPlate);
             const ng = govDcr != null ? govDcr > 1.0 : r.steps.some(st => st.check === 'NG');
             const sel = r.section === selectedSection;
+            // K 모드: 계열(WIDE/MIDDLE/NARROW) 전환 시 구분 밴드 삽입
+            const cls = isK ? ksClassOf(s.name) : undefined;
+            const prevCls = isK && idx > 0 ? ksClassOf(rows[idx - 1].s.name) : undefined;
+            const showBand = !!cls && cls !== prevCls;
             return (
-              <tr key={r.section} onClick={() => onSelect(dr)} className={`${newSeries ? 'series-top' : ''}${sel ? ' row-sel' : ''}`}>
+              <Fragment key={r.section}>
+              {showBand && (
+                <tr className="cls-band">
+                  <td colSpan={15} style={{ fontWeight: 800, textAlign: 'left', padding: '5px 10px', fontSize: '11.5px', letterSpacing: '0.4px', background: 'rgba(127,127,127,0.16)' }}>
+                    {ksClassLabel(cls!)}
+                  </td>
+                </tr>
+              )}
+              <tr onClick={() => onSelect(dr)} className={`${newSeries ? 'series-top' : ''}${sel ? ' row-sel' : ''}`}>
                 <td className="col-name">
                   <input type="checkbox" className="row-chk" checked={checked.has(s.name)}
                     title={L('삭제 선택', 'Mark for deletion')} onClick={e => e.stopPropagation()}
@@ -150,6 +163,7 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
                 <td>{dr.web.Pc ?? <span className="dash">—</span>}</td>
                 <td>{fmtPlate(dr.web.webPlate)}</td>
               </tr>
+              </Fragment>
             );
           })}
         </tbody>
