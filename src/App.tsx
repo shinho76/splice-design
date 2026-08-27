@@ -27,7 +27,7 @@ import { downloadCalcSheet, type SheetRow } from './engine/calcSheet.ts';
 import { quantityOf } from './engine/quantity.ts';
 
 const DEFAULT: DesignCondition = {
-  member: '보', jointType: '마찰', steel: 'SM355', plateSteel: 'SM355', bolt: 'F10T', strengthRatio: 1.0, sectionType: '압연',   // 보 기본 강도비 100%(기둥 전환 시 80%로 자동, FilterBar setMember)
+  mode: 'K', profile: 'H', member: '보', jointType: '마찰', steel: 'SHN355', plateSteel: 'SM355', bolt: 'F10T', strengthRatio: 1.0, sectionType: '압연',   // 앱 초기 접속 시 K모드 기본. 보 기본 강도비 100%(기둥 전환 시 80%로 자동, FilterBar setMember)
   designStd: 'AISC', noStagger: false, equalPlateT: true,
 };
 const nf = (v?: number) => v == null ? '—' : v.toLocaleString('en-US');
