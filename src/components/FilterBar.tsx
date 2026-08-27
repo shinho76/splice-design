@@ -1,9 +1,11 @@
 import type { DesignCondition, Member, JointType, SteelGrade, BoltGrade } from '../engine/types.ts';
-import { nearestPlate, STEEL, steelLabel } from '../engine/materials.ts';
+import { nearestPlate, STEEL, steelLabel, BOLT_MAT } from '../engine/materials.ts';
 import { useLang } from '../i18n.ts';
 
 /** 옵션 라벨 "재질 / Fy / Fu"(MPa, 두께≤40mm 기준) — 예 "SHN275 / 275 / 400" */
 const matLabel = (s: SteelGrade): string => `${steelLabel(s)} / ${STEEL[s].Fy_le40} / ${STEEL[s].Fu}`;
+/** 볼트 옵션 라벨 "표기 / Fy / Fu"(MPa) — 예 "F10T, S10T / 900 / 1000" */
+const boltLabel = (disp: string, g: BoltGrade): string => `${disp} / ${BOLT_MAT[g].Fy} / ${BOLT_MAT[g].Fu}`;
 
 const PRESETS = [100, 95, 90, 85, 80, 75, 70, 65, 60, 50];
 
@@ -17,6 +19,8 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
     onChange({ ...cond, [k]: v });
   const pct = Math.round(cond.strengthRatio * 100);
   const setAlpha = (p: number) => set('strengthRatio', Math.min(100, Math.max(10, p)) / 100);
+  // 부재 전환 시 강도비 α 기본값 자동 적용 — 보=100%, 기둥=80%(사용자가 이후 직접 조정 가능)
+  const setMember = (v: Member) => onChange({ ...cond, member: v, strengthRatio: v === '보' ? 1.0 : 0.8 });
 
   const mode = cond.mode ?? 'A';
   const isS = mode === 'S' || mode === 'H' || mode === 'K';   // 표준(S)·현대제철(H)·KS전단면(K) 공통 UI
@@ -63,7 +67,7 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
 
       {/* ① 기본 조건 (부재→접합) */}
       <div className="fgrp">
-        <Seg label={L('부재', 'Member')} value={cond.member} opts={['보', '기둥']} optLabels={[L('보', 'Beam'), L('기둥', 'Column')]} onPick={v => set('member', v as Member)} />
+        <Seg label={L('부재', 'Member')} value={cond.member} opts={['보', '기둥']} optLabels={[L('보', 'Beam'), L('기둥', 'Column')]} onPick={v => setMember(v as Member)} />
         <Seg label={L('접합', 'Joint')} value={cond.jointType} opts={['마찰', '지압']} optLabels={[L('마찰', 'Slip'), L('지압', 'Bearing')]} onPick={v => set('jointType', v as JointType)} />
       </div>
 
@@ -108,10 +112,10 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
           <label>{L('볼트', 'Bolt')}</label>
           <select value={cond.bolt} onChange={e => set('bolt', e.target.value as BoltGrade)}>
             <optgroup label="KS B 1010">
-              <option value="F10T">F10T, S10T</option><option value="F13T">F13T</option>
+              <option value="F10T">{boltLabel('F10T, S10T', 'F10T')}</option><option value="F13T">{boltLabel('F13T', 'F13T')}</option>
             </optgroup>
             <optgroup label="ASTM F3125">
-              <option value="A325">A325, F1852</option><option value="A490">A490, F2280</option>
+              <option value="A325">{boltLabel('A325, F1852', 'A325')}</option><option value="A490">{boltLabel('A490, F2280', 'A490')}</option>
             </optgroup>
           </select>
         </div>
@@ -124,7 +128,6 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
         <Seg label={L('엇모', 'Stagger')} value={(cond.noStagger ?? false) ? '제외' : '포함'} opts={['포함', '제외']} optLabels={[L('포함', 'On'), L('제외', 'Off')]} onPick={v => set('noStagger', v === '제외')} />
         <Seg label={L('이음판두께', 'Plate t')} value={(cond.equalPlateT ?? true) ? '동일' : '개별'} opts={['동일', '개별']} optLabels={[L('동일', 'Equal'), L('개별', 'Indiv.')]} onPick={v => set('equalPlateT', v === '동일')} />
         {(cond.designStd === 'AISC' || cond.designStd === 'KDS') && <Seg label={L('판 분담', 'Plate share')} value={(cond.plateShare ?? '5050') === 'area' ? '면적' : '50:50'} opts={['50:50', '면적']} optLabels={[L('50:50', '50:50'), L('면적비례', 'By area')]} onPick={v => set('plateShare', v === '면적' ? 'area' : '5050')} />}
-        {(cond.designStd === 'AISC' || cond.designStd === 'KDS') && <Seg label={L('블록전단', 'Block shear')} value={(cond.bsShare ?? 'balanced') === 'full' ? '전체력' : '균형'} opts={['균형', '전체력']} optLabels={[L('균형', 'Balanced'), L('전체력', 'Full')]} onPick={v => set('bsShare', v === '전체력' ? 'full' : 'balanced')} />}
       </div>
 
       {/* ④ 설계 파라미터 (강도비→갭) */}
