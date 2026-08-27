@@ -1,6 +1,9 @@
 import type { DesignCondition, Member, JointType, SteelGrade, BoltGrade } from '../engine/types.ts';
-import { nearestPlate } from '../engine/materials.ts';
+import { nearestPlate, STEEL, steelLabel } from '../engine/materials.ts';
 import { useLang } from '../i18n.ts';
+
+/** 옵션 라벨 "재질 / Fy / Fu"(MPa, 두께≤40mm 기준) — 예 "SHN275 / 275 / 400" */
+const matLabel = (s: SteelGrade): string => `${steelLabel(s)} / ${STEEL[s].Fy_le40} / ${STEEL[s].Fu}`;
 
 const PRESETS = [100, 95, 90, 85, 80, 75, 70, 65, 60, 50];
 
@@ -17,6 +20,7 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
 
   const mode = cond.mode ?? 'A';
   const isS = mode === 'S' || mode === 'H' || mode === 'K';   // 표준(S)·현대제철(H)·KS전단면(K) 공통 UI
+  const isSH = mode === 'S' || mode === 'H';   // 재질 275/355 프리셋은 S·H만(K는 H형강/이음판 select에서 자유 선택)
   const stdMat = cond.steel === 'SHN275' ? '275' : '355';   // 표준 재질(275계/355계)
   const pickMode = (m: 'A' | 'S' | 'H' | 'K') => {
     if (m === 'S' || m === 'H' || m === 'K') onChange({ ...cond, mode: m, profile: 'H', jointType: '마찰', steel: 'SHN355', plateSteel: 'SM355' });
@@ -31,14 +35,14 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
           optLabels={['A', 'S', 'H', 'K']} onPick={v => pickMode(v as 'A' | 'S' | 'H' | 'K')} />
       </div>
 
-      {isS ? (
-        /* 표준도(S): 재질 275계/355계 2택 (부재/이음판 강종 동시 설정) */
+      {isSH ? (
+        /* 표준도(S)·현대제철(H): 재질 275계/355계 2택 (부재/이음판 강종 동시 설정) */
         <div className="fgrp">
           <Seg label={L('재질', 'Grade')} value={stdMat} opts={['275', '355']}
             optLabels={['SHN275/SS275', 'SHN355/SM355']}
             onPick={v => onChange({ ...cond, steel: v === '275' ? 'SHN275' : 'SHN355', plateSteel: v === '275' ? 'SS275' : 'SM355' })} />
         </div>
-      ) : (
+      ) : mode === 'K' ? null : (   /* K: 재질 프리셋 없음 — 아래 H형강·이음판 select에서 직접 선택 */
         <>
           {/* Ⓐ 형강 프로파일 (H형강 / W형강) */}
           <div className="fgrp">
@@ -70,16 +74,16 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
           {/* H형강 재질 선택 시 이음판은 유사재질(없으면 Fy 최근접)로 자동 선택 */}
           <select value={cond.steel} onChange={e => { const v = e.target.value as SteelGrade; onChange({ ...cond, steel: v, plateSteel: nearestPlate(v) }); }}>
             <optgroup label="KS D3503">
-              <option value="SS275">SS275</option>
+              <option value="SS275">{matLabel('SS275')}</option>
             </optgroup>
             <optgroup label="KS D3515">
-              <option value="SM275">SM275</option><option value="SM355">SM355</option><option value="SM420">SM420</option><option value="SM460">SM460</option>
+              <option value="SM275">{matLabel('SM275')}</option><option value="SM355">{matLabel('SM355')}</option><option value="SM420">{matLabel('SM420')}</option><option value="SM460">{matLabel('SM460')}</option>
             </optgroup>
             <optgroup label="KS D3866">
-              <option value="SHN275">SHN275</option><option value="SHN355">SHN355</option><option value="SHN400">SHN400</option><option value="SHN490">SHN490</option>
+              <option value="SHN275">{matLabel('SHN275')}</option><option value="SHN355">{matLabel('SHN355')}</option><option value="SHN400">{matLabel('SHN400')}</option><option value="SHN490">{matLabel('SHN490')}</option>
             </optgroup>
             <optgroup label="ASTM">
-              <option value="A36">A36</option><option value="A572">A572 Gr.50</option><option value="A992">A992</option><option value="A913_50">A913 Gr.50</option>
+              <option value="A36">{matLabel('A36')}</option><option value="A572">{matLabel('A572')}</option><option value="A992">{matLabel('A992')}</option><option value="A913_50">{matLabel('A913_50')}</option>
             </optgroup>
           </select>
         </div>
@@ -87,16 +91,16 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
           <label>{L('이음판', 'Plate')}</label>
           <select value={cond.plateSteel ?? cond.steel} onChange={e => set('plateSteel', e.target.value as SteelGrade)}>
             <optgroup label="KS D3503">
-              <option value="SS275">SS275</option>
+              <option value="SS275">{matLabel('SS275')}</option>
             </optgroup>
             <optgroup label="KS D3515">
-              <option value="SM275">SM275</option><option value="SM355">SM355</option><option value="SM420">SM420</option><option value="SM460">SM460</option>
+              <option value="SM275">{matLabel('SM275')}</option><option value="SM355">{matLabel('SM355')}</option><option value="SM420">{matLabel('SM420')}</option><option value="SM460">{matLabel('SM460')}</option>
             </optgroup>
             <optgroup label="KS D3861">
-              <option value="SN275">SN275</option><option value="SN355">SN355</option><option value="SN400">SN400</option><option value="SN490">SN490</option>
+              <option value="SN275">{matLabel('SN275')}</option><option value="SN355">{matLabel('SN355')}</option><option value="SN400">{matLabel('SN400')}</option><option value="SN490">{matLabel('SN490')}</option>
             </optgroup>
             <optgroup label="ASTM">
-              <option value="A36">A36</option><option value="A572">A572 Gr.50</option>
+              <option value="A36">{matLabel('A36')}</option><option value="A572">{matLabel('A572')}</option>
             </optgroup>
           </select>
         </div>
