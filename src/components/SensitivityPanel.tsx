@@ -112,6 +112,7 @@ export default function SensitivityPanel({ onClose }: { onClose: () => void }) {
           <span className="qty-badge">{L('이음판', 'Plate')} 6,616 kg (75%) · {L('볼트', 'Bolt')} 2,257 kg (25%) · 73{L('개 부재', ' members')}</span>
         </p>
 
+        <div className="sens-body">
         {/* ── 1. 물량절감 레버 (효과 큰 순) ─────────────────────── */}
         <div className="sens-sec">{L('① 물량절감 레버 — 효과 큰 순', '① Savings levers — largest first')}</div>
         <div className="sens-bars">
@@ -276,6 +277,7 @@ export default function SensitivityPanel({ onClose }: { onClose: () => void }) {
               <span className="sens-reco-d">{L(r.ko, r.en)}</span>
             </div>
           ))}
+        </div>
         </div>
       </div>
     </div>

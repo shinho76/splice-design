@@ -47,6 +47,7 @@ export default function CalcReport({ result, cond, onClose, onAdd }: {
           </table>
         </div>
 
+        <div className="doc-body">
         {/* 목차 */}
         <nav className="doc-toc">
           <div className="toc-title">{L('목 차', 'CONTENTS')}</div>
@@ -127,6 +128,7 @@ export default function CalcReport({ result, cond, onClose, onAdd }: {
           <h3><span className="sec-no">{secs.length + 3}.</span>{L('접합 상세도', 'Connection Detail')}</h3>
           <ConnectionSVG r={result} cond={cond} />
         </section>
+        </div>
       </div>
     </div>
   );
