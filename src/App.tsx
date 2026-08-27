@@ -162,17 +162,31 @@ export default function App() {
     <div className="console">
       <aside className="rail">
         <span className="rlogo">S</span>
-        {/* 햄버거 메뉴 — Hover 시 'Splice Design'과 다운로드 항목이 옆으로 펼쳐진다 */}
+        {/* 햄버거 메뉴 — Hover 시 'Splice Design'과 다운로드 항목이 옆으로 펼쳐진다. K모드는 'MC'·'MOMENT CONNECTION' 전용 메뉴. */}
         <div className="rmenu">
           <button type="button" className="rbtn rham" aria-haspopup="true" title={L('메뉴 · 다운로드', 'Menu · Downloads')}>
-            <b className="rab">☰</b></button>
+            <b className="rab">{cond.mode === 'K' ? 'MC' : '☰'}</b></button>
           <div className="rmenu-pop" role="menu">
-            <div className="rmenu-title">SPLICE<span className="accent">DESIGN</span></div>
-            <button type="button" className="rmenu-item" role="menuitem" onClick={() => setShowSens(true)} title={L('물량 절감 민감도 시각화', 'Material savings sensitivity')}>{L('물량 민감도 분석', 'Sensitivity')}</button>
-            <button type="button" className="rmenu-item" role="menuitem" onClick={exportCalcSheet} title={L('구조계산요약 Excel', 'Calc summary Excel')}>{L('계산 요약', 'Summary')}</button>
-            <button type="button" className="rmenu-item" role="menuitem" onClick={exportAllDXF} title={L('전체 DXF', 'All DXF')}>{L('시리즈 DXF', 'Series DXF')}</button>
-            <button type="button" className="rmenu-item" role="menuitem" onClick={exportAllDXF2} title={L('전체 DXF(사무소 표준 포맷)', 'All DXF (office format)')}>{L('기본도면 DXF', 'Standard DXF')}</button>
-            <button type="button" className="rmenu-item" role="menuitem" onClick={exportTekla} title={L('Tekla Open API 매크로(.cs)', 'Tekla Open API macro (.cs)')}>Tekla</button>
+            {cond.mode === 'K' ? (
+              <>
+                <div className="rmenu-title">MOMENT<span className="accent"> CONNECTION</span></div>
+                <button type="button" className="rmenu-item" role="menuitem" onClick={() => setShowSens(true)} title={L('물량 절감 민감도 시각화(준비 중 — PDF 저장은 문의 예정)', 'Material savings sensitivity (PDF export pending discussion)')}>📄 {L('PDF 민감도 다운로드', 'Sensitivity PDF')}</button>
+                <button type="button" className="rmenu-item" role="menuitem" onClick={exportCalcSheet} title={L('구조계산요약 Excel', 'Calc summary Excel')}>📊 {L('XLS 계산결과 다운로드', 'Calc results XLS')}</button>
+                <button type="button" className="rmenu-item" role="menuitem" disabled title={L('K모드 결과표 DXF 표 출력 — 신규 기능, 진행 여부 문의 예정', 'K-mode result table as DXF — new feature, pending confirmation')}>📋 {L('DXF 테이블 다운로드', 'DXF table')}</button>
+                <button type="button" className="rmenu-item" role="menuitem" disabled title={L('A3 도곽 격자배치 DXF 출력 — 신규 기능, 진행 여부 문의 예정', 'A3 grid-layout DXF — new feature, pending confirmation')}>📐 {L('DXF 평입단 다운로드', 'DXF layout sheet')}</button>
+                <button type="button" className="rmenu-item" role="menuitem" onClick={exportAllDXF} title={L('전체 DXF', 'All DXF')}>🗂 {L('DXF 시리즈 다운로드', 'DXF series')}</button>
+                <button type="button" className="rmenu-item" role="menuitem" onClick={exportTekla} title={L('Tekla Open API 매크로(.cs)', 'Tekla Open API macro (.cs)')}>🏗 Tekla</button>
+              </>
+            ) : (
+              <>
+                <div className="rmenu-title">SPLICE<span className="accent">DESIGN</span></div>
+                <button type="button" className="rmenu-item" role="menuitem" onClick={() => setShowSens(true)} title={L('물량 절감 민감도 시각화', 'Material savings sensitivity')}>{L('물량 민감도 분석', 'Sensitivity')}</button>
+                <button type="button" className="rmenu-item" role="menuitem" onClick={exportCalcSheet} title={L('구조계산요약 Excel', 'Calc summary Excel')}>{L('계산 요약', 'Summary')}</button>
+                <button type="button" className="rmenu-item" role="menuitem" onClick={exportAllDXF} title={L('전체 DXF', 'All DXF')}>{L('시리즈 DXF', 'Series DXF')}</button>
+                <button type="button" className="rmenu-item" role="menuitem" onClick={exportAllDXF2} title={L('전체 DXF(사무소 표준 포맷)', 'All DXF (office format)')}>{L('기본도면 DXF', 'Standard DXF')}</button>
+                <button type="button" className="rmenu-item" role="menuitem" onClick={exportTekla} title={L('Tekla Open API 매크로(.cs)', 'Tekla Open API macro (.cs)')}>Tekla</button>
+              </>
+            )}
           </div>
         </div>
         {/* Feedback — 단독 유지. Hover 시 라벨 펼침 + 활성 세그먼트와 동일 색(accent) */}
