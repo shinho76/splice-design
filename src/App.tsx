@@ -189,6 +189,22 @@ export default function App() {
             )}
           </div>
         </div>
+        {/* MC 바로 아래 SC 메뉴(K모드 전용) — MC와 동일 구조, 하위 항목은 라벨만 동일(버튼만, 기능 미연결) */}
+        {cond.mode === 'K' && (
+          <div className="rmenu">
+            <button type="button" className="rbtn rham" aria-haspopup="true" title={L('전단접합 메뉴 · 다운로드', 'Shear connection menu · Downloads')}>
+              <b className="rab">SC</b></button>
+            <div className="rmenu-pop" role="menu">
+              <div className="rmenu-title">SHEAR<span className="accent"> CONNECTION</span></div>
+              <button type="button" className="rmenu-item" role="menuitem" disabled title={L('준비 중', 'Pending')}>📄 {L('PDF 민감도 다운로드', 'Sensitivity PDF')}</button>
+              <button type="button" className="rmenu-item" role="menuitem" disabled title={L('준비 중', 'Pending')}>📊 {L('XLS 계산결과 다운로드', 'Calc results XLS')}</button>
+              <button type="button" className="rmenu-item" role="menuitem" disabled title={L('준비 중', 'Pending')}>📋 {L('DXF 테이블 다운로드', 'DXF table')}</button>
+              <button type="button" className="rmenu-item" role="menuitem" disabled title={L('준비 중', 'Pending')}>📐 {L('DXF 평입단 다운로드', 'DXF layout sheet')}</button>
+              <button type="button" className="rmenu-item" role="menuitem" disabled title={L('준비 중', 'Pending')}>🗂 {L('DXF 시리즈 다운로드', 'DXF series')}</button>
+              <button type="button" className="rmenu-item" role="menuitem" disabled title={L('준비 중', 'Pending')}>🏗 Tekla</button>
+            </div>
+          </div>
+        )}
         {/* Feedback — 단독 유지. Hover 시 라벨 펼침 + 활성 세그먼트와 동일 색(accent) */}
         <a className="rbtn rfb" href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer" title="FeedBack — 사용자 피드백(구글 폼)">
           <b className="rab">F</b><span className="rlbl">FeedBack</span></a>
