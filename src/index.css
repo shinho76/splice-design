@@ -228,7 +228,8 @@ body {
 
 /* ===== 물량 민감도 분석 팝업 ===== */
 .sens-card { max-width: 920px; display: flex; flex-direction: column; max-height: 92vh; }
-.sens-card > h2, .sens-card > .cond-line { flex-shrink: 0; }
+.sens-card > h2, .sens-card > .cond-line, .sens-card > .sens-tabseg { flex-shrink: 0; }
+.sens-tabseg { margin: 4px 0 2px; }
 .sens-body { overflow-y: auto; flex: 1; min-height: 0; }
 .sens-sec {
   margin: 18px 0 8px; font-size: 13px; font-weight: 800; color: var(--accent);

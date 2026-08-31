@@ -447,7 +447,7 @@ export default function App() {
           ? <AiscDetailReport result={selEff} cond={cond} onClose={() => setShowDetail(false)} />
           : <KbcDetailReport result={selEff} cond={cond} onClose={() => setShowDetail(false)} />)}
         {showQty && <QuantityPanel cond={cond} diaAt={diaAt} autoFix={autoFix} onClose={() => setShowQty(false)} />}
-        {showSens && <SensitivityPanel onClose={() => setShowSens(false)} />}
+        {showSens && <SensitivityPanel onClose={() => setShowSens(false)} girderLock={girderLock} />}
         {showProj && <ProjectPanel items={project} onChange={setProject} onClose={() => setShowProj(false)} />}
         {view3D && <ThreeViewer r={view3D} cond={cond} onClose={() => setView3D(null)} />}
         {dcrView && <DcrPopup r={dcrView.r} cond={cond} fScale={dcrView.fScale} wScale={dcrView.wScale} onClose={() => setDcrView(null)} />}
