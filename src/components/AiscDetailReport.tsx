@@ -299,7 +299,7 @@ export default function AiscDetailReport({ result, cond, onClose }: { result: De
               </tr>
               <tr>
                 <th>{L('이음판두께', 'Plate t')}</th><td>{(cond.equalPlateT ?? true) ? L('내·외 동일', 'Equal') : L('개별', 'Indiv.')}</td>
-                <th>{L('판 분담', 'Plate share')}</th><td>{(cond.plateShare ?? '5050') === 'area' ? L('면적비례', 'By area') : '50:50'}</td>
+                <th>{L('이음판 분담비율', 'Plate share')}</th><td>{(cond.plateShare ?? '5050') === 'area' ? L('면적비례', 'By area') : '50:50'}</td>
               </tr>
               <tr>
                 <th>{L('블록전단', 'Block shear')}</th><td>{(cond.bsShare ?? 'balanced') === 'full' ? L('전체력', 'Full') : L('균형', 'Balanced')}</td>
