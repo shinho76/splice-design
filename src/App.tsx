@@ -371,7 +371,7 @@ export default function App() {
               alphaMode={alphaMode} onAlphaMode={setAlphaMode} />
             {usesLimitState(cond.designStd) && (
               <div className="cf-autofix">
-                <button type="button" className={autoFix ? 'on' : ''} onClick={() => setAutoFix(v => !v)} aria-pressed={autoFix} title={autoFix ? L('한계상태설계 최적화 — 철판 물량 최소로 DCR≤1.0 달성(부재지배는 부분강도). 끄면 KBC-09 표준접합 검토', 'Limit-state optimize — minimum plate to reach DCR≤1.0 (member-governed → partial strength). Off = KBC-09 standard-connection check') : L('현재 KBC-09 표준접합 검토(비최적화). 켜면 한계상태설계 최적화', 'Currently KBC-09 standard check (no optimize). On = limit-state optimize')}>⚙ {(() => { const std = cond.designStd === 'KDS' ? 'KDS22' : 'AISC16'; return autoFix ? `${std} ${L('표준화 및 최적화', 'Standardize & Optimize')}` : `${std} ${L('최적화', 'Optimize')}`; })()}</button>
+                <button type="button" className={autoFix ? 'on' : ''} onClick={() => setAutoFix(v => !v)} aria-pressed={autoFix} title={autoFix ? L('한계상태설계 최적화 — 철판 물량 최소로 DCR≤1.0 달성(부재지배는 부분강도). 끄면 KBC-09 표준접합 검토', 'Limit-state optimize — minimum plate to reach DCR≤1.0 (member-governed → partial strength). Off = KBC-09 standard-connection check') : L('현재 KBC-09 표준접합 검토(비최적화). 켜면 한계상태설계 최적화', 'Currently KBC-09 standard check (no optimize). On = limit-state optimize')}>⚙ {autoFix ? `${cond.designStd === 'KDS' ? 'KDS22' : 'AISC16'} ${L('최적화', 'Optimize')}` : 'KBC-09'}</button>
               </div>
             )}
             <div className="cfilters-hint">▸ {L('조건을 바꾸면 결과표가 즉시 갱신됩니다.', 'Changing conditions updates the table instantly.')}</div>
