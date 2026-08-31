@@ -17,7 +17,7 @@ import { loadProject, persistProject, newItem, type ProjectItem } from './engine
 import { LangContext, type Lang, tMember, tJoint } from './i18n.ts';
 import { catalogFor, sectionByName } from './engine/sections.ts';
 import { catalogForCond, standardDiaAt, applyStdPlates, isStdMode } from './engine/standard/schedule.ts';
-import { ksLabelOf, ksClassOf, ksClassLabel } from './engine/standard/ksData.ts';
+import { ksLabelOf, ksClassOf } from './engine/standard/ksData.ts';
 import { unitWeightOf } from './engine/hbeam_catalog.ts';
 import { usesLimitState } from './engine/std.ts';
 import { designConnection } from './engine/engine.ts';
@@ -167,32 +167,34 @@ export default function App() {
     const isAisc = usesLimitState(cond.designStd);
     const isK = cond.mode === 'K';
     const isColT = cond.member === '기둥';
+    // DXF는 CAD 호환성을 위해 전 항목 영문/ASCII만 사용(한글·× 등 비ASCII 문자 배제) — 열폭은 헤더 라벨 실제 글자수 기준 여유있게 산정(헤더 겹침 방지)
     const cols: DxfTableCol[] = [
-      ...(isK ? [{ label: 'KS LABEL', width: 90, align: 'c' as const }] : []),
-      { label: 'SECTION', width: 170, align: 'l' },
-      { label: 'UNIT WT(KG/M)', width: 90, align: 'r' },
-      { label: 'RATIO A(%)', width: 70, align: 'r' },
-      { label: 'MAX RATIO(%)', width: 80, align: 'r' },
-      { label: isColT ? 'COMP.(KN)' : 'MOMENT(KN·M)', width: 90, align: 'r' },
-      { label: isColT ? 'WEB COMP.(KN)' : 'SHEAR(KN)', width: 90, align: 'r' },
-      { label: 'BOLT GRADE', width: 80, align: 'c' },
-      { label: 'BOLT DB', width: 60, align: 'c' },
-      { label: 'DCR', width: 55, align: 'r' },
-      { label: 'FLG BOLT(M×N)', width: 90, align: 'c' },
-      { label: 'G1', width: 45, align: 'r' },
-      { label: 'G2', width: 45, align: 'r' },
-      { label: 'FLG OUTER PL', width: 130, align: 'c' },
-      { label: 'FLG INNER PL', width: 130, align: 'c' },
-      { label: 'WEB BOLT(M×N)', width: 90, align: 'c' },
-      { label: 'PC', width: 45, align: 'r' },
-      { label: 'WEB PL', width: 130, align: 'c' },
+      ...(isK ? [{ label: 'KS LABEL', width: 95, align: 'c' as const }] : []),
+      { label: 'SECTION', width: 180, align: 'l' },
+      { label: 'WT(KG/M)', width: 95, align: 'r' },
+      { label: 'RATIO A(%)', width: 115, align: 'r' },
+      { label: 'MAX(%)', width: 75, align: 'r' },
+      { label: isColT ? 'COMP' : 'MOMENT', width: 100, align: 'r' },
+      { label: isColT ? 'WEB COMP' : 'SHEAR', width: 100, align: 'r' },
+      { label: 'GRADE', width: 75, align: 'c' },
+      { label: 'DB', width: 55, align: 'c' },
+      { label: 'DCR', width: 90, align: 'r' },
+      { label: 'FLG BOLT', width: 95, align: 'c' },
+      { label: 'G1', width: 50, align: 'r' },
+      { label: 'G2', width: 50, align: 'r' },
+      { label: 'FLG OUTER PL', width: 145, align: 'c' },
+      { label: 'FLG INNER PL', width: 145, align: 'c' },
+      { label: 'WEB BOLT', width: 95, align: 'c' },
+      { label: 'PC', width: 50, align: 'r' },
+      { label: 'WEB PL', width: 115, align: 'c' },
     ];
+    const CLS_LABEL_EN: Record<string, string> = { WIDE: 'WIDE FLANGE', MIDDLE: 'MIDDLE FLANGE', NARROW: 'NARROW FLANGE' };
     const rows: DxfTableRow[] = [];
     let prevCls: string | undefined;
     catalogForCond(cond).map((s, i) => ({ s, i })).filter(({ s }) => !hidden.has(s.name)).forEach(({ s, i }) => {
       if (isK) {
         const cls = ksClassOf(s.name);
-        if (cls && cls !== prevCls) { rows.push({ band: ksClassLabel(cls) }); prevCls = cls; }
+        if (cls && cls !== prevCls) { rows.push({ band: CLS_LABEL_EN[cls] ?? cls }); prevCls = cls; }
       }
       const rAlpha = girderLock && alphaMode === 'Custom' ? alphaAt(i) : undefined;
       const rowCond = rAlpha != null ? { ...cond, strengthRatio: Math.min(100, Math.max(10, rAlpha)) / 100 } : cond;
@@ -203,7 +205,7 @@ export default function App() {
       const govDcr = ac ? ac.report.govDcr : (isAisc ? aiscCheck(r, rowCond).govDcr : kbcCheck(r, rowCond).govDcr);
       const partial = ac && ac.memberLimited ? Math.min(ac.flangeScale, ac.webScale) : null;
       rows.push([
-        ...(isK ? [ksLabelOf(s.name) ?? ''] : []),
+        ...(isK ? [ksLabelOf(s.name)?.replace('×', 'x') ?? ''] : []),
         dr.section,
         unitWeightOf(s).toFixed(1),
         Math.round(rowCond.strengthRatio * 100),
@@ -212,18 +214,18 @@ export default function App() {
         Math.round(dr.Vu_kN),
         cond.bolt,
         dr.boltDia,
-        govDcr != null ? govDcr.toFixed(2) : '-',
-        `${dr.flange.bolt.m}×${dr.flange.bolt.n}`,
+        govDcr != null && isFinite(govDcr) ? govDcr.toFixed(2) : '-',
+        `${dr.flange.bolt.m}x${dr.flange.bolt.n}`,
         dr.flange.gauge?.g1 ?? '-',
         dr.flange.gauge?.g2 ?? '-',
-        dr.flange.outerPlate ? `${dr.flange.outerPlate.t}×${dr.flange.outerPlate.w}×${dr.flange.outerPlate.L}` : '-',
-        dr.flange.innerPlate ? `${dr.flange.innerPlate.t}×${dr.flange.innerPlate.w}×${dr.flange.innerPlate.L}` : '-',
-        `${dr.web.bolt.m}×${dr.web.bolt.n}`,
+        dr.flange.outerPlate ? `${dr.flange.outerPlate.t}x${dr.flange.outerPlate.w}x${dr.flange.outerPlate.L}` : '-',
+        dr.flange.innerPlate ? `${dr.flange.innerPlate.t}x${dr.flange.innerPlate.w}x${dr.flange.innerPlate.L}` : '-',
+        `${dr.web.bolt.m}x${dr.web.bolt.n}`,
         dr.web.Pc ?? '-',
-        dr.web.webPlate ? `${dr.web.webPlate.t}×${dr.web.webPlate.w}×${dr.web.webPlate.L}` : '-',
+        dr.web.webPlate ? `${dr.web.webPlate.t}x${dr.web.webPlate.w}x${dr.web.webPlate.L}` : '-',
       ]);
     });
-    const title = `${girderLock ? 'GIRDER SPLICE' : tMember(cond.member, 'en')} TABLE — ${Math.round(cond.strengthRatio * 100)}% ${cond.steel} ${cond.bolt}`;
+    const title = `${girderLock ? 'GIRDER SPLICE' : tMember(cond.member, 'en')} TABLE - ${Math.round(cond.strengthRatio * 100)}% ${cond.steel} ${cond.bolt}  (UNIT: WT kg/m, ${isColT ? 'COMP/WEB COMP' : 'MOMENT/SHEAR'} kN${isColT ? '' : '(MOMENT kN-m)'})`;
     downloadFile(`BASIC_DXF_${girderLock ? 'GIRDER_SPLICE' : cond.member}_${cond.jointType}.dxf`, toDXFTable(title, cols, rows), 'application/dxf');
   };
   const exportTekla = () =>   // Tekla Open API 임포트 매크로(.cs)
