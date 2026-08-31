@@ -9,10 +9,13 @@ const boltLabel = (disp: string, g: BoltGrade): string => `${disp} / ${BOLT_MAT[
 
 const PRESETS = [100, 95, 90, 85, 80, 75, 70, 65, 60, 50];
 
-export default function FilterBar({ cond, onChange, boltMode, onBoltMode, girderLock }: {
+export default function FilterBar({ cond, onChange, boltMode, onBoltMode, girderLock, alphaMode, onAlphaMode, boltMatMode, onBoltMatMode }: {
   cond: DesignCondition; onChange: (c: DesignCondition) => void;
   boltMode: 'Default' | 'Custom'; onBoltMode: (m: 'Default' | 'Custom') => void;
   girderLock?: boolean;   // GS(GIRDER SPLICE) 모드 — 구분(A/S/H/K) 세그 숨김, 부재는 "GIRDER SPLICE" 고정 표기
+  // GS 전용: 강도비·볼트재질 '지정'(행별 오버라이드) 모드 — girderLock일 때만 select에 옵션 노출
+  alphaMode?: 'Default' | 'Custom'; onAlphaMode?: (m: 'Default' | 'Custom') => void;
+  boltMatMode?: 'Default' | 'Custom'; onBoltMatMode?: (m: 'Default' | 'Custom') => void;
 }) {
   const lang = useLang();
   const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
@@ -120,13 +123,19 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode, girder
         </div>
         <div className="fld">
           <label>{L('볼트', 'Bolt')}</label>
-          <select value={cond.bolt} onChange={e => set('bolt', e.target.value as BoltGrade)}>
+          <select value={girderLock && boltMatMode === 'Custom' ? 'custom' : cond.bolt}
+            onChange={e => {
+              const v = e.target.value;
+              if (v === 'custom') { onBoltMatMode?.('Custom'); return; }
+              onBoltMatMode?.('Default'); set('bolt', v as BoltGrade);
+            }}>
             <optgroup label="KS B 1010">
               <option value="F10T">{boltLabel('F10T, S10T', 'F10T')}</option><option value="F13T">{boltLabel('F13T', 'F13T')}</option>
             </optgroup>
             <optgroup label="ASTM F3125">
               <option value="A325">{boltLabel('A325, F1852', 'A325')}</option><option value="A490">{boltLabel('A490, F2280', 'A490')}</option>
             </optgroup>
+            {girderLock && <optgroup label={L('행별 지정', 'Per-row')}><option value="custom">{L('지정', 'Custom')}</option></optgroup>}
           </select>
         </div>
       </div>
@@ -136,9 +145,16 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode, girder
         <div className="fld alpha">
           <label>{L('강도비 α', 'Ratio α')}</label>
           <div className="alpha-ctl">
-            <select value={PRESETS.includes(pct) ? pct : 'custom'} onChange={e => e.target.value !== 'custom' && setAlpha(Number(e.target.value))}>
+            <select value={girderLock && alphaMode === 'Custom' ? 'row-custom' : (PRESETS.includes(pct) ? pct : 'custom')}
+              onChange={e => {
+                const v = e.target.value;
+                if (v === 'row-custom') { onAlphaMode?.('Custom'); return; }
+                if (v === 'custom') return;
+                onAlphaMode?.('Default'); setAlpha(Number(v));
+              }}>
               {PRESETS.map(p => <option key={p} value={p}>{p}%</option>)}
               {!PRESETS.includes(pct) && <option value="custom">{pct}% (직접)</option>}
+              {girderLock && <option value="row-custom">{L('지정(행별)', 'Custom (per row)')}</option>}
             </select>
           </div>
         </div>
@@ -150,7 +166,7 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode, girder
         </div>
         {(cond.designStd === 'AISC' || cond.designStd === 'KDS') && <Seg label={L('나사부', 'Thread')} value={cond.threadCond ?? 'N'} opts={['N', 'X']} onPick={v => set('threadCond', v as 'N' | 'X')} />}
         <Seg label={L('볼트 직경', 'Bolt Ø')} value={boltMode} opts={['Default', 'Custom']} optLabels={[L('표준', 'Standard'), L('지정', 'Custom')]} onPick={v => onBoltMode(v as 'Default' | 'Custom')} />
-        <Seg label={L('엇모', 'Stagger')} value={(cond.noStagger ?? false) ? '제외' : '포함'} opts={['포함', '제외']} optLabels={[L('포함', 'On'), L('제외', 'Off')]} onPick={v => set('noStagger', v === '제외')} />
+        <Seg label={girderLock ? L('엇모배치', 'Stagger') : L('엇모', 'Stagger')} value={(cond.noStagger ?? false) ? '제외' : '포함'} opts={['포함', '제외']} optLabels={[L('포함', 'On'), L('제외', 'Off')]} onPick={v => set('noStagger', v === '제외')} />
         <Seg label={L('이음판두께', 'Plate t')} value={(cond.equalPlateT ?? true) ? '동일' : '개별'} opts={['동일', '개별']} optLabels={[L('동일', 'Equal'), L('개별', 'Indiv.')]} onPick={v => set('equalPlateT', v === '동일')} />
         {(cond.designStd === 'AISC' || cond.designStd === 'KDS') && <Seg label={L('판 분담', 'Plate share')} value={(cond.plateShare ?? '5050') === 'area' ? '면적' : '50:50'} opts={['50:50', '면적']} optLabels={[L('50:50', '50:50'), L('면적비례', 'By area')]} onPick={v => set('plateShare', v === '면적' ? 'area' : '5050')} />}
       </div>
