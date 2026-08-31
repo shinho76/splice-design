@@ -182,7 +182,7 @@ export default function App() {
             <b className="rab">GS</b></button>
           <div className="rmenu-pop" role="menu">
             <div className="rmenu-title">GIRDER<span className="accent"> SPLICE</span></div>
-            <button type="button" className="rmenu-item" role="menuitem" onClick={() => setShowSens(true)} title={L('물량 절감 민감도 시각화(준비 중 — PDF 저장은 문의 예정)', 'Material savings sensitivity (PDF export pending discussion)')}>📄 {L('PDF 민감도 다운로드', 'Sensitivity PDF')}</button>
+            <button type="button" className="rmenu-item" role="menuitem" onClick={() => setShowSens(true)} title={L('물량 절감 민감도 시각화', 'Material savings sensitivity')}>📄 {L('민감도 분석', 'Sensitivity')}</button>
             <button type="button" className="rmenu-item" role="menuitem" onClick={exportCalcSheet} title={L('구조계산요약 Excel', 'Calc summary Excel')}>📊 {L('XLS 계산결과 다운로드', 'Calc results XLS')}</button>
             <button type="button" className="rmenu-item" role="menuitem" onClick={exportAllDXF} title={L('전체 DXF', 'All DXF')}>🗂 {L('DXF 시리즈 다운로드', 'DXF series')}</button>
             <button type="button" className="rmenu-item" role="menuitem" onClick={exportTekla} title={L('Tekla Open API 매크로(.cs)', 'Tekla Open API macro (.cs)')}>🏗 Tekla</button>
