@@ -52,7 +52,7 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
     return { s, i, r, dr, govDcr, partial, fScale, wScale, clash, rowCond };
   }), [cond, diaAt, autoFix, isAisc, alphaCustom, alphaAt]);
   const rows = allRows.filter(({ s }) => !hidden?.has(s.name));
-  const dbW = 46;                                     // 볼트 직경열: 지정/표준 동일 폭(토글 시 표 흔들림 방지)
+  const dbW = 64;                                     // 볼트 직경열: 지정/표준 동일 폭(토글 시 표 흔들림 방지, select 텍스트+화살표 여유 포함)
   const hasHidden = (hidden?.size ?? 0) > 0;
   // 삭제 선택(체크) → 헤더 아이콘: + 선택만 남김 / − 선택 제외 / ⟳ 초기화
   const [checked, setChecked] = useState<Set<string>>(() => new Set());
@@ -71,7 +71,7 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
           <col style={{ width: 138 }} />
           {!girderLock && <><col style={{ width: 34 }} /><col style={{ width: 32 }} /></>}
           <col style={{ width: 40 }} />
-          {girderLock && <><col style={{ width: 40 }} /><col style={{ width: 40 }} /></>}
+          {girderLock && <><col style={{ width: 64 }} /><col style={{ width: 40 }} /></>}
           <col style={{ width: 46 }} /><col style={{ width: 44 }} />
           {girderLock && <col style={{ width: 64 }} />}
           <col style={{ width: dbW }} />
