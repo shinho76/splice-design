@@ -73,7 +73,7 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode, girder
         {girderLock ? (
           <div className="fld">
             <label>{L('부재', 'Member')}</label>
-            <div className="gs-fixed">GIRDER SPLICE</div>
+            <div className="seg"><button type="button" className="on" aria-disabled="true" tabIndex={-1}>GIRDER SPLICE</button></div>
           </div>
         ) : (
           <Seg label={L('부재', 'Member')} value={cond.member} opts={['보', '기둥']} optLabels={[L('보', 'Beam'), L('기둥', 'Column')]} onPick={v => setMember(v as Member)} />
@@ -131,16 +131,7 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode, girder
         </div>
       </div>
 
-      {/* ③ 볼트 배치·이음판 (나사부→볼트안→엇모배치→이음판두께) */}
-      <div className="fgrp">
-        {(cond.designStd === 'AISC' || cond.designStd === 'KDS') && <Seg label={L('나사부', 'Thread')} value={cond.threadCond ?? 'N'} opts={['N', 'X']} onPick={v => set('threadCond', v as 'N' | 'X')} />}
-        <Seg label={L('볼트 직경', 'Bolt Ø')} value={boltMode} opts={['Default', 'Custom']} optLabels={[L('표준', 'Standard'), L('지정', 'Custom')]} onPick={v => onBoltMode(v as 'Default' | 'Custom')} />
-        <Seg label={L('엇모', 'Stagger')} value={(cond.noStagger ?? false) ? '제외' : '포함'} opts={['포함', '제외']} optLabels={[L('포함', 'On'), L('제외', 'Off')]} onPick={v => set('noStagger', v === '제외')} />
-        <Seg label={L('이음판두께', 'Plate t')} value={(cond.equalPlateT ?? true) ? '동일' : '개별'} opts={['동일', '개별']} optLabels={[L('동일', 'Equal'), L('개별', 'Indiv.')]} onPick={v => set('equalPlateT', v === '동일')} />
-        {(cond.designStd === 'AISC' || cond.designStd === 'KDS') && <Seg label={L('판 분담', 'Plate share')} value={(cond.plateShare ?? '5050') === 'area' ? '면적' : '50:50'} opts={['50:50', '면적']} optLabels={[L('50:50', '50:50'), L('면적비례', 'By area')]} onPick={v => set('plateShare', v === '면적' ? 'area' : '5050')} />}
-      </div>
-
-      {/* ④ 설계 파라미터 (강도비→갭) */}
+      {/* ③ 설계 파라미터·볼트 배치·이음판 (강도비→갭→나사부→볼트직경→엇모→이음판두께→판분담) */}
       <div className="fgrp">
         <div className="fld alpha">
           <label>{L('강도비 α', 'Ratio α')}</label>
@@ -157,6 +148,11 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode, girder
             <option value={0}>0</option><option value={5}>5</option><option value={10}>10</option>
           </select>
         </div>
+        {(cond.designStd === 'AISC' || cond.designStd === 'KDS') && <Seg label={L('나사부', 'Thread')} value={cond.threadCond ?? 'N'} opts={['N', 'X']} onPick={v => set('threadCond', v as 'N' | 'X')} />}
+        <Seg label={L('볼트 직경', 'Bolt Ø')} value={boltMode} opts={['Default', 'Custom']} optLabels={[L('표준', 'Standard'), L('지정', 'Custom')]} onPick={v => onBoltMode(v as 'Default' | 'Custom')} />
+        <Seg label={L('엇모', 'Stagger')} value={(cond.noStagger ?? false) ? '제외' : '포함'} opts={['포함', '제외']} optLabels={[L('포함', 'On'), L('제외', 'Off')]} onPick={v => set('noStagger', v === '제외')} />
+        <Seg label={L('이음판두께', 'Plate t')} value={(cond.equalPlateT ?? true) ? '동일' : '개별'} opts={['동일', '개별']} optLabels={[L('동일', 'Equal'), L('개별', 'Indiv.')]} onPick={v => set('equalPlateT', v === '동일')} />
+        {(cond.designStd === 'AISC' || cond.designStd === 'KDS') && <Seg label={L('판 분담', 'Plate share')} value={(cond.plateShare ?? '5050') === 'area' ? '면적' : '50:50'} opts={['50:50', '면적']} optLabels={[L('50:50', '50:50'), L('면적비례', 'By area')]} onPick={v => set('plateShare', v === '면적' ? 'area' : '5050')} />}
       </div>
     </div>
   );
