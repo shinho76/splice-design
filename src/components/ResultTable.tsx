@@ -72,7 +72,7 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
           <col style={{ width: 138 }} />
           {!girderLock && <><col style={{ width: 34 }} /><col style={{ width: 32 }} /></>}
           <col style={{ width: 40 }} />
-          {girderLock && <col style={{ width: 40 }} />}
+          {girderLock && <><col style={{ width: 40 }} /><col style={{ width: 40 }} /></>}
           <col style={{ width: 46 }} /><col style={{ width: 44 }} />
           {girderLock && <col style={{ width: 64 }} />}
           <col style={{ width: dbW }} />
@@ -86,19 +86,22 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
             {isK && <th rowSpan={2} className="g-info" style={{ textAlign: 'center' }}>KS<br /><span className="unit">LABEL</span></th>}
             <th rowSpan={2} className="col-name g-info">
               <span className="cn-head">{L('단면치수', 'Section')}</span>
-              <span className="col-tools">
-                <button className="col-keep" disabled={checkedVisible === 0} title={L('선택 단면만 남기기', 'Keep only checked')}
-                  onClick={keepOnly}>＋</button>
-                <button className="col-excl" disabled={checkedVisible === 0} title={L('선택 단면 제외', 'Exclude checked')}
-                  onClick={excludeChecked}>－</button>
-                <button className="col-reset" disabled={!hasHidden} title={L('전체 단면 복원', 'Restore all')}
-                  onClick={doReset}>⟳</button>
-              </span>
+              {!girderLock && (
+                <span className="col-tools">
+                  <button className="col-keep" disabled={checkedVisible === 0} title={L('선택 단면만 남기기', 'Keep only checked')}
+                    onClick={keepOnly}>＋</button>
+                  <button className="col-excl" disabled={checkedVisible === 0} title={L('선택 단면 제외', 'Exclude checked')}
+                    onClick={excludeChecked}>－</button>
+                  <button className="col-reset" disabled={!hasHidden} title={L('전체 단면 복원', 'Restore all')}
+                    onClick={doReset}>⟳</button>
+                </span>
+              )}
             </th>
             {!girderLock && <th rowSpan={2} className="g-info dcr-h">DCR</th>}
             {!girderLock && <th rowSpan={2} className="g-info">r<br /><span className="unit">mm</span></th>}
             <th rowSpan={2} className="gcol g-info">{L('단위중량', 'Unit wt')}<br /><span className="unit">kg/m</span></th>
             {girderLock && <th rowSpan={2} className="g-info">{L('강도비A', 'Ratio A')}<br /><span className="unit">%</span></th>}
+            {girderLock && <th rowSpan={2} className="g-info">{L('최대강도비', 'Max Ratio')}<br /><span className="unit">%</span></th>}
             <th colSpan={2} className="gcol g-str">{L('설계강도', 'Design Strength')}</th>
             {girderLock && <th rowSpan={2} className="gcol g-info">{L('볼트재질', 'Bolt Grade')}</th>}
             <th rowSpan={2} className="gcol g-bolt">{L('볼트', 'Bolt')}<br />d<sub>b</sub></th>
@@ -139,7 +142,7 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
               <Fragment key={r.section}>
               {showBand && (
                 <tr className="cls-band">
-                  <td colSpan={girderLock ? 17 : 16} style={{ fontWeight: 800, textAlign: 'left', padding: '5px 10px', fontSize: '11.5px', letterSpacing: '0.4px', background: 'rgba(127,127,127,0.16)' }}>
+                  <td colSpan={girderLock ? 18 : 16} style={{ fontWeight: 800, textAlign: 'left', padding: '5px 10px', fontSize: '11.5px', letterSpacing: '0.4px', background: 'rgba(127,127,127,0.16)' }}>
                     {ksClassLabel(cls!)}
                   </td>
                 </tr>
@@ -151,21 +154,23 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
                   </td>
                 )}
                 <td className="col-name">
-                  <input type="checkbox" className="row-chk" checked={checked.has(s.name)}
-                    title={L('삭제 선택', 'Mark for deletion')} onClick={e => e.stopPropagation()}
-                    onChange={e => { e.stopPropagation(); toggleCheck(s.name); }} />
+                  {!girderLock && (
+                    <input type="checkbox" className="row-chk" checked={checked.has(s.name)}
+                      title={L('삭제 선택', 'Mark for deletion')} onClick={e => e.stopPropagation()}
+                      onChange={e => { e.stopPropagation(); toggleCheck(s.name); }} />
+                  )}
                   <span className={`st-dot${ng ? ' ng' : ''}`} title={ng ? '재검토' : '적합'} />
                   <button className="cn-txt" style={isK ? { fontWeight: ksUsedHB(s.H, s.B) ? 800 : 400 } : undefined}
                     title={isK && ksUsedHB(s.H, s.B) ? `${r.section} · S·H 표준 채택단면` : (s.label ? `${s.label} · ${r.section}` : L('선택 + 3D 형상 보기', 'Select + view 3D shape'))} onClick={e => { e.stopPropagation(); onSelect(dr); onView3D(dr); }}>
                     {s.label
                       ? <span className="cn-two"><span className="cn-nom">{s.label}</span><span className="cn-mm">{r.section}</span></span>
                       : r.section}</button>
-                  {partial != null && <span className="cn-partial"
+                  {!girderLock && partial != null && <span className="cn-partial"
                     title={L('부분강도접합 — 발현 가능한 최대 강도비율', 'Partial-strength splice — max developable ratio')}>
                     {Math.round(partial * 100)}%</span>}
                   {clash && <span className="cn-clash"
                     title={L(`내부 이음판 ↔ 웨브 이음판 간섭 ${clash.oy}mm — 상세화 재검토 필요(초대형 부분강도 단면)`, `inner ↔ web plate overlap ${clash.oy}mm — revise detailing (jumbo partial-strength section)`)}>⚠</span>}
-                  {((partial != null && partial < 0.70) || clash) && <span className="cn-weld"
+                  {!girderLock && ((partial != null && partial < 0.70) || clash) && <span className="cn-weld"
                     title={L(
                       clash ? '용접 splice 권장 — 내부↔웨브 이음판 간섭으로 볼트 상세 불가' : `용접 splice 권장 — 볼트 발현율 ${Math.round((partial ?? 0) * 100)}% (<70%)`,
                       clash ? 'Welded splice recommended — inner/web plate clash prevents bolted detailing' : `Welded splice recommended — bolt develops only ${Math.round((partial ?? 0) * 100)}% (<70%)`)}>용접</span>}</td>
@@ -185,6 +190,7 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
                       </select>
                     : `${Math.round(cond.strengthRatio * 100)}%`}</td>
                 )}
+                {girderLock && <td className="gcol">{partial != null ? `${Math.round(partial * 100)}%` : <span className="dash">—</span>}</td>}
                 <td>{nf(isCol ? dr.Puf_kN : dr.Mu_kNm)}</td>
                 <td className="gcol">{nf(dr.Vu_kN)}</td>
                 {girderLock && <td className="gcol">{cond.bolt}</td>}
