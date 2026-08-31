@@ -159,9 +159,9 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode, girder
         </div>
         {(cond.designStd === 'AISC' || cond.designStd === 'KDS') && <Seg label={L('나사부', 'Thread')} value={cond.threadCond ?? 'N'} opts={['N', 'X']} onPick={v => set('threadCond', v as 'N' | 'X')} />}
         <Seg label={L('볼트 직경', 'Bolt Ø')} value={boltMode} opts={['Default', 'Custom']} optLabels={[L('표준', 'Standard'), L('지정', 'Custom')]} onPick={v => onBoltMode(v as 'Default' | 'Custom')} />
-        <Seg label={girderLock ? L('엇모배치', 'Stagger') : L('엇모', 'Stagger')} value={(cond.noStagger ?? false) ? '제외' : '포함'} opts={['포함', '제외']} optLabels={[L('포함', 'On'), L('제외', 'Off')]} onPick={v => set('noStagger', v === '제외')} />
+        <Seg label={girderLock ? L('엇모배치', 'Stagger') : L('엇모', 'Stagger')} value={(cond.noStagger ?? false) ? '제외' : '포함'} opts={['제외', '포함']} optLabels={[L('제외', 'Off'), L('포함', 'On')]} onPick={v => set('noStagger', v === '제외')} />
         <Seg label={L('이음판두께', 'Plate t')} value={(cond.equalPlateT ?? true) ? '동일' : '개별'} opts={['동일', '개별']} optLabels={[L('동일', 'Equal'), L('개별', 'Indiv.')]} onPick={v => set('equalPlateT', v === '동일')} />
-        {(cond.designStd === 'AISC' || cond.designStd === 'KDS') && <Seg label={L('이음판 분담비율', 'Plate share')} value={(cond.plateShare ?? '5050') === 'area' ? '면적' : '50:50'} opts={['50:50', '면적']} optLabels={[L('50:50', '50:50'), L('면적비례', 'By area')]} onPick={v => set('plateShare', v === '면적' ? 'area' : '5050')} />}
+        {(cond.designStd === 'AISC' || cond.designStd === 'KDS') && <Seg label={L('이음판 분담비율', 'Plate share')} value={(cond.plateShare ?? '5050') === 'area' ? '면적' : '50:50'} opts={['면적', '50:50']} optLabels={[L('면적비례', 'By area'), L('50:50', '50:50')]} onPick={v => set('plateShare', v === '면적' ? 'area' : '5050')} />}
       </div>
     </div>
   );

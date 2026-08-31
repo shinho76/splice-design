@@ -98,30 +98,30 @@ const GS_BASE = 17180.2;
 
 type GsLever = { ko: string; en: string; pct: number; note: [string, string]; adopted?: boolean };
 
-// 최종 채택안 4개(도입 확정) — 절감 큰 순
+// 최종 채택안 2개(도입 확정) — 절감 큰 순
 const GS_ADOPTED: GsLever[] = [
-  { ko: '이음판 두께 → 개별', en: 'Plate t → individual', pct: -8.9, adopted: true,
-    note: ['상·하 플랜지판 두께를 각각 최적화. 제작 난이도 소폭 상승.', 'Optimize top/bottom flange plate thickness independently. Slightly more fab complexity.'] },
   { ko: '이음판 분담비율 → 면적비례', en: 'Plate share → by area', pct: -8.8, adopted: true,
     note: ['계산방식만 변경, 부작용 거의 없음.', 'Calculation method only — negligible downside.'] },
   { ko: '엇모배치 → 제외(1열)', en: 'Stagger → excluded (single row)', pct: -8.6, adopted: true,
     note: ['AISC16 최적화가 항상 켜져 있을 때 유리 — 최적화 OFF 시 반대로 손해.', 'Favorable only while AISC16 optimizer stays ON — reverses if optimizer is OFF.'] },
-  { ko: '갭 → 0mm', en: 'Gap → 0mm', pct: -1.2, adopted: true,
-    note: ['효과는 작지만 리스크도 거의 없음.', 'Small effect, negligible risk.'] },
 ];
 
 // 검토했지만 미채택 — 절감 큰 순(페널티 포함)
 const GS_EXCLUDED: GsLever[] = [
   { ko: 'H형강 강종 SHN400', en: 'H-beam grade SHN400', pct: -13.4,
     note: ['스플라이스가 아니라 부재 자체의 구조설계 사항이라 범위 밖. 비선형(SHN490은 오히려 손해)이라 검증도 더 필요.', 'Out of splice-optimization scope (member design decision). Non-monotonic — SHN490 is worse — needs more verification.'] },
+  { ko: '이음판 두께 → 개별', en: 'Plate t → individual', pct: -8.9,
+    note: ['상·하 플랜지판 두께를 각각 최적화하면 단독으로는 절감되나, 결합 채택안에서 추가 절감 기여가 거의 없어 제외(제작 난이도만 상승).', 'Independent top/bottom plate thickness saves alone, but adds almost nothing on top of the adopted combo — not worth the extra fab complexity.'] },
+  { ko: '이음판 강종 SM460', en: 'Plate grade SM460', pct: -8.8,
+    note: ['수급·용접성 부담 대비 실익이 크지 않다고 판단해 SM355 유지 확정.', 'Supply/weldability burden judged not worth it — kept SM355.'] },
   { ko: '볼트직경 M20 전단면 강제', en: 'Bolt Ø M20 forced on all sections', pct: -7.5,
     note: ['KS 표준 자동배정(폭 티어별 M16/M20/M24)을 어기는 가상 시나리오라 실제 적용 불가.', 'Violates KS standard auto-assignment by width tier — not actually applicable.'] },
   { ko: 'H형강 강종 SHN275', en: 'H-beam grade SHN275', pct: -6.7,
     note: ['SHN400과 동일 사유(부재 설계 사항)로 범위 밖.', 'Same reason as SHN400 — out of scope.'] },
-  { ko: '이음판 강종 SM460', en: 'Plate grade SM460', pct: -8.8,
-    note: ['수급·용접성 부담 대비 실익이 크지 않다고 판단해 SM355 유지 확정.', 'Supply/weldability burden judged not worth it — kept SM355.'] },
   { ko: '이음판 강종 SM420', en: 'Plate grade SM420', pct: -4.3,
     note: ['SM460과 동일 사유로 미채택.', 'Same reason as SM460 — not adopted.'] },
+  { ko: '갭 → 0mm', en: 'Gap → 0mm', pct: -1.2,
+    note: ['효과가 작고(−1.2%) 결합 채택안에서 추가 절감 기여가 거의 없어 제외. 시공 이격 여유는 남겨둠.', 'Small effect (−1.2%) with almost no extra contribution once combined with the adopted levers — kept the erection gap.'] },
   { ko: '볼트직경 M24 전단면 강제', en: 'Bolt Ø M24 forced on all sections', pct: -0.8,
     note: ['M20과 동일 사유(표준 위반)로 적용 불가.', 'Same reason as M20 — not applicable.'] },
   { ko: '볼트직경 M22 전단면 강제', en: 'Bolt Ø M22 forced on all sections', pct: 1.2,
@@ -150,8 +150,8 @@ const GS_ALPHA: { a: string; apct: number; kg: number; pct: number }[] = [
   { a: '0.5', apct: 50, kg: 8191.0, pct: -52.3 },
 ];
 
-// 최종 채택안 결합 시나리오(4개 동시 적용, 이음판 강종 SM355 유지) — 엔진 재계산값
-const GS_COMBO = { base: GS_BASE, kg: 14535.5, pct: -15.4, fails: 4, baseFails: 4 };
+// 최종 채택안 결합 시나리오(2개 동시 적용, 이음판두께·갭은 제외, 이음판 강종 SM355 유지) — 엔진 재계산값
+const GS_COMBO = { base: GS_BASE, kg: 14527.4, pct: -15.4, fails: 4, baseFails: 4 };
 
 const nf = (v: number) => Math.abs(v).toLocaleString('en-US');
 
@@ -368,12 +368,12 @@ export default function SensitivityPanel({ onClose, girderLock }: { onClose: () 
         <div className="sens-callout">
           <b>{L('최종 채택안', 'Final adopted plan')} −{Math.abs(GS_COMBO.pct).toFixed(1)}%</b>
           <span>{L(
-            `이음판 두께 개별 + 엇모 제외(1열) + 분담비율 면적비례 + 갭 0mm (이음판 강종 SM355 유지) → ${nf(GS_COMBO.kg)} kg (기준 ${nf(GS_COMBO.base)} kg 대비, 부분강도 단면 ${GS_COMBO.fails}개 — 기준과 동일, 안전성 저하 없음)`,
-            `Plate t individual + no-stagger + area-based plate share + gap 0mm (plate grade kept SM355) → ${nf(GS_COMBO.kg)} kg vs baseline ${nf(GS_COMBO.base)} kg (partial-strength count ${GS_COMBO.fails} — same as baseline, no loss of safety margin)`)}</span>
+            `엇모 제외(1열) + 분담비율 면적비례 (이음판두께·갭은 미채택, 이음판 강종 SM355 유지) → ${nf(GS_COMBO.kg)} kg (기준 ${nf(GS_COMBO.base)} kg 대비, 부분강도 단면 ${GS_COMBO.fails}개 — 기준과 동일, 안전성 저하 없음)`,
+            `No-stagger + area-based plate share (plate-thickness split and gap not adopted; plate grade kept SM355) → ${nf(GS_COMBO.kg)} kg vs baseline ${nf(GS_COMBO.base)} kg (partial-strength count ${GS_COMBO.fails} — same as baseline, no loss of safety margin)`)}</span>
         </div>
 
-        {/* ── 채택 4개 ─────────────────────── */}
-        <div className="sens-sec">{L('✓ 채택 — GS 기본값 변경 확정 4건', '✓ Adopted — 4 confirmed GS default changes')}</div>
+        {/* ── 채택 2개 ─────────────────────── */}
+        <div className="sens-sec">{L('✓ 채택 — GS 기본값 변경 확정 2건', '✓ Adopted — 2 confirmed GS default changes')}</div>
         <div className="sens-bars">
           {GS_ADOPTED.map((v, i) => (
             <div className="sens-row" key={v.en}>
