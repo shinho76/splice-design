@@ -8,7 +8,6 @@ import { kbcCheck } from '../engine/kbcCheck.ts';
 import { usesLimitState } from '../engine/std.ts';
 import { nominalOf, unitWeightOf } from '../engine/hbeam_catalog.ts';
 import { innerWebClash } from '../engine/connParts.ts';
-import { BOLT_MAT } from '../engine/materials.ts';
 import { useLang } from '../i18n.ts';
 
 const nf = (v?: number) => v == null ? '' : v.toLocaleString('en-US');   // 1000+ 콤마
@@ -197,7 +196,7 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
                 <td className="gcol">{custom
                   ? <select className="dia-sel" value={dr.boltDia} onClick={e => e.stopPropagation()}
                       onChange={e => { e.stopPropagation(); onSetDia?.(i, Number(e.target.value)); }}>
-                      {DIAS.map(d => <option key={d} value={d}>{isK ? `M${d} / ${BOLT_MAT[cond.bolt].Fy} / ${BOLT_MAT[cond.bolt].Fu}` : d}</option>)}
+                      {DIAS.map(d => <option key={d} value={d}>{isK ? `M${d}` : d}</option>)}
                     </select>
                   : dr.boltDia}</td>
                 {girderLock && (
