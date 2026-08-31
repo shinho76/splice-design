@@ -966,6 +966,67 @@ export function toDXFSheet(rows: DesignResult[], cond: DesignCondition): string 
 /** 사무소 표준 포맷 — 앱 "전체 DXF 다운로드(사무소 표준 포맷)" 버튼.
  *  표준 도면 표준 도면: "BEAM SPLICE DETAIL" 셀 + FLANGE/WEB PLATE SIZE 콜아웃 그리드. */
 export const toDXFAll2 = (rows: DesignResult[], cond: DesignCondition): string => toDXFSheet(rows, cond);
+
+// ── 결과표(BASIC DXF) — 화면 표를 그대로 격자 표(TEXT+LINE)로 출력. 개별 상세도(emitMember)와 무관한 별도 생성기. ──
+export interface DxfTableCol { label: string; width: number; align?: 'l' | 'c' | 'r' }
+export type DxfTableRow = (string | number)[] | { band: string };
+
+export function toDXFTable(title: string, cols: DxfTableCol[], rows: DxfTableRow[]): string {
+  const doc = newDoc();
+  const p = pen(doc, mkXf(0, 0, 0));
+  const CH = 14;                        // 셀 문자높이
+  const RH = 24;                        // 데이터 행 높이
+  const HH = 34;                        // 헤더 행 높이
+  const BH = 26;                        // 계열 밴드 행 높이
+  const totalW = cols.reduce((s, c) => s + c.width, 0);
+  const cellX = (i: number) => cols.slice(0, i).reduce((s, c) => s + c.width, 0);
+  const tx = (c: DxfTableCol, x0: number): { x: number; align: 'l' | 'c' | 'r' } => {
+    const a = c.align ?? 'l';
+    if (a === 'r') return { x: x0 + c.width - 6, align: 'r' };
+    if (a === 'c') return { x: x0 + c.width / 2, align: 'c' };
+    return { x: x0 + 6, align: 'l' };
+  };
+
+  p.text(0, 24, 22, title, 'MINI_HEAD', { align: 'l' });
+  let y = -6;
+  // 헤더 행
+  const hy = y - HH;
+  p.line(0, y, totalW, y, 'MINI_BOX');
+  cols.forEach((c, i) => {
+    const x0 = cellX(i);
+    p.line(x0, y, x0, hy, 'MINI_BOX');
+    const t = tx(c, x0);
+    p.text(t.x, hy + HH / 2 - CH / 2, CH, c.label, 'MINI_HEAD', { align: t.align });
+  });
+  p.line(totalW, y, totalW, hy, 'MINI_BOX');
+  p.line(0, hy, totalW, hy, 'MINI_BOX');
+  y = hy;
+  // 데이터 행(+계열 밴드)
+  rows.forEach(row => {
+    if (!Array.isArray(row)) {
+      const by = y - BH;
+      p.text(6, by + BH / 2 - CH / 2, CH * 1.1, row.band, 'MINI_HEAD', { align: 'l' });
+      p.line(0, y, totalW, y, 'NOTE'); p.line(0, by, totalW, by, 'NOTE');
+      y = by;
+      return;
+    }
+    const ry = y - RH;
+    row.forEach((val, i) => {
+      const c = cols[i]; if (!c) return;
+      const x0 = cellX(i);
+      p.line(x0, y, x0, ry, 'NOTE');
+      const t = tx(c, x0);
+      p.text(t.x, ry + RH / 2 - CH / 2 + 1, CH * 0.9, String(val), 'TEXT', { align: t.align });
+    });
+    p.line(totalW, y, totalW, ry, 'NOTE');
+    p.line(0, ry, totalW, ry, 'NOTE');
+    y = ry;
+  });
+  p.line(0, y, 0, hy, 'MINI_BOX');            // 좌측 외곽 전체
+  p.line(totalW, y, totalW, hy, 'MINI_BOX');  // 우측 외곽 전체
+  return wrap(doc);
+}
+
 export function downloadFile(filename: string, content: string | ArrayBuffer, mime: string) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);

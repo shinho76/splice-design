@@ -17,10 +17,13 @@ import { loadProject, persistProject, newItem, type ProjectItem } from './engine
 import { LangContext, type Lang, tMember, tJoint } from './i18n.ts';
 import { catalogFor, sectionByName } from './engine/sections.ts';
 import { catalogForCond, standardDiaAt, applyStdPlates, isStdMode } from './engine/standard/schedule.ts';
+import { ksLabelOf, ksClassOf, ksClassLabel } from './engine/standard/ksData.ts';
+import { unitWeightOf } from './engine/hbeam_catalog.ts';
 import { usesLimitState } from './engine/std.ts';
 import { designConnection } from './engine/engine.ts';
 import { aiscAutoCorrect, aiscCheck } from './engine/aisc/compat.ts';
-import { toDXF, toDXFAll, toDXFAll2, downloadFile } from './engine/dxf.ts';
+import { kbcCheck } from './engine/kbcCheck.ts';
+import { toDXF, toDXFAll, toDXFAll2, toDXFTable, type DxfTableCol, type DxfTableRow, downloadFile } from './engine/dxf.ts';
 import { toIFC } from './engine/ifcOut.ts';
 import { toTeklaMacro } from './engine/teklaOut.ts';
 import { downloadCalcSheet, type SheetRow } from './engine/calcSheet.ts';
@@ -159,6 +162,70 @@ export default function App() {
       });
   };
   const exportCalcSheet = () => downloadCalcSheet(allSheetRows(), cond, `구조계산요약_${girderLock ? 'GIRDER_SPLICE' : cond.member}_${cond.jointType}.xlsx`);
+  // BASIC DXF — 메인창 결과표(ResultTable)를 그대로 격자 표 DXF로 출력(K모드 KS라벨·계열 포함)
+  const exportTableDXF = () => {
+    const isAisc = usesLimitState(cond.designStd);
+    const isK = cond.mode === 'K';
+    const isColT = cond.member === '기둥';
+    const cols: DxfTableCol[] = [
+      ...(isK ? [{ label: 'KS LABEL', width: 90, align: 'c' as const }] : []),
+      { label: 'SECTION', width: 170, align: 'l' },
+      { label: 'UNIT WT(KG/M)', width: 90, align: 'r' },
+      { label: 'RATIO A(%)', width: 70, align: 'r' },
+      { label: 'MAX RATIO(%)', width: 80, align: 'r' },
+      { label: isColT ? 'COMP.(KN)' : 'MOMENT(KN·M)', width: 90, align: 'r' },
+      { label: isColT ? 'WEB COMP.(KN)' : 'SHEAR(KN)', width: 90, align: 'r' },
+      { label: 'BOLT GRADE', width: 80, align: 'c' },
+      { label: 'BOLT DB', width: 60, align: 'c' },
+      { label: 'DCR', width: 55, align: 'r' },
+      { label: 'FLG BOLT(M×N)', width: 90, align: 'c' },
+      { label: 'G1', width: 45, align: 'r' },
+      { label: 'G2', width: 45, align: 'r' },
+      { label: 'FLG OUTER PL', width: 130, align: 'c' },
+      { label: 'FLG INNER PL', width: 130, align: 'c' },
+      { label: 'WEB BOLT(M×N)', width: 90, align: 'c' },
+      { label: 'PC', width: 45, align: 'r' },
+      { label: 'WEB PL', width: 130, align: 'c' },
+    ];
+    const rows: DxfTableRow[] = [];
+    let prevCls: string | undefined;
+    catalogForCond(cond).map((s, i) => ({ s, i })).filter(({ s }) => !hidden.has(s.name)).forEach(({ s, i }) => {
+      if (isK) {
+        const cls = ksClassOf(s.name);
+        if (cls && cls !== prevCls) { rows.push({ band: ksClassLabel(cls) }); prevCls = cls; }
+      }
+      const rAlpha = girderLock && alphaMode === 'Custom' ? alphaAt(i) : undefined;
+      const rowCond = rAlpha != null ? { ...cond, strengthRatio: Math.min(100, Math.max(10, rAlpha)) / 100 } : cond;
+      let r = designConnection(rowCond, s, diaAt(i));
+      if (isStdMode(cond.mode) && !autoFix) r = applyStdPlates(r, rowCond);
+      const ac = (isAisc && autoFix) ? aiscAutoCorrect(r, rowCond) : null;
+      const dr = ac ? ac.result : r;
+      const govDcr = ac ? ac.report.govDcr : (isAisc ? aiscCheck(r, rowCond).govDcr : kbcCheck(r, rowCond).govDcr);
+      const partial = ac && ac.memberLimited ? Math.min(ac.flangeScale, ac.webScale) : null;
+      rows.push([
+        ...(isK ? [ksLabelOf(s.name) ?? ''] : []),
+        dr.section,
+        unitWeightOf(s).toFixed(1),
+        Math.round(rowCond.strengthRatio * 100),
+        partial != null ? Math.round(partial * 100) : '-',
+        Math.round(isColT ? dr.Puf_kN : dr.Mu_kNm),
+        Math.round(dr.Vu_kN),
+        cond.bolt,
+        dr.boltDia,
+        govDcr != null ? govDcr.toFixed(2) : '-',
+        `${dr.flange.bolt.m}×${dr.flange.bolt.n}`,
+        dr.flange.gauge?.g1 ?? '-',
+        dr.flange.gauge?.g2 ?? '-',
+        dr.flange.outerPlate ? `${dr.flange.outerPlate.t}×${dr.flange.outerPlate.w}×${dr.flange.outerPlate.L}` : '-',
+        dr.flange.innerPlate ? `${dr.flange.innerPlate.t}×${dr.flange.innerPlate.w}×${dr.flange.innerPlate.L}` : '-',
+        `${dr.web.bolt.m}×${dr.web.bolt.n}`,
+        dr.web.Pc ?? '-',
+        dr.web.webPlate ? `${dr.web.webPlate.t}×${dr.web.webPlate.w}×${dr.web.webPlate.L}` : '-',
+      ]);
+    });
+    const title = `${girderLock ? 'GIRDER SPLICE' : tMember(cond.member, 'en')} TABLE — ${Math.round(cond.strengthRatio * 100)}% ${cond.steel} ${cond.bolt}`;
+    downloadFile(`BASIC_DXF_${girderLock ? 'GIRDER_SPLICE' : cond.member}_${cond.jointType}.dxf`, toDXFTable(title, cols, rows), 'application/dxf');
+  };
   const exportTekla = () =>   // Tekla Open API 임포트 매크로(.cs)
     downloadFile(`splice_전체_${cond.member}_${cond.jointType}_tekla.cs`, toTeklaMacro(allRowsForDXF(), cond), 'text/plain;charset=utf-8');
   const isCol = cond.member === '기둥';
@@ -183,8 +250,9 @@ export default function App() {
           <div className="rmenu-pop" role="menu">
             <div className="rmenu-title">GIRDER<span className="accent"> SPLICE</span></div>
             <button type="button" className="rmenu-item" role="menuitem" onClick={() => setShowSens(true)} title={L('물량 절감 민감도 시각화', 'Material savings sensitivity')}>📄 {L('민감도 분석', 'Sensitivity')}</button>
-            <button type="button" className="rmenu-item" role="menuitem" onClick={exportCalcSheet} title={L('구조계산요약 Excel', 'Calc summary Excel')}>📊 {L('XLS 계산결과 다운로드', 'Calc results XLS')}</button>
-            <button type="button" className="rmenu-item" role="menuitem" onClick={exportAllDXF} title={L('전체 DXF', 'All DXF')}>🗂 {L('DXF 시리즈 다운로드', 'DXF series')}</button>
+            <button type="button" className="rmenu-item" role="menuitem" onClick={exportCalcSheet} title={L('구조계산요약 Excel', 'Calc summary Excel')}>📊 {L('구조계산요약_XLS', 'Calc summary XLS')}</button>
+            <button type="button" className="rmenu-item" role="menuitem" onClick={exportTableDXF} title={L('메인창 결과표를 DXF 격자표로 출력', 'Export the main results table as a DXF grid')}>📋 BASIC DXF</button>
+            <button type="button" className="rmenu-item" role="menuitem" onClick={exportAllDXF} title={L('전체 상세도 DXF(검토용)', 'All detail drawings DXF (for review)')}>🗂 {L('DETAIL DXF(검토용)', 'DETAIL DXF (review)')}</button>
             <button type="button" className="rmenu-item" role="menuitem" onClick={exportTekla} title={L('Tekla Open API 매크로(.cs)', 'Tekla Open API macro (.cs)')}>🏗 Tekla</button>
           </div>
         </div>
