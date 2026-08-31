@@ -158,7 +158,7 @@ export default function App() {
         return { s, result: r0, checks: [], ok: !r0.steps.some(st => st.check === 'NG'), flangeScale: 1, webScale: 1, memberLimited: false };
       });
   };
-  const exportCalcSheet = () => downloadCalcSheet(allSheetRows(), cond, `구조계산요약_${cond.member}_${cond.jointType}.xlsx`);
+  const exportCalcSheet = () => downloadCalcSheet(allSheetRows(), cond, `구조계산요약_${girderLock ? 'GIRDER_SPLICE' : cond.member}_${cond.jointType}.xlsx`);
   const exportTekla = () =>   // Tekla Open API 임포트 매크로(.cs)
     downloadFile(`splice_전체_${cond.member}_${cond.jointType}_tekla.cs`, toTeklaMacro(allRowsForDXF(), cond), 'text/plain;charset=utf-8');
   const isCol = cond.member === '기둥';
