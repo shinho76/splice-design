@@ -10,6 +10,8 @@ const AiscDetailReport = lazy(() => import('./components/AiscDetailReport.tsx'))
 const KbcDetailReport = lazy(() => import('./components/KbcDetailReport.tsx'));
 const QuantityPanel = lazy(() => import('./components/QuantityPanel.tsx'));
 const SensitivityPanel = lazy(() => import('./components/SensitivityPanel.tsx'));
+const ShearTable = lazy(() => import('./components/ShearTable.tsx'));
+const ShearDetail = lazy(() => import('./components/ShearDetail.tsx'));
 const ProjectPanel = lazy(() => import('./components/ProjectPanel.tsx'));
 const ThreeViewer = lazy(() => import('./components/ThreeViewer.tsx'));
 const DcrPopup = lazy(() => import('./components/DcrPopup.tsx'));
@@ -28,6 +30,8 @@ import { toIFC } from './engine/ifcOut.ts';
 import { toTeklaMacro } from './engine/teklaOut.ts';
 import { downloadCalcSheet, type SheetRow } from './engine/calcSheet.ts';
 import { quantityOf } from './engine/quantity.ts';
+import { designSinglePlate } from './engine/shear/singlePlate.ts';
+import { downloadShearCalcSheet } from './engine/shear/calcSheet.ts';
 
 const DEFAULT: DesignCondition = {
   mode: 'K', profile: 'H', member: '보', jointType: '마찰', steel: 'SHN355', plateSteel: 'SM355', bolt: 'F10T', strengthRatio: 1.0, sectionType: '압연',   // 앱 초기 접속 시 K모드 기본. 보 기본 강도비 100%(기둥 전환 시 80%로 자동, FilterBar setMember)
@@ -50,7 +54,10 @@ export default function App() {
   const [showDetail, setShowDetail] = useState(false);
   const [showQty, setShowQty] = useState(false);
   const [showSens, setShowSens] = useState(false);   // 물량 민감도 분석 팝업
+  const [mode, setMode] = useState<'splice' | 'shear'>('splice');   // 설계 모드: 이음 / 전단접합
   const [girderLock, setGirderLock] = useState(false);   // GS(GIRDER SPLICE) 모드: K모드·보 고정, 구분·부재 세그 숨김
+  const [shearSel, setShearSel] = useState<import('./engine/shear/singlePlate.ts').ShearResult | null>(null);
+  const [scSubtype, setScSubtype] = useState<import('./engine/shear/singlePlate.ts').ScSubtype>('beam-beam');
   const [showProj, setShowProj] = useState(false);
   const [view3D, setView3D] = useState<DesignResult | null>(null);
   const [zoomPrev, setZoomPrev] = useState(false);   // 접합 상세도 확대 보기
@@ -230,21 +237,60 @@ export default function App() {
   };
   const exportTekla = () =>   // Tekla Open API 임포트 매크로(.cs)
     downloadFile(girderLock ? 'Tekla Open API.cs' : `splice_전체_${cond.member}_${cond.jointType}_tekla.cs`, toTeklaMacro(allRowsForDXF(), cond), 'text/plain;charset=utf-8');
+  // SC(SHEAR CONNECTION) — 기존 Phase 1 엔진(designSinglePlate)을 그대로 적용. 화면 표(ShearTable)와 동일 subtype 기준으로 출력.
+  const scRows = () => catalogForCond(cond).map(s => designSinglePlate(cond, s, scSubtype));
+  const exportShearCalcSheet = () => downloadShearCalcSheet(scRows(), cond, `SC_구조계산요약_${scSubtype}.xlsx`);
+  const exportShearTableDXF = () => {
+    const cols: DxfTableCol[] = [
+      { label: 'SECTION', width: 180, align: 'l' },
+      { label: 'VU(KN)', width: 90, align: 'r' },
+      { label: 'BOLT', width: 90, align: 'c' },
+      { label: 'NCxNR', width: 75, align: 'c' },
+      { label: 'PLATE(TxLxW)', width: 150, align: 'c' },
+      { label: 'GOV', width: 65, align: 'c' },
+      { label: 'DCR', width: 75, align: 'r' },
+      { label: 'CHECK', width: 65, align: 'c' },
+      { label: 'CONFIG', width: 85, align: 'c' },
+    ];
+    const rows: DxfTableRow[] = scRows().map(r => [
+      r.section, Math.round(r.V_kN), r.boltName, `${r.NC}x${r.NR}`,
+      `${r.plate.t}x${r.plate.L}x${r.plate.w}`, r.govId, isFinite(r.govDcr) ? r.govDcr.toFixed(2) : '-',
+      r.ok ? 'OK' : 'NG', r.config === 'Extended' ? 'EXT' : 'CONV',
+    ]);
+    const title = `SHEAR CONNECTION TABLE - ${scSubtype.toUpperCase()} - ${Math.round(cond.strengthRatio * 100)}% ${cond.steel} ${cond.bolt}  (UNIT: VU kN)`;
+    downloadFile(`BASIC_DXF_SHEAR_CONNECTION_${scSubtype}.dxf`, toDXFTable(title, cols, rows), 'application/dxf');
+  };
   const isCol = cond.member === '기둥';
   const pct = Math.round(cond.strengthRatio * 100);
-  // GS(GIRDER SPLICE) 모드 진입/해제 — 진입 시 K모드·보 고정
+  // GS(GIRDER SPLICE) 모드 진입/해제 — 진입 시 K모드·보 고정 + 이음 화면으로 전환
   const toggleGirder = () => setGirderLock(v => {
     const next = !v;
-    if (next) setCond(c => ({ ...c, mode: 'K', member: '보' }));
+    if (next) { setCond(c => ({ ...c, mode: 'K', member: '보' })); setMode('splice'); }
     return next;
   });
+  // SC(SHEAR CONNECTION) 모드 전환 — 기존 'SP 전단접합' 토글과 동일한 mode 상태를 공유(별도 lock 불필요)
+  const toggleSC = () => setMode(m => (m === 'shear' ? 'splice' : 'shear'));
 
   return (
     <LangContext.Provider value={lang}>
     <div className="console">
       <aside className="rail">
         <span className="rlogo">S</span>
-        {/* GS(GIRDER SPLICE) — 클릭 시 K모드·보 고정 전용 뷰로 진입/해제. Hover 시 메뉴 펼침. */}
+        {/* SC(SHEAR CONNECTION) — GS와 동일 구조(Hover 팝업+토글형 모드). 기존 Phase 1 엔진(designSinglePlate)·ShearTable을 그대로 적용. */}
+        <div className="rmenu">
+          <button type="button" className={'rbtn rham' + (mode === 'shear' ? ' on' : '')} aria-haspopup="true" aria-pressed={mode === 'shear'}
+            onClick={toggleSC} title={L('전단접합 모드 전환', 'Toggle shear connection mode')}>
+            <b className="rab">SC</b></button>
+          <div className="rmenu-pop" role="menu">
+            <div className="rmenu-title">SHEAR<span className="accent"> CONNECTION</span></div>
+            <button type="button" className="rmenu-item" role="menuitem" disabled title={L('준비 중 — SC 전용 민감도 분석 미구축', 'Pending — SC-specific sensitivity study not built yet')}>📄 {L('민감도 분석', 'Sensitivity')}</button>
+            <button type="button" className="rmenu-item" role="menuitem" onClick={exportShearCalcSheet} title={L('구조계산요약 Excel(SC)', 'Calc summary Excel (SC)')}>📊 {L('구조계산요약_XLS', 'Calc summary XLS')}</button>
+            <button type="button" className="rmenu-item" role="menuitem" onClick={exportShearTableDXF} title={L('메인창 결과표를 DXF 격자표로 출력', 'Export the main results table as a DXF grid')}>📋 BASIC DXF</button>
+            <button type="button" className="rmenu-item" role="menuitem" disabled title={L('준비 중 — 전단탭 개별 상세도 생성기 미구축', 'Pending — single-plate detail drawing generator not built yet')}>🗂 {L('DETAIL DXF(검토용)', 'DETAIL DXF (review)')}</button>
+            <button type="button" className="rmenu-item" role="menuitem" disabled title={L('준비 중 — 전단탭 Tekla 매크로 미구축', 'Pending — shear-tab Tekla macro not built yet')}>🏗 Tekla Open API</button>
+          </div>
+        </div>
+        {/* GS(GIRDER SPLICE) — 클릭 시 K모드·보 고정 전용 뷰로 진입/해제(SP와 동일한 토글형 모드). Hover 시 메뉴 펼침. */}
         <div className="rmenu">
           <button type="button" className={'rbtn rham' + (girderLock ? ' on' : '')} aria-haspopup="true" aria-pressed={girderLock}
             onClick={toggleGirder} title={L('거더 이음 모드 전환', 'Toggle girder splice mode')}>
@@ -285,22 +331,11 @@ export default function App() {
             )}
           </div>
         </div>
-        {/* MC 바로 아래 SC 메뉴(K모드 전용) — MC와 동일 구조, 하위 항목은 라벨만 동일(버튼만, 기능 미연결) */}
-        {cond.mode === 'K' && (
-          <div className="rmenu">
-            <button type="button" className="rbtn rham" aria-haspopup="true" title={L('전단접합 메뉴 · 다운로드', 'Shear connection menu · Downloads')}>
-              <b className="rab">SC</b></button>
-            <div className="rmenu-pop" role="menu">
-              <div className="rmenu-title">SHEAR<span className="accent"> CONNECTION</span></div>
-              <button type="button" className="rmenu-item" role="menuitem" disabled title={L('준비 중', 'Pending')}>📄 {L('PDF 민감도 다운로드', 'Sensitivity PDF')}</button>
-              <button type="button" className="rmenu-item" role="menuitem" disabled title={L('준비 중', 'Pending')}>📊 {L('XLS 계산결과 다운로드', 'Calc results XLS')}</button>
-              <button type="button" className="rmenu-item" role="menuitem" disabled title={L('준비 중', 'Pending')}>📋 {L('DXF 테이블 다운로드', 'DXF table')}</button>
-              <button type="button" className="rmenu-item" role="menuitem" disabled title={L('준비 중', 'Pending')}>📐 {L('DXF 평입단 다운로드', 'DXF layout sheet')}</button>
-              <button type="button" className="rmenu-item" role="menuitem" disabled title={L('준비 중', 'Pending')}>🗂 {L('DXF 시리즈 다운로드', 'DXF series')}</button>
-              <button type="button" className="rmenu-item" role="menuitem" disabled title={L('준비 중', 'Pending')}>🏗 Tekla</button>
-            </div>
-          </div>
-        )}
+        {/* 전단접합 탭 — 햄버거와 Feedback 사이. 단일판(shear tab) 전단접합 모드 전환(위 SC 메뉴와 동일 상태 공유) */}
+        <button type="button" className={'rbtn rsc' + (mode === 'shear' ? ' on' : '')}
+          onClick={() => setMode(m => (m === 'shear' ? 'splice' : 'shear'))}
+          aria-pressed={mode === 'shear'} title={L('전단접합(단일판) 설계 — 다시 누르면 이음 설계로', 'Shear connection (single plate) — press again for splice')}>
+          <b className="rab">SP</b><span className="rlbl">{L('전단접합', 'Shear Conn.')}</span></button>
         {/* Feedback — 단독 유지. Hover 시 라벨 펼침 + 활성 세그먼트와 동일 색(accent) */}
         <a className="rbtn rfb" href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer" title="FeedBack — 사용자 피드백(구글 폼)">
           <b className="rab">F</b><span className="rlbl">FeedBack</span></a>
@@ -449,14 +484,22 @@ export default function App() {
           </aside>
 
           <div className="ccenter">
-            <div className="kpi-strip">
-              <div className="kpi k1"><span className="k">{L('검토 부재', 'Members')}</span> <span className="v num">{stats.total}</span> <span className="d">{tMember(cond.member, lang)} · {tJoint(cond.jointType, lang)}</span></div>
-              <div className="kpi k2"><span className="k">{L('적합', 'Pass')}</span> <span className="v num ok">{stats.ok}</span> <span className="d ok">{stats.total ? Math.round(stats.ok / stats.total * 100) : 0}%</span> <span className="k">{L('부적합', 'Fail')}</span> <span className="v num ng">{stats.total - stats.ok}</span></div>
-              <div className="kpi k3"><span className="k">{L('고력볼트', 'Bolts')}</span> <span className="v num">{nf(stats.bolts)}<small> {L('본', 'ea')}</small> / {(stats.boltWt / 1000).toFixed(2)}<small> ton</small></span> <span className="d">{cond.bolt}</span></div>
-              <div className="kpi k4"><span className="k">{L('이음판', 'Plates')}</span> <span className="v num">{(stats.wt / 1000).toFixed(2)}<small> ton</small></span></div>
-            </div>
-            <div className="cgrid"><ResultTable cond={cond} onSelect={setSelected} onView3D={setView3D} custom={boltMode === 'Custom' && (cond.mode === 'K' || !isStdMode(cond.mode))} diaAt={diaAt} onSetDia={setDiaAt} selectedSection={selected?.section} autoFix={autoFix} hidden={hidden} onHide={hideSection} onResetHidden={resetHidden} onDcrClick={setDcrView}
-              girderLock={girderLock} alphaCustom={girderLock && alphaMode === 'Custom'} alphaAt={alphaAt} onSetAlpha={setAlphaAt} /></div>
+            {mode === 'shear' ? (
+              <Suspense fallback={<div className="lazy-fb">…</div>}>
+                <ShearTable cond={cond} onSelect={setShearSel} selectedSection={shearSel?.section} subtype={scSubtype} onSubtype={setScSubtype} />
+              </Suspense>
+            ) : (
+              <>
+                <div className="kpi-strip">
+                  <div className="kpi k1"><span className="k">{L('검토 부재', 'Members')}</span> <span className="v num">{stats.total}</span> <span className="d">{tMember(cond.member, lang)} · {tJoint(cond.jointType, lang)}</span></div>
+                  <div className="kpi k2"><span className="k">{L('적합', 'Pass')}</span> <span className="v num ok">{stats.ok}</span> <span className="d ok">{stats.total ? Math.round(stats.ok / stats.total * 100) : 0}%</span> <span className="k">{L('부적합', 'Fail')}</span> <span className="v num ng">{stats.total - stats.ok}</span></div>
+                  <div className="kpi k3"><span className="k">{L('고력볼트', 'Bolts')}</span> <span className="v num">{nf(stats.bolts)}<small> {L('본', 'ea')}</small> / {(stats.boltWt / 1000).toFixed(2)}<small> ton</small></span> <span className="d">{cond.bolt}</span></div>
+                  <div className="kpi k4"><span className="k">{L('이음판', 'Plates')}</span> <span className="v num">{(stats.wt / 1000).toFixed(2)}<small> ton</small></span></div>
+                </div>
+                <div className="cgrid"><ResultTable cond={cond} onSelect={setSelected} onView3D={setView3D} custom={boltMode === 'Custom' && (cond.mode === 'K' || !isStdMode(cond.mode))} diaAt={diaAt} onSetDia={setDiaAt} selectedSection={selected?.section} autoFix={autoFix} hidden={hidden} onHide={hideSection} onResetHidden={resetHidden} onDcrClick={setDcrView}
+                  girderLock={girderLock} alphaCustom={girderLock && alphaMode === 'Custom'} alphaAt={alphaAt} onSetAlpha={setAlphaAt} /></div>
+              </>
+            )}
           </div>
 
           <aside className="cdetail">
@@ -518,6 +561,7 @@ export default function App() {
           : <KbcDetailReport result={selEff} cond={cond} onClose={() => setShowDetail(false)} />)}
         {showQty && <QuantityPanel cond={cond} diaAt={diaAt} autoFix={autoFix} onClose={() => setShowQty(false)} />}
         {showSens && <SensitivityPanel onClose={() => setShowSens(false)} girderLock={girderLock} />}
+        {shearSel && <ShearDetail r={shearSel} cond={cond} onClose={() => setShearSel(null)} />}
         {showProj && <ProjectPanel items={project} onChange={setProject} onClose={() => setShowProj(false)} />}
         {view3D && <ThreeViewer r={view3D} cond={cond} onClose={() => setView3D(null)} />}
         {dcrView && <DcrPopup r={dcrView.r} cond={cond} fScale={dcrView.fScale} wScale={dcrView.wScale} onClose={() => setDcrView(null)} />}
