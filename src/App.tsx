@@ -143,7 +143,7 @@ export default function App() {
       .map(({ s, i }) => { const r = designConnection(cond, s, diaAt(i)); return af ? aiscAutoCorrect(r, cond).result : r; });
   };
   const exportAllDXF = () =>
-    downloadFile(`splice_전체_${cond.member}_${cond.jointType}.dxf`, toDXFAll(allRowsForDXF(), cond), 'application/dxf');
+    downloadFile(girderLock ? 'DETAIL_GIRDER_SPLICE_ALL.dxf' : `splice_전체_${cond.member}_${cond.jointType}.dxf`, toDXFAll(allRowsForDXF(), cond), 'application/dxf');
   const exportAllDXF2 = () =>   // 사무소 표준 포맷(ExT/INT/W·볼트길이·주기)
     downloadFile(`splice_전체_${cond.member}_${cond.jointType}_표준포맷.dxf`, toDXFAll2(allRowsForDXF(), cond), 'application/dxf');
   const exportOneDXF = (r: DesignResult) => downloadFile(`${r.section}_${cond.jointType}.dxf`, toDXF(r, cond), 'application/dxf');

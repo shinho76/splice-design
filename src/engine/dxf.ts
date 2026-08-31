@@ -995,8 +995,8 @@ export function toDXFTable(title: string, cols: DxfTableCol[], rows: DxfTableRow
   cols.forEach((c, i) => {
     const x0 = cellX(i);
     p.line(x0, y, x0, hy, 'MINI_BOX');
-    const t = tx(c, x0);
-    p.text(t.x, hy + HH / 2 - CH / 2, CH, c.label, 'MINI_HEAD', { align: t.align });
+    // 헤더 라벨은 데이터 정렬(align)과 무관하게 항상 칸 중앙에 배치
+    p.text(x0 + c.width / 2, hy + HH / 2 - CH * 0.35, CH, c.label, 'MINI_HEAD', { align: 'c' });
   });
   p.line(totalW, y, totalW, hy, 'MINI_BOX');
   p.line(0, hy, totalW, hy, 'MINI_BOX');
