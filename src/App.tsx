@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { DesignCondition, DesignResult, BoltGrade } from './engine/types.ts';
+import type { DesignCondition, DesignResult } from './engine/types.ts';
 import FilterBar from './components/FilterBar.tsx';
 import ResultTable from './components/ResultTable.tsx';
 import ConnectionSVG from './components/ConnectionSVG.tsx';
@@ -91,41 +91,24 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [showHelp]);
 
-  // Custom 볼트직경 해석 : 해당 행 이상에서 가장 가까운 지정값(위 행을 따름)
+  // Custom 볼트직경 해석 : 행별 독립 지정(다른 행에 전파되지 않음)
   const diaAt = useCallback((i: number): number | undefined => {
     const stdDia = isStdMode(cond.mode) ? standardDiaAt(cond, i) : undefined;   // S·H·K 표준 볼트직경
     // 지정 가능 모드: A(엔진기본에서 지정) · K(S규칙값에서 지정). S·H는 표준 강제.
     const allowCustom = cond.mode === 'K' || !isStdMode(cond.mode);
-    if (boltMode === 'Custom' && allowCustom) {
-      let bestK: number | undefined;
-      for (const k of Object.keys(boltOv).map(Number)) if (k <= i && (bestK === undefined || k > bestK)) bestK = k;
-      return bestK === undefined ? stdDia : boltOv[bestK];   // 지정 없는 행: K=S규칙값 / A=엔진기본(undefined)
-    }
+    if (boltMode === 'Custom' && allowCustom) return boltOv[i] ?? stdDia;   // 지정 없는 행: K=S규칙값 / A=엔진기본(undefined)
     return stdDia;   // 표준(Default): S·H·K 표준값 / A=엔진기본(undefined)
   }, [boltMode, boltOv, cond.mode, cond.member]);
   const setDiaAt = (i: number, d: number) => setBoltOv(o => ({ ...o, [i]: d }));
 
-  // GS(GIRDER SPLICE) 전용: 강도비 '지정' — 행별 강도비(%) 오버라이드(위 행을 따름, diaAt과 동일 패턴)
+  // GS(GIRDER SPLICE) 전용: 강도비 '지정' — 행별 독립 강도비(%) 오버라이드(다른 행에 전파되지 않음)
   const [alphaMode, setAlphaMode] = useState<'Default' | 'Custom'>('Default');
   const [alphaOv, setAlphaOv] = useState<Record<number, number>>({});
   const alphaAt = useCallback((i: number): number | undefined => {
     if (alphaMode !== 'Custom') return undefined;
-    let bestK: number | undefined;
-    for (const k of Object.keys(alphaOv).map(Number)) if (k <= i && (bestK === undefined || k > bestK)) bestK = k;
-    return bestK === undefined ? Math.round(cond.strengthRatio * 100) : alphaOv[bestK];
+    return alphaOv[i] ?? Math.round(cond.strengthRatio * 100);
   }, [alphaMode, alphaOv, cond.strengthRatio]);
   const setAlphaAt = (i: number, pct: number) => setAlphaOv(o => ({ ...o, [i]: pct }));
-
-  // GS 전용: 볼트 재질 '지정' — 행별 볼트등급 오버라이드
-  const [boltMatMode, setBoltMatMode] = useState<'Default' | 'Custom'>('Default');
-  const [boltMatOv, setBoltMatOv] = useState<Record<number, BoltGrade>>({});
-  const boltMatAt = useCallback((i: number): BoltGrade | undefined => {
-    if (boltMatMode !== 'Custom') return undefined;
-    let bestK: number | undefined;
-    for (const k of Object.keys(boltMatOv).map(Number)) if (k <= i && (bestK === undefined || k > bestK)) bestK = k;
-    return bestK === undefined ? cond.bolt : boltMatOv[bestK];
-  }, [boltMatMode, boltMatOv, cond.bolt]);
-  const setBoltMatAt = (i: number, g: BoltGrade) => setBoltMatOv(o => ({ ...o, [i]: g }));
 
   // KPI 집계 (조건·Custom 변경 시)
   const stats = useMemo(() => {
@@ -385,7 +368,7 @@ export default function App() {
           <aside className="cfilters">
             <div className="cfilters-h">☰ {L('설계 조건', 'Design Conditions')}</div>
             <FilterBar cond={cond} onChange={setCond} boltMode={boltMode} onBoltMode={setBoltMode} girderLock={girderLock}
-              alphaMode={alphaMode} onAlphaMode={setAlphaMode} boltMatMode={boltMatMode} onBoltMatMode={setBoltMatMode} />
+              alphaMode={alphaMode} onAlphaMode={setAlphaMode} />
             {usesLimitState(cond.designStd) && (
               <div className="cf-autofix">
                 <button type="button" className={autoFix ? 'on' : ''} onClick={() => setAutoFix(v => !v)} aria-pressed={autoFix} title={autoFix ? L('한계상태설계 최적화 — 철판 물량 최소로 DCR≤1.0 달성(부재지배는 부분강도). 끄면 KBC-09 표준접합 검토', 'Limit-state optimize — minimum plate to reach DCR≤1.0 (member-governed → partial strength). Off = KBC-09 standard-connection check') : L('현재 KBC-09 표준접합 검토(비최적화). 켜면 한계상태설계 최적화', 'Currently KBC-09 standard check (no optimize). On = limit-state optimize')}>⚙ {(() => { const std = cond.designStd === 'KDS' ? 'KDS22' : 'AISC16'; return autoFix ? `${std} ${L('표준화 및 최적화', 'Standardize & Optimize')}` : `${std} ${L('최적화', 'Optimize')}`; })()}</button>
@@ -402,8 +385,7 @@ export default function App() {
               <div className="kpi k4"><span className="k">{L('이음판', 'Plates')}</span> <span className="v num">{(stats.wt / 1000).toFixed(2)}<small> ton</small></span></div>
             </div>
             <div className="cgrid"><ResultTable cond={cond} onSelect={setSelected} onView3D={setView3D} custom={boltMode === 'Custom' && (cond.mode === 'K' || !isStdMode(cond.mode))} diaAt={diaAt} onSetDia={setDiaAt} selectedSection={selected?.section} autoFix={autoFix} hidden={hidden} onHide={hideSection} onResetHidden={resetHidden} onDcrClick={setDcrView}
-              girderLock={girderLock} alphaCustom={girderLock && alphaMode === 'Custom'} alphaAt={alphaAt} onSetAlpha={setAlphaAt}
-              boltMatCustom={girderLock && boltMatMode === 'Custom'} boltMatAt={boltMatAt} onSetBoltMat={setBoltMatAt} /></div>
+              girderLock={girderLock} alphaCustom={girderLock && alphaMode === 'Custom'} alphaAt={alphaAt} onSetAlpha={setAlphaAt} /></div>
           </div>
 
           <aside className="cdetail">

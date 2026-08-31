@@ -1,5 +1,5 @@
 import { useState, useMemo, Fragment } from 'react';
-import type { DesignCondition, DesignResult, Plate, BoltArray, BoltGrade } from '../engine/types.ts';
+import type { DesignCondition, DesignResult, Plate, BoltArray } from '../engine/types.ts';
 import { catalogForCond, applyStdPlates, isStdMode, ksUsedHB } from '../engine/standard/schedule.ts';
 import { ksClassOf, ksClassLabel, ksLabelOf } from '../engine/standard/ksData.ts';
 import { designConnection } from '../engine/engine.ts';
@@ -18,19 +18,17 @@ const fmtW = (w: number) => w.toLocaleString('en-US');                   // 단�
 
 const DIAS = [16, 20, 22, 24, 27, 30];   // 사용 직경(M27·M30=KDS 표준구멍 d+3)
 const ALPHA_PRESETS = [100, 95, 90, 85, 80, 75, 70, 65, 60, 50];   // GS 강도비A 행별 지정 옵션(FilterBar PRESETS와 동일)
-const BOLT_GRADES: BoltGrade[] = ['F10T', 'F13T', 'A325', 'A490'];   // GS 볼트재질 행별 지정 옵션
 
 export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, onSetDia, selectedSection, autoFix, hidden, onHide, onResetHidden, onDcrClick,
-  girderLock, alphaCustom, alphaAt, onSetAlpha, boltMatCustom, boltMatAt, onSetBoltMat }: {
+  girderLock, alphaCustom, alphaAt, onSetAlpha }: {
   cond: DesignCondition; onSelect: (r: DesignResult) => void; onView3D: (r: DesignResult) => void;
   custom?: boolean; diaAt?: (i: number) => number | undefined; onSetDia?: (i: number, d: number) => void;
   selectedSection?: string; autoFix?: boolean;
   hidden?: Set<string>; onHide?: (name: string) => void; onResetHidden?: () => void;
   onDcrClick?: (p: { r: DesignResult; fScale: number; wScale: number }) => void;
-  // GS(GIRDER SPLICE) 전용: 컬럼 재배치(R열 삭제·강도비A/볼트재질 열 추가·DCR 위치 이동) + 행별 강도비·볼트재질 지정
+  // GS(GIRDER SPLICE) 전용: 컬럼 재배치(R열 삭제·강도비A/볼트재질 열 추가·DCR 위치 이동) + 행별 강도비 지정
   girderLock?: boolean;
   alphaCustom?: boolean; alphaAt?: (i: number) => number | undefined; onSetAlpha?: (i: number, pct: number) => void;
-  boltMatCustom?: boolean; boltMatAt?: (i: number) => BoltGrade | undefined; onSetBoltMat?: (i: number, g: BoltGrade) => void;
 }) {
   const lang = useLang();
   const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
@@ -41,12 +39,9 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
   const isStd = isStdMode(cond.mode);
   const isK = cond.mode === 'K';   // KS전단면 모드 — S·H 채택단면 굵게
   const allRows = useMemo(() => catalogForCond(cond).map((s, i) => {
-    // GS 전용 행별 오버라이드: 강도비A '지정'·볼트재질 '지정' → 이 행만 다른 cond로 계산(엔진 변경 없이 rowCond 대입)
+    // GS 전용 행별 오버라이드: 강도비A '지정' → 이 행만 다른 cond로 계산(엔진 변경 없이 rowCond 대입)
     const rAlpha = alphaCustom ? alphaAt?.(i) : undefined;
-    const rBolt = boltMatCustom ? boltMatAt?.(i) : undefined;
-    const rowCond = (rAlpha != null || rBolt != null)
-      ? { ...cond, strengthRatio: rAlpha != null ? Math.min(100, Math.max(10, rAlpha)) / 100 : cond.strengthRatio, bolt: rBolt ?? cond.bolt }
-      : cond;
+    const rowCond = rAlpha != null ? { ...cond, strengthRatio: Math.min(100, Math.max(10, rAlpha)) / 100 } : cond;
     let r = designConnection(rowCond, s, diaAt?.(i));
     if (isStd && !autoFix) r = applyStdPlates(r, rowCond);     // S·최적화OFF=표준 판 고정
     const ac = (isAisc && autoFix) ? aiscAutoCorrect(r, rowCond) : null;  // 최적화ON=옵티마이저(판두께·볼트수 조절→중량최소·DCR≤1)
@@ -56,7 +51,7 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
     const fScale = ac ? ac.flangeScale : 1, wScale = ac ? ac.webScale : 1;   // DCR팝업 캡핑 기준(테이블 일치)
     const clash = innerWebClash(dr);                       // 내부 이음판↔웨브 이음판 간섭(시공성)
     return { s, i, r, dr, govDcr, partial, fScale, wScale, clash, rowCond };
-  }), [cond, diaAt, autoFix, isAisc, alphaCustom, alphaAt, boltMatCustom, boltMatAt]);
+  }), [cond, diaAt, autoFix, isAisc, alphaCustom, alphaAt]);
   const rows = allRows.filter(({ s }) => !hidden?.has(s.name));
   const dbW = 46;                                     // 볼트 직경열: 지정/표준 동일 폭(토글 시 표 흔들림 방지)
   const hasHidden = (hidden?.size ?? 0) > 0;
@@ -192,14 +187,7 @@ export default function ResultTable({ cond, onSelect, onView3D, custom, diaAt, o
                 )}
                 <td>{nf(isCol ? dr.Puf_kN : dr.Mu_kNm)}</td>
                 <td className="gcol">{nf(dr.Vu_kN)}</td>
-                {girderLock && (
-                  <td className="gcol">{boltMatCustom
-                    ? <select className="dia-sel" value={boltMatAt?.(i) ?? cond.bolt} onClick={e => e.stopPropagation()}
-                        onChange={e => { e.stopPropagation(); onSetBoltMat?.(i, e.target.value as BoltGrade); }}>
-                        {BOLT_GRADES.map(g => <option key={g} value={g}>{g}</option>)}
-                      </select>
-                    : cond.bolt}</td>
-                )}
+                {girderLock && <td className="gcol">{cond.bolt}</td>}
                 <td className="gcol">{custom
                   ? <select className="dia-sel" value={dr.boltDia} onClick={e => e.stopPropagation()}
                       onChange={e => { e.stopPropagation(); onSetDia?.(i, Number(e.target.value)); }}>
