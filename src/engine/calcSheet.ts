@@ -2,12 +2,15 @@
 //   전 부재 1행/부재. 열 그룹: 입력(INPUT) · 설계강도(OUTPUTS, φRn) · 검토비(DCR).
 //   설계강도·DCR은 화면 결과와 동일한 AISC 최적화 검토(ac.report.checks)에서 취한다.
 import * as XLSX from 'xlsx';
-import type { DesignCondition, DesignResult } from './types.ts';
+import type { DesignCondition, DesignResult, HSection } from './types.ts';
 import type { AiscCheck } from './aisc/types.ts';
 import { steelLabel } from './materials.ts';
+import { ksClassOf, ksLabelOf } from './standard/ksData.ts';
+import { unitWeightOf } from './hbeam_catalog.ts';
 
 /** 한 부재의 계산 요약(엔진 결과 + 한계상태 검토). */
 export interface SheetRow {
+  s: HSection;               // 카탈로그 원본 단면(KS라벨·계열·r·단위중량 조회용)
   result: DesignResult;
   checks: AiscCheck[];      // 한계상태 검토(비한계상태 기준이면 빈 배열)
   ok: boolean;
@@ -15,6 +18,9 @@ export interface SheetRow {
   webScale: number;
   memberLimited: boolean;
 }
+
+const clsShort = (c?: 'WIDE' | 'MIDDLE' | 'NARROW') =>
+  c === 'WIDE' ? '광폭' : c === 'MIDDLE' ? '중폭' : c === 'NARROW' ? '세폭' : '';
 
 // 한계상태 검토 열의 정규 순서·그룹·한글 약칭. 실제 등장한 id만 열로 출력한다.
 const CHECK_COLS: { id: string; grp: string; label: string }[] = [
@@ -56,12 +62,14 @@ export function buildCalcWorkbook(rows: SheetRow[], cond: DesignCondition): XLSX
   rows.forEach(r => r.checks.forEach(c => present.add(c.id)));
   const cols = CHECK_COLS.filter(c => present.has(c.id));
   const unitOf = (id: string) => rows.flatMap(r => r.checks).find(c => c.id === id)?.unit || 'kN';
+  const isK = cond.mode === 'K';   // K모드(KS전단면)만 KS라벨·계열이 존재 — 화면 결과표와 동일 정보
 
-  // ── 입력(INPUT) 열 정의 ──────────────────────────────────────────────
+  // ── 입력(INPUT) 열 정의 — 화면 결과표(ResultTable)에 나타나는 항목을 모두 포함 ──
   const inputHead = [
-    'No.', '단면치수', '모재', '이음판재', '볼트', '나사부', '접합', '설계기준',
+    'No.', ...(isK ? ['KS라벨', '계열'] : []), '단면치수', 'r(mm)', '단위중량(kg/m)',
+    '모재', '이음판재', '볼트', '나사부', '접합', '설계기준',
     'α강도비(%)', '발현율(%)', '판정',
-    '플랜지볼트 m×n', '게이지 g(mm)', '웨브볼트 m×n',
+    '플랜지볼트 m×n', '게이지 g(mm)', '웨브볼트 m×n', '웨브볼트피치(mm)',
     '외부이음판 t×w×L', '내부이음판 t×w×L', '웨브이음판 t×w×L',
     'Mu(kN·m)', 'Vu(kN)', 'Puf(kN)',
   ];
@@ -90,10 +98,13 @@ export function buildCalcWorkbook(rows: SheetRow[], cond: DesignCondition): XLSX
     const dcrs = row.checks.map(c => c.dcr).filter((d): d is number => d != null && isFinite(d));
     const maxDcr = dcrs.length ? Math.max(...dcrs) : undefined;
     const input: (string | number)[] = [
-      i + 1, r.section, steelLabel(cond.steel), steelLabel(cond.plateSteel || cond.steel),
+      i + 1,
+      ...(isK ? [ksLabelOf(row.s.name) ?? '—', clsShort(ksClassOf(row.s.name))] : []),
+      r.section, row.s.r, num(unitWeightOf(row.s), 1),
+      steelLabel(cond.steel), steelLabel(cond.plateSteel || cond.steel),
       `${cond.bolt}-M${r.boltDia}`, cond.threadCond || 'N', cond.jointType, cond.designStd || 'AISC',
       Math.round(cond.strengthRatio * 100), scale < 1 ? Math.round(scale * 100) : 100, row.ok ? 'OK' : 'NG',
-      bolt(r.flange.bolt), gauge(r.flange.gauge), bolt(r.web.bolt),
+      bolt(r.flange.bolt), gauge(r.flange.gauge), bolt(r.web.bolt), r.web.Pc ?? '—',
       plate(r.flange.outerPlate), plate(r.flange.innerPlate), plate(r.web.webPlate),
       num(r.Mu_kNm), num(r.Vu_kN), num(r.Puf_kN),
     ];
@@ -122,10 +133,10 @@ export function buildCalcWorkbook(rows: SheetRow[], cond: DesignCondition): XLSX
     { s: { r: 1, c: nInput }, e: { r: 1, c: nInput + cols.length - 1 } },                // 설계강도 밴드
     { s: { r: 1, c: nInput + cols.length }, e: { r: 1, c: nInput + 2 * cols.length } },  // DCR 밴드(+MAX)
   ];
-  // 열 폭
-  ws['!cols'] = head.map((_, c) => {
-    if (c === 1) return { wch: 18 };                       // 단면치수
-    if (c < nInput) return { wch: c >= 14 && c <= 16 ? 18 : 11 };
+  // 열 폭 — 입력 열은 라벨 기준으로 넓게, 나머지 입력 열·출력/DCR 열은 기본폭
+  const WIDE_INPUT = new Set(['단면치수', '외부이음판 t×w×L', '내부이음판 t×w×L', '웨브이음판 t×w×L']);
+  ws['!cols'] = head.map((label, c) => {
+    if (c < nInput) return { wch: WIDE_INPUT.has(String(label)) ? 18 : 11 };
     return { wch: 9 };
   });
   ws['!freeze'] = { xSplit: 2, ySplit: 3 } as unknown as XLSX.WorkSheet['!freeze'];

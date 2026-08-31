@@ -151,10 +151,11 @@ export default function App() {
     const af = ls && autoFix;
     return catalogForCond(cond).map((s, i) => ({ s, i })).filter(({ s }) => !hidden.has(s.name))
       .map(({ s, i }) => {
-        const r0 = designConnection(cond, s, diaAt(i));
-        if (af) { const ac = aiscAutoCorrect(r0, cond); return { result: ac.result, checks: ac.report.checks, ok: ac.ok, flangeScale: ac.flangeScale, webScale: ac.webScale, memberLimited: ac.memberLimited }; }
-        if (ls) { const rep = aiscCheck(r0, cond); return { result: r0, checks: rep.checks, ok: rep.checks.every(c => c.ok !== false), flangeScale: 1, webScale: 1, memberLimited: false }; }
-        return { result: r0, checks: [], ok: !r0.steps.some(st => st.check === 'NG'), flangeScale: 1, webScale: 1, memberLimited: false };
+        let r0 = designConnection(cond, s, diaAt(i));
+        if (isStdMode(cond.mode) && !autoFix) r0 = applyStdPlates(r0, cond);   // S·H·K·최적화OFF: 화면 결과표와 동일하게 표준 판 고정
+        if (af) { const ac = aiscAutoCorrect(r0, cond); return { s, result: ac.result, checks: ac.report.checks, ok: ac.ok, flangeScale: ac.flangeScale, webScale: ac.webScale, memberLimited: ac.memberLimited }; }
+        if (ls) { const rep = aiscCheck(r0, cond); return { s, result: r0, checks: rep.checks, ok: rep.checks.every(c => c.ok !== false), flangeScale: 1, webScale: 1, memberLimited: false }; }
+        return { s, result: r0, checks: [], ok: !r0.steps.some(st => st.check === 'NG'), flangeScale: 1, webScale: 1, memberLimited: false };
       });
   };
   const exportCalcSheet = () => downloadCalcSheet(allSheetRows(), cond, `구조계산요약_${cond.member}_${cond.jointType}.xlsx`);

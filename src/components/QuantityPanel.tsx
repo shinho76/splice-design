@@ -1,11 +1,14 @@
 import type { DesignCondition } from '../engine/types.ts';
-import { catalogFor } from '../engine/sections.ts';
+import { catalogForCond, applyStdPlates, isStdMode } from '../engine/standard/schedule.ts';
+import { ksClassOf, ksClassLabel, ksLabelOf } from '../engine/standard/ksData.ts';
 import { usesLimitState } from '../engine/std.ts';
+import { unitWeightOf } from '../engine/hbeam_catalog.ts';
 import { designConnection } from '../engine/engine.ts';
 import { quantityOf, aggregate, quantityCsv } from '../engine/quantity.ts';
 import { downloadFile } from '../engine/dxf.ts';
-import { downloadXlsx } from '../engine/xlsxOut.ts';
-import { aiscAutoCorrect } from '../engine/aisc/compat.ts';
+import { downloadXlsx, type XlsxRow } from '../engine/xlsxOut.ts';
+import { aiscCheck, aiscAutoCorrect } from '../engine/aisc/compat.ts';
+import { kbcCheck } from '../engine/kbcCheck.ts';
 import { useLang, tMember, tJoint } from '../i18n.ts';
 
 const nf = (v: number) => v.toLocaleString('en-US');
@@ -13,22 +16,52 @@ const plateStr = (q: ReturnType<typeof quantityOf>, role: string) => {
   const p = q.plates.find(x => x.role.includes(role));
   return p ? `${p.t}×${p.w}×${p.L} ×${p.count}` : '—';
 };
+const fmtBolt = (b: { m: number; n: number }) => `${b.m}×${b.n % 1 ? b.n.toFixed(1) : b.n}`;
 
 export default function QuantityPanel({ cond, onClose, diaAt, autoFix }: { cond: DesignCondition; onClose: () => void; diaAt?: (i: number) => number | undefined; autoFix?: boolean }) {
   const lang = useLang();
   const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
-  const af = usesLimitState(cond.designStd) && !!autoFix;
-  const secs = catalogFor(cond.profile, cond.sectionSet);
-  const qs = secs.map((s, i) => {
+  const isAisc = usesLimitState(cond.designStd);
+  const af = isAisc && !!autoFix;
+  const isCol = cond.member === '기둥';
+  const isK = cond.mode === 'K';
+  const clsShort = (c?: 'WIDE' | 'MIDDLE' | 'NARROW') =>
+    c === 'WIDE' ? L('광폭', 'Wide') : c === 'MIDDLE' ? L('중폭', 'Middle') : c === 'NARROW' ? L('세폭', 'Narrow') : undefined;
+  // 메인 결과표(ResultTable)와 동일한 산정 로직 — 표준모드 판 고정·자동보정·DCR까지 일치시켜 XLS에 반영.
+  const secs = catalogForCond(cond);
+  const qs: XlsxRow[] = secs.map((s, i) => {
     let r = designConnection(cond, s, diaAt?.(i));
-    if (af) r = aiscAutoCorrect(r, cond).result;   // 자동보정 형상 기준 물량
-    return quantityOf(r, cond);
+    if (isStdMode(cond.mode) && !af) r = applyStdPlates(r, cond);
+    const ac = af ? aiscAutoCorrect(r, cond) : null;
+    const dr = ac ? ac.result : r;
+    const govDcr = ac ? ac.report.govDcr : (isAisc ? aiscCheck(r, cond).govDcr : kbcCheck(r, cond).govDcr);
+    const partial = ac && ac.memberLimited ? Math.min(ac.flangeScale, ac.webScale) : null;
+    const q = quantityOf(dr, cond);
+    return {
+      ...q,
+      ksLabel: isK ? ksLabelOf(s.name) : undefined,
+      clsLabel: isK ? clsShort(ksClassOf(s.name)) : undefined,
+      dcr: govDcr,
+      partialPct: partial != null ? Math.round(partial * 100) : undefined,
+      rMm: s.r,
+      unitWeightKgM: unitWeightOf(s),
+      demand1: isCol ? dr.Puf_kN : dr.Mu_kNm,
+      demand1Label: isCol ? L('압축강도(kN)', 'Compression (kN)') : L('휨모멘트(kN·m)', 'Moment (kN·m)'),
+      demand2: dr.Vu_kN,
+      demand2Label: isCol ? L('웨브압축(kN)', 'Web comp. (kN)') : L('전단력(kN)', 'Shear (kN)'),
+      boltDia: dr.boltDia,
+      flangeArr: fmtBolt(dr.flange.bolt),
+      g1: dr.flange.gauge?.g1,
+      g2: dr.flange.gauge?.g2,
+      webArr: fmtBolt(dr.web.bolt),
+      pc: dr.web.Pc,
+    };
   });
   const agg = aggregate(qs);
   const stem = `${L('물량', 'qty')}_${cond.member}_${Math.round(cond.strengthRatio * 100)}_${cond.steel}_${cond.bolt}_${cond.jointType}`;
   const title = `${L('물량산정', 'Quantities')} · ${tMember(cond.member, lang)} ${Math.round(cond.strengthRatio * 100)}% ${cond.steel} ${cond.bolt} ${tJoint(cond.jointType, lang)}`;
   const csv = () => downloadFile(`${stem}.csv`, quantityCsv(qs, cond), 'text/csv;charset=utf-8');
-  const xlsx = () => downloadXlsx(qs, title, `${stem}.xlsx`);
+  const xlsx = () => downloadXlsx(qs, title, `${stem}.xlsx`, isK);
 
   return (
     <div className="report" onClick={onClose}>

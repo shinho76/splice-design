@@ -29,7 +29,7 @@ export default function ProjectPanel({ items, onChange, onClose }: {
     <div className="report" onClick={onClose}>
       <div className="report-card qty-card" onClick={e => e.stopPropagation()}>
         <div className="report-tools">
-          <button className="tool-btn" onClick={() => downloadXlsx(qs, '프로젝트 물량산정', 'project_물량.xlsx')} disabled={!qs.length}>⬇ Excel</button>
+          <button className="tool-btn" onClick={() => downloadXlsx(qs, '프로젝트 물량산정', 'project_물량.xlsx', false)} disabled={!qs.length}>⬇ Excel</button>
           <button className="tool-btn" onClick={saveJson} disabled={!items.length}>💾 저장</button>
           <button className="tool-btn" onClick={() => fileRef.current?.click()}>📂 불러오기</button>
           <input ref={fileRef} type="file" accept=".json" hidden onChange={e => e.target.files?.[0] && loadJson(e.target.files[0])} />
