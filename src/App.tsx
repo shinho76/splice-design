@@ -47,6 +47,7 @@ export default function App() {
   const [showDetail, setShowDetail] = useState(false);
   const [showQty, setShowQty] = useState(false);
   const [showSens, setShowSens] = useState(false);   // 물량 민감도 분석 팝업
+  const [girderLock, setGirderLock] = useState(false);   // GS(GIRDER SPLICE) 모드: K모드·보 고정, 구분·부재 세그 숨김
   const [showProj, setShowProj] = useState(false);
   const [view3D, setView3D] = useState<DesignResult | null>(null);
   const [zoomPrev, setZoomPrev] = useState(false);   // 접합 상세도 확대 보기
@@ -156,12 +157,31 @@ export default function App() {
     downloadFile(`splice_전체_${cond.member}_${cond.jointType}_tekla.cs`, toTeklaMacro(allRowsForDXF(), cond), 'text/plain;charset=utf-8');
   const isCol = cond.member === '기둥';
   const pct = Math.round(cond.strengthRatio * 100);
+  // GS(GIRDER SPLICE) 모드 진입/해제 — 진입 시 K모드·보 고정
+  const toggleGirder = () => setGirderLock(v => {
+    const next = !v;
+    if (next) setCond(c => ({ ...c, mode: 'K', member: '보' }));
+    return next;
+  });
 
   return (
     <LangContext.Provider value={lang}>
     <div className="console">
       <aside className="rail">
         <span className="rlogo">S</span>
+        {/* GS(GIRDER SPLICE) — 클릭 시 K모드·보 고정 전용 뷰로 진입/해제. Hover 시 메뉴 펼침. */}
+        <div className="rmenu">
+          <button type="button" className={'rbtn rham' + (girderLock ? ' on' : '')} aria-haspopup="true" aria-pressed={girderLock}
+            onClick={toggleGirder} title={L('거더 이음 모드 전환', 'Toggle girder splice mode')}>
+            <b className="rab">GS</b></button>
+          <div className="rmenu-pop" role="menu">
+            <div className="rmenu-title">GIRDER<span className="accent"> SPLICE</span></div>
+            <button type="button" className="rmenu-item" role="menuitem" onClick={() => setShowSens(true)} title={L('물량 절감 민감도 시각화(준비 중 — PDF 저장은 문의 예정)', 'Material savings sensitivity (PDF export pending discussion)')}>📄 {L('PDF 민감도 다운로드', 'Sensitivity PDF')}</button>
+            <button type="button" className="rmenu-item" role="menuitem" onClick={exportCalcSheet} title={L('구조계산요약 Excel', 'Calc summary Excel')}>📊 {L('XLS 계산결과 다운로드', 'Calc results XLS')}</button>
+            <button type="button" className="rmenu-item" role="menuitem" onClick={exportAllDXF} title={L('전체 DXF', 'All DXF')}>🗂 {L('DXF 시리즈 다운로드', 'DXF series')}</button>
+            <button type="button" className="rmenu-item" role="menuitem" onClick={exportTekla} title={L('Tekla Open API 매크로(.cs)', 'Tekla Open API macro (.cs)')}>🏗 Tekla</button>
+          </div>
+        </div>
         {/* 햄버거 메뉴 — Hover 시 'Splice Design'과 다운로드 항목이 옆으로 펼쳐진다. K모드는 'MC'·'MOMENT CONNECTION' 전용 메뉴. */}
         <div className="rmenu">
           <button type="button" className="rbtn rham" aria-haspopup="true" title={L('메뉴 · 다운로드', 'Menu · Downloads')}>
@@ -342,7 +362,7 @@ export default function App() {
         <div className="cbody">
           <aside className="cfilters">
             <div className="cfilters-h">☰ {L('설계 조건', 'Design Conditions')}</div>
-            <FilterBar cond={cond} onChange={setCond} boltMode={boltMode} onBoltMode={setBoltMode} />
+            <FilterBar cond={cond} onChange={setCond} boltMode={boltMode} onBoltMode={setBoltMode} girderLock={girderLock} />
             {usesLimitState(cond.designStd) && (
               <div className="cf-autofix">
                 <button type="button" className={autoFix ? 'on' : ''} onClick={() => setAutoFix(v => !v)} aria-pressed={autoFix} title={autoFix ? L('한계상태설계 최적화 — 철판 물량 최소로 DCR≤1.0 달성(부재지배는 부분강도). 끄면 KBC-09 표준접합 검토', 'Limit-state optimize — minimum plate to reach DCR≤1.0 (member-governed → partial strength). Off = KBC-09 standard-connection check') : L('현재 KBC-09 표준접합 검토(비최적화). 켜면 한계상태설계 최적화', 'Currently KBC-09 standard check (no optimize). On = limit-state optimize')}>⚙ {autoFix ? `${cond.designStd === 'KDS' ? 'KDS22' : 'AISC16'} ${L('최적화', 'Optimize')}` : `KBC09 ${L('검토', 'Check')}`}</button>

@@ -9,9 +9,10 @@ const boltLabel = (disp: string, g: BoltGrade): string => `${disp} / ${BOLT_MAT[
 
 const PRESETS = [100, 95, 90, 85, 80, 75, 70, 65, 60, 50];
 
-export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
+export default function FilterBar({ cond, onChange, boltMode, onBoltMode, girderLock }: {
   cond: DesignCondition; onChange: (c: DesignCondition) => void;
   boltMode: 'Default' | 'Custom'; onBoltMode: (m: 'Default' | 'Custom') => void;
+  girderLock?: boolean;   // GS(GIRDER SPLICE) 모드 — 구분(A/S/H/K) 세그 숨김, 부재는 "GIRDER SPLICE" 고정 표기
 }) {
   const lang = useLang();
   const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
@@ -33,11 +34,13 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
 
   return (
     <div className="filterbar">
-      {/* 구분 : A(현행) / S(표준도) / H(현대제철) / K(KS D3502:2022 전단면) */}
-      <div className="fgrp">
-        <Seg label={L('구분', 'Mode')} value={mode} opts={['A', 'S', 'H', 'K']}
-          optLabels={['A', 'S', 'H', 'K']} onPick={v => pickMode(v as 'A' | 'S' | 'H' | 'K')} />
-      </div>
+      {/* 구분 : A(현행) / S(표준도) / H(현대제철) / K(KS D3502:2022 전단면) — GS(GIRDER SPLICE)에서는 K 고정이라 숨김 */}
+      {!girderLock && (
+        <div className="fgrp">
+          <Seg label={L('구분', 'Mode')} value={mode} opts={['A', 'S', 'H', 'K']}
+            optLabels={['A', 'S', 'H', 'K']} onPick={v => pickMode(v as 'A' | 'S' | 'H' | 'K')} />
+        </div>
+      )}
 
       {isSH ? (
         /* 표준도(S)·현대제철(H): 재질 275계/355계 2택 (부재/이음판 강종 동시 설정) */
@@ -65,9 +68,16 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode }: {
         </>
       )}
 
-      {/* ① 기본 조건 (부재→접합) */}
+      {/* ① 기본 조건 (부재→접합) — GS(GIRDER SPLICE)에서는 부재가 보로 고정되어 세그 대신 라벨만 표기 */}
       <div className="fgrp">
-        <Seg label={L('부재', 'Member')} value={cond.member} opts={['보', '기둥']} optLabels={[L('보', 'Beam'), L('기둥', 'Column')]} onPick={v => setMember(v as Member)} />
+        {girderLock ? (
+          <div className="fld">
+            <label>{L('부재', 'Member')}</label>
+            <div className="gs-fixed">GIRDER SPLICE</div>
+          </div>
+        ) : (
+          <Seg label={L('부재', 'Member')} value={cond.member} opts={['보', '기둥']} optLabels={[L('보', 'Beam'), L('기둥', 'Column')]} onPick={v => setMember(v as Member)} />
+        )}
         <Seg label={L('접합', 'Joint')} value={cond.jointType} opts={['마찰', '지압']} optLabels={[L('마찰', 'Slip'), L('지압', 'Bearing')]} onPick={v => set('jointType', v as JointType)} />
       </div>
 

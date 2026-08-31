@@ -115,6 +115,8 @@ body {
   padding: 4px 10px; border-radius: 5px; cursor: pointer; transition: .15s;
 }
 .seg button.on { background: var(--accent); color: var(--on-accent); }
+.gs-fixed { display: inline-flex; align-items: center; background: var(--accent); color: var(--on-accent);
+  border-radius: 7px; padding: 6px 10px; font-weight: 800; font-size: 12px; letter-spacing: -.01em; }
 .alpha-ctl { display: flex; align-items: center; gap: 5px; }
 .alpha input { width: 54px; text-align: right; }
 .alpha .pct { color: var(--muted); font-weight: 700; font-size: 11px; }
