@@ -229,7 +229,7 @@ export default function App() {
     downloadFile(`BASIC_DXF_${girderLock ? 'GIRDER_SPLICE' : cond.member}_${cond.jointType}.dxf`, toDXFTable(title, cols, rows), 'application/dxf');
   };
   const exportTekla = () =>   // Tekla Open API 임포트 매크로(.cs)
-    downloadFile(`splice_전체_${cond.member}_${cond.jointType}_tekla.cs`, toTeklaMacro(allRowsForDXF(), cond), 'text/plain;charset=utf-8');
+    downloadFile(girderLock ? 'Tekla Open API.cs' : `splice_전체_${cond.member}_${cond.jointType}_tekla.cs`, toTeklaMacro(allRowsForDXF(), cond), 'text/plain;charset=utf-8');
   const isCol = cond.member === '기둥';
   const pct = Math.round(cond.strengthRatio * 100);
   // GS(GIRDER SPLICE) 모드 진입/해제 — 진입 시 K모드·보 고정
@@ -255,7 +255,7 @@ export default function App() {
             <button type="button" className="rmenu-item" role="menuitem" onClick={exportCalcSheet} title={L('구조계산요약 Excel', 'Calc summary Excel')}>📊 {L('구조계산요약_XLS', 'Calc summary XLS')}</button>
             <button type="button" className="rmenu-item" role="menuitem" onClick={exportTableDXF} title={L('메인창 결과표를 DXF 격자표로 출력', 'Export the main results table as a DXF grid')}>📋 BASIC DXF</button>
             <button type="button" className="rmenu-item" role="menuitem" onClick={exportAllDXF} title={L('전체 상세도 DXF(검토용)', 'All detail drawings DXF (for review)')}>🗂 {L('DETAIL DXF(검토용)', 'DETAIL DXF (review)')}</button>
-            <button type="button" className="rmenu-item" role="menuitem" onClick={exportTekla} title={L('Tekla Open API 매크로(.cs)', 'Tekla Open API macro (.cs)')}>🏗 Tekla</button>
+            <button type="button" className="rmenu-item" role="menuitem" onClick={exportTekla} title={L('Tekla Open API 매크로(.cs)', 'Tekla Open API macro (.cs)')}>🏗 Tekla Open API</button>
           </div>
         </div>
         {/* 햄버거 메뉴 — Hover 시 'Splice Design'과 다운로드 항목이 옆으로 펼쳐진다. K모드는 'MC'·'MOMENT CONNECTION' 전용 메뉴. */}
