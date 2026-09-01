@@ -9,10 +9,11 @@ const boltLabel = (disp: string, g: BoltGrade): string => `${disp} / ${BOLT_MAT[
 
 const PRESETS = [100, 95, 90, 85, 80, 75, 70, 65, 60, 50];
 
-export default function FilterBar({ cond, onChange, boltMode, onBoltMode, girderLock, alphaMode, onAlphaMode }: {
+export default function FilterBar({ cond, onChange, boltMode, onBoltMode, girderLock, shearLock, alphaMode, onAlphaMode }: {
   cond: DesignCondition; onChange: (c: DesignCondition) => void;
   boltMode: 'Default' | 'Custom'; onBoltMode: (m: 'Default' | 'Custom') => void;
   girderLock?: boolean;   // GS(GIRDER SPLICE) 모드 — 구분(A/S/H/K) 세그 숨김, 부재는 "GIRDER SPLICE" 고정 표기
+  shearLock?: boolean;    // SC(SHEAR CONNECTION) 모드 — 구분 세그 숨김, 부재는 "SHEAR CONNECTION" 고정 표기, 엇모·이음판두께·분담비 숨김(단일판엔 미해당)
   // GS 전용: 강도비 '지정'(행별 오버라이드) 모드 — girderLock일 때만 select에 옵션 노출
   alphaMode?: 'Default' | 'Custom'; onAlphaMode?: (m: 'Default' | 'Custom') => void;
 }) {
@@ -36,8 +37,8 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode, girder
 
   return (
     <div className="filterbar">
-      {/* 구분 : A(현행) / S(표준도) / H(현대제철) / K(KS D3502:2022 전단면) — GS(GIRDER SPLICE)에서는 K 고정이라 숨김 */}
-      {!girderLock && (
+      {/* 구분 : A(현행) / S(표준도) / H(현대제철) / K(KS D3502:2022 전단면) — GS·SC 모드에서는 K 고정이라 숨김 */}
+      {!girderLock && !shearLock && (
         <div className="fgrp">
           <Seg label={L('구분', 'Mode')} value={mode} opts={['A', 'S', 'H', 'K']}
             optLabels={['A', 'S', 'H', 'K']} onPick={v => pickMode(v as 'A' | 'S' | 'H' | 'K')} />
@@ -70,12 +71,17 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode, girder
         </>
       )}
 
-      {/* ① 기본 조건 (부재→접합) — GS(GIRDER SPLICE)에서는 부재가 보로 고정되어 세그 대신 라벨만 표기 */}
+      {/* ① 기본 조건 (부재→접합) — GS·SC 모드에서는 부재가 고정되어 세그 대신 라벨만 표기 */}
       <div className="fgrp">
         {girderLock ? (
           <div className="fld">
             <label>{L('부재', 'Member')}</label>
             <div className="seg"><button type="button" className="on" aria-disabled="true" tabIndex={-1}>GIRDER SPLICE</button></div>
+          </div>
+        ) : shearLock ? (
+          <div className="fld">
+            <label>{L('부재', 'Member')}</label>
+            <div className="seg"><button type="button" className="on" aria-disabled="true" tabIndex={-1}>SHEAR CONNECTION</button></div>
           </div>
         ) : (
           <Seg label={L('부재', 'Member')} value={cond.member} opts={['보', '기둥']} optLabels={[L('보', 'Beam'), L('기둥', 'Column')]} onPick={v => setMember(v as Member)} />
@@ -159,9 +165,9 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode, girder
         </div>
         {(cond.designStd === 'AISC' || cond.designStd === 'KDS') && <Seg label={L('나사부', 'Thread')} value={cond.threadCond ?? 'N'} opts={['N', 'X']} onPick={v => set('threadCond', v as 'N' | 'X')} />}
         <Seg label={L('볼트 직경', 'Bolt Ø')} value={boltMode} opts={['Default', 'Custom']} optLabels={[L('표준', 'Standard'), L('지정', 'Custom')]} onPick={v => onBoltMode(v as 'Default' | 'Custom')} />
-        <Seg label={girderLock ? L('엇모배치', 'Stagger') : L('엇모', 'Stagger')} value={(cond.noStagger ?? false) ? '제외' : '포함'} opts={['제외', '포함']} optLabels={[L('제외', 'Off'), L('포함', 'On')]} onPick={v => set('noStagger', v === '제외')} />
-        <Seg label={L('이음판두께', 'Plate t')} value={(cond.equalPlateT ?? true) ? '동일' : '개별'} opts={['동일', '개별']} optLabels={[L('동일', 'Equal'), L('개별', 'Indiv.')]} onPick={v => set('equalPlateT', v === '동일')} />
-        {(cond.designStd === 'AISC' || cond.designStd === 'KDS') && <Seg label={L('이음판 분담비율', 'Plate share')} value={(cond.plateShare ?? '5050') === 'area' ? '면적' : '50:50'} opts={['면적', '50:50']} optLabels={[L('면적비례', 'By area'), L('50:50', '50:50')]} onPick={v => set('plateShare', v === '면적' ? 'area' : '5050')} />}
+        {!shearLock && <Seg label={girderLock ? L('엇모배치', 'Stagger') : L('엇모', 'Stagger')} value={(cond.noStagger ?? false) ? '제외' : '포함'} opts={['제외', '포함']} optLabels={[L('제외', 'Off'), L('포함', 'On')]} onPick={v => set('noStagger', v === '제외')} />}
+        {!shearLock && <Seg label={L('이음판두께', 'Plate t')} value={(cond.equalPlateT ?? true) ? '동일' : '개별'} opts={['동일', '개별']} optLabels={[L('동일', 'Equal'), L('개별', 'Indiv.')]} onPick={v => set('equalPlateT', v === '동일')} />}
+        {!shearLock && (cond.designStd === 'AISC' || cond.designStd === 'KDS') && <Seg label={L('이음판 분담비율', 'Plate share')} value={(cond.plateShare ?? '5050') === 'area' ? '면적' : '50:50'} opts={['면적', '50:50']} optLabels={[L('면적비례', 'By area'), L('50:50', '50:50')]} onPick={v => set('plateShare', v === '면적' ? 'area' : '5050')} />}
       </div>
     </div>
   );

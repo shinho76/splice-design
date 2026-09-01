@@ -57,7 +57,6 @@ export default function App() {
   const [mode, setMode] = useState<'splice' | 'shear'>('splice');   // 설계 모드: 이음 / 전단접합
   const [girderLock, setGirderLock] = useState(false);   // GS(GIRDER SPLICE) 모드: K모드·보 고정, 구분·부재 세그 숨김
   const [shearSel, setShearSel] = useState<import('./engine/shear/singlePlate.ts').ShearResult | null>(null);
-  const [scSubtype, setScSubtype] = useState<import('./engine/shear/singlePlate.ts').ScSubtype>('beam-beam');
   const [showProj, setShowProj] = useState(false);
   const [view3D, setView3D] = useState<DesignResult | null>(null);
   const [zoomPrev, setZoomPrev] = useState(false);   // 접합 상세도 확대 보기
@@ -237,9 +236,9 @@ export default function App() {
   };
   const exportTekla = () =>   // Tekla Open API 임포트 매크로(.cs)
     downloadFile(girderLock ? 'Tekla Open API.cs' : `splice_전체_${cond.member}_${cond.jointType}_tekla.cs`, toTeklaMacro(allRowsForDXF(), cond), 'text/plain;charset=utf-8');
-  // SC(SHEAR CONNECTION) — 기존 Phase 1 엔진(designSinglePlate)을 그대로 적용. 화면 표(ShearTable)와 동일 subtype 기준으로 출력.
-  const scRows = () => catalogForCond(cond).map(s => designSinglePlate(cond, s, scSubtype));
-  const exportShearCalcSheet = () => downloadShearCalcSheet(scRows(), cond, `SC_구조계산요약_${scSubtype}.xlsx`);
+  // SC(SHEAR CONNECTION) — 기존 Phase 1 엔진(designSinglePlate)을 그대로 적용. 화면 표(ShearTable)와 동일 조건으로 출력.
+  const scRows = () => catalogForCond(cond).map(s => designSinglePlate(cond, s));
+  const exportShearCalcSheet = () => downloadShearCalcSheet(scRows(), cond, 'SC_구조계산요약.xlsx');
   const exportShearTableDXF = () => {
     const cols: DxfTableCol[] = [
       { label: 'SECTION', width: 180, align: 'l' },
@@ -257,8 +256,8 @@ export default function App() {
       `${r.plate.t}x${r.plate.L}x${r.plate.w}`, r.govId, isFinite(r.govDcr) ? r.govDcr.toFixed(2) : '-',
       r.ok ? 'OK' : 'NG', r.config === 'Extended' ? 'EXT' : 'CONV',
     ]);
-    const title = `SHEAR CONNECTION TABLE - ${scSubtype.toUpperCase()} - ${Math.round(cond.strengthRatio * 100)}% ${cond.steel} ${cond.bolt}  (UNIT: VU kN)`;
-    downloadFile(`BASIC_DXF_SHEAR_CONNECTION_${scSubtype}.dxf`, toDXFTable(title, cols, rows), 'application/dxf');
+    const title = `SHEAR CONNECTION TABLE - ${Math.round(cond.strengthRatio * 100)}% ${cond.steel} ${cond.bolt}  (UNIT: VU kN)`;
+    downloadFile('BASIC_DXF_SHEAR_CONNECTION.dxf', toDXFTable(title, cols, rows), 'application/dxf');
   };
   const isCol = cond.member === '기둥';
   const pct = Math.round(cond.strengthRatio * 100);
@@ -268,8 +267,12 @@ export default function App() {
     if (next) { setCond(c => ({ ...c, mode: 'K', member: '보' })); setMode('splice'); }
     return next;
   });
-  // SC(SHEAR CONNECTION) 모드 전환 — 기존 'SP 전단접합' 토글과 동일한 mode 상태를 공유(별도 lock 불필요)
-  const toggleSC = () => setMode(m => (m === 'shear' ? 'splice' : 'shear'));
+  // SC(SHEAR CONNECTION) 모드 전환 — GS와 같이 진입 시 K모드 고정(구분 세그 숨김에 대응)
+  const toggleSC = () => setMode(m => {
+    const next = m === 'shear' ? 'splice' : 'shear';
+    if (next === 'shear') setCond(c => ({ ...c, mode: 'K' }));
+    return next;
+  });
 
   return (
     <LangContext.Provider value={lang}>
@@ -331,11 +334,6 @@ export default function App() {
             )}
           </div>
         </div>
-        {/* 전단접합 탭 — 햄버거와 Feedback 사이. 단일판(shear tab) 전단접합 모드 전환(위 SC 메뉴와 동일 상태 공유) */}
-        <button type="button" className={'rbtn rsc' + (mode === 'shear' ? ' on' : '')}
-          onClick={() => setMode(m => (m === 'shear' ? 'splice' : 'shear'))}
-          aria-pressed={mode === 'shear'} title={L('전단접합(단일판) 설계 — 다시 누르면 이음 설계로', 'Shear connection (single plate) — press again for splice')}>
-          <b className="rab">SP</b><span className="rlbl">{L('전단접합', 'Shear Conn.')}</span></button>
         {/* Feedback — 단독 유지. Hover 시 라벨 펼침 + 활성 세그먼트와 동일 색(accent) */}
         <a className="rbtn rfb" href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer" title="FeedBack — 사용자 피드백(구글 폼)">
           <b className="rab">F</b><span className="rlbl">FeedBack</span></a>
@@ -473,7 +471,7 @@ export default function App() {
         <div className="cbody">
           <aside className="cfilters">
             <div className="cfilters-h">☰ {L('설계 조건', 'Design Conditions')}</div>
-            <FilterBar cond={cond} onChange={setCond} boltMode={boltMode} onBoltMode={setBoltMode} girderLock={girderLock}
+            <FilterBar cond={cond} onChange={setCond} boltMode={boltMode} onBoltMode={setBoltMode} girderLock={girderLock} shearLock={mode === 'shear'}
               alphaMode={alphaMode} onAlphaMode={setAlphaMode} />
             {usesLimitState(cond.designStd) && (
               <div className="cf-autofix">
@@ -486,7 +484,7 @@ export default function App() {
           <div className="ccenter">
             {mode === 'shear' ? (
               <Suspense fallback={<div className="lazy-fb">…</div>}>
-                <ShearTable cond={cond} onSelect={setShearSel} selectedSection={shearSel?.section} subtype={scSubtype} onSubtype={setScSubtype} />
+                <ShearTable cond={cond} onSelect={setShearSel} selectedSection={shearSel?.section} />
               </Suspense>
             ) : (
               <>

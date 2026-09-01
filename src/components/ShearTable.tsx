@@ -2,45 +2,28 @@ import { useMemo } from 'react';
 import type { DesignCondition } from '../engine/types.ts';
 import { sectionByName } from '../engine/sections.ts';
 import { catalogForCond } from '../engine/standard/schedule.ts';
-import { designSinglePlate, type ShearResult, type ScSubtype } from '../engine/shear/singlePlate.ts';
+import { designSinglePlate, type ShearResult } from '../engine/shear/singlePlate.ts';
 import { useLang } from '../i18n.ts';
 
 const nf = (v: number) => v.toLocaleString('en-US');
 
-const SUBTYPES: { v: ScSubtype; ko: string; en: string }[] = [
-  { v: 'beam-beam', ko: '보-보', en: 'Beam-Beam' },
-  { v: 'beam-col-strong', ko: '보-기둥 강축', en: 'Beam-Col (Strong)' },
-  { v: 'beam-col-weak', ko: '보-기둥 약축', en: 'Beam-Col (Weak)' },
-];
-
-export default function ShearTable({ cond, onSelect, selectedSection, subtype, onSubtype }: {
+export default function ShearTable({ cond, onSelect, selectedSection }: {
   cond: DesignCondition;
   onSelect: (r: ShearResult) => void;
   selectedSection?: string;
-  subtype: ScSubtype;
-  onSubtype: (v: ScSubtype) => void;
 }) {
   const lang = useLang();
   const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
 
   const results = useMemo(() => {
     const secs = catalogForCond(cond);
-    return secs.map(s => designSinglePlate(cond, s, subtype));
-  }, [cond, subtype]);
+    return secs.map(s => designSinglePlate(cond, s));
+  }, [cond]);
 
   const ok = results.filter(r => r.ok).length;
 
   return (
     <>
-      <div className="sc-subtype-row">
-        <div className="seg" role="group" aria-label={L('전단접합 구분', 'Shear connection type')}>
-          {SUBTYPES.map(t => (
-            <button key={t.v} type="button" className={t.v === subtype ? 'on' : ''} onClick={() => onSubtype(t.v)}>
-              {L(t.ko, t.en)}
-            </button>
-          ))}
-        </div>
-      </div>
       <div className="kpi-strip">
         <div className="kpi k1"><span className="k">{L('검토 부재', 'Members')}</span> <span className="v num">{results.length}</span> <span className="d">{L('단일판 전단접합', 'Single-plate shear')}</span></div>
         <div className="kpi k2"><span className="k">{L('적합', 'Pass')}</span> <span className="v num ok">{ok}</span> <span className="d ok">{results.length ? Math.round(ok / results.length * 100) : 0}%</span> <span className="k">{L('부적합', 'Fail')}</span> <span className="v num ng">{results.length - ok}</span></div>

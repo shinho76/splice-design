@@ -514,9 +514,6 @@ body {
 .rbtn.rfb:hover .rlbl { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 
 /* ===== 전단접합 탭·표·상세 ===== */
-.rbtn.rsc.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
-.rbtn.rsc.on .rab { color: var(--on-accent); }
-.rbtn.rsc:hover .rlbl { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .dt-wrap { overflow: auto; max-height: 100%; }
 .shear-table td, .shear-table th { font-size: 12px; white-space: nowrap; }
 .shear-table .gov-id { font-family: var(--mono); font-weight: 700; color: var(--accent); font-size: 11px; }
@@ -536,7 +533,6 @@ body {
 .sd-note { margin-top: 16px; padding: 10px 14px; border-radius: 8px; font-size: 11.5px; line-height: 1.6; background: var(--accent-soft); border-left: 4px solid var(--accent); color: var(--fg); }
 .sd-warn { margin: 4px 0 0; padding: 9px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; background: rgba(229,114,59,.10); border: 1px solid rgba(229,114,59,.32); color: #E5723B; }
 .lazy-fb { padding: 40px; text-align: center; color: var(--muted); }
-.sc-subtype-row { flex-shrink: 0; padding: 8px 16px; background: var(--bg2); border-bottom: 1px solid var(--line); }
 .sc-flag { color: #E5723B; font-weight: 800; margin-left: 4px; cursor: help; }
 .sc-legend { margin: 10px 4px 0; padding: 9px 12px; border-radius: 8px; font-size: 11.5px; line-height: 1.55; background: rgba(229,114,59,.08); border: 1px solid rgba(229,114,59,.28); color: var(--fg); }
 
