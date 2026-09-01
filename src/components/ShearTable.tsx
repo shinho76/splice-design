@@ -9,9 +9,10 @@ import { useLang } from '../i18n.ts';
 const nf = (v: number) => v.toLocaleString('en-US');
 const fmtW = (w: number) => w.toLocaleString('en-US');
 
-export default function ShearTable({ cond, onSelect, selectedSection }: {
+export default function ShearTable({ cond, onSelect, onView3D, selectedSection }: {
   cond: DesignCondition;
   onSelect: (r: ShearResult) => void;
+  onView3D: (r: ShearResult) => void;
   selectedSection?: string;
 }) {
   const lang = useLang();
@@ -103,8 +104,8 @@ export default function ShearTable({ cond, onSelect, selectedSection }: {
                     <td className="col-name">
                       <span className={`st-dot${!r.ok ? ' ng' : ''}`} title={r.ok ? L('적합', 'OK') : L('재검토', 'Review')} />
                       <button className="cn-txt" style={{ fontWeight: ksUsedHB(s.H, s.B) ? 800 : 400 }}
-                        title={ksUsedHB(s.H, s.B) ? `${r.section} · S·H 표준 채택단면` : (s.label ? `${s.label} · ${r.section}` : L('선택', 'Select'))}
-                        onClick={e => { e.stopPropagation(); onSelect(r); }}>
+                        title={ksUsedHB(s.H, s.B) ? `${r.section} · S·H 표준 채택단면` : (s.label ? `${s.label} · ${r.section}` : L('선택 + 3D 형상 보기', 'Select + view 3D shape'))}
+                        onClick={e => { e.stopPropagation(); onSelect(r); onView3D(r); }}>
                         {s.label
                           ? <span className="cn-two"><span className="cn-nom">{s.label}</span><span className="cn-mm">{r.section}</span></span>
                           : r.section}

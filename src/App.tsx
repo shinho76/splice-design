@@ -12,6 +12,7 @@ const QuantityPanel = lazy(() => import('./components/QuantityPanel.tsx'));
 const SensitivityPanel = lazy(() => import('./components/SensitivityPanel.tsx'));
 const ShearTable = lazy(() => import('./components/ShearTable.tsx'));
 const ShearDetail = lazy(() => import('./components/ShearDetail.tsx'));
+const ShearViewer = lazy(() => import('./components/ShearViewer.tsx'));
 const ProjectPanel = lazy(() => import('./components/ProjectPanel.tsx'));
 const ThreeViewer = lazy(() => import('./components/ThreeViewer.tsx'));
 const DcrPopup = lazy(() => import('./components/DcrPopup.tsx'));
@@ -58,6 +59,7 @@ export default function App() {
   const [girderLock, setGirderLock] = useState(false);   // GS(GIRDER SPLICE) 모드: K모드·보 고정, 구분·부재 세그 숨김
   const [shearSel, setShearSel] = useState<import('./engine/shear/singlePlate.ts').ShearResult | null>(null);
   const [showShearDetail, setShowShearDetail] = useState(false);   // 전단접합 상세검토 모달(오른쪽 패널 '상세검토' 버튼으로 열기 — GS의 상세계산서와 동일 패턴)
+  const [shearView3D, setShearView3D] = useState<import('./engine/shear/singlePlate.ts').ShearResult | null>(null);
   const [showProj, setShowProj] = useState(false);
   const [view3D, setView3D] = useState<DesignResult | null>(null);
   const [zoomPrev, setZoomPrev] = useState(false);   // 접합 상세도 확대 보기
@@ -485,7 +487,7 @@ export default function App() {
           <div className="ccenter">
             {mode === 'shear' ? (
               <Suspense fallback={<div className="lazy-fb">…</div>}>
-                <ShearTable cond={cond} onSelect={setShearSel} selectedSection={shearSel?.section} />
+                <ShearTable cond={cond} onSelect={setShearSel} onView3D={setShearView3D} selectedSection={shearSel?.section} />
               </Suspense>
             ) : (
               <>
@@ -518,6 +520,7 @@ export default function App() {
                   </div>
                   <div className="dact">
                     <button className="db primary" title={L('한계상태별 φRn·DCR을 전개한 상세 검토를 엽니다', 'Open the per-limit-state φRn·DCR breakdown')} onClick={() => setShowShearDetail(true)}>{L('상세검토', 'Details')}</button>
+                    <button className="db" title={L('전단판·볼트군을 3D로 확인합니다(피지지보만 표시)', 'View the plate and bolt group in 3D (supported member only)')} onClick={() => setShearView3D(shearSel)}>3D</button>
                   </div>
                 </>
               ) : (
@@ -586,6 +589,7 @@ export default function App() {
         {showQty && <QuantityPanel cond={cond} diaAt={diaAt} autoFix={autoFix} onClose={() => setShowQty(false)} />}
         {showSens && <SensitivityPanel onClose={() => setShowSens(false)} girderLock={girderLock} />}
         {showShearDetail && shearSel && <ShearDetail r={shearSel} cond={cond} onClose={() => setShowShearDetail(false)} />}
+        {shearView3D && <ShearViewer r={shearView3D} cond={cond} onClose={() => setShearView3D(null)} />}
         {showProj && <ProjectPanel items={project} onChange={setProject} onClose={() => setShowProj(false)} />}
         {view3D && <ThreeViewer r={view3D} cond={cond} onClose={() => setView3D(null)} />}
         {dcrView && <DcrPopup r={dcrView.r} cond={cond} fScale={dcrView.fScale} wScale={dcrView.wScale} onClose={() => setDcrView(null)} />}
