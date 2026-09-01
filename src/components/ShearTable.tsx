@@ -1,11 +1,13 @@
-import { useMemo } from 'react';
+import { useMemo, Fragment } from 'react';
 import type { DesignCondition } from '../engine/types.ts';
-import { sectionByName } from '../engine/sections.ts';
-import { catalogForCond } from '../engine/standard/schedule.ts';
+import { catalogForCond, ksUsedHB } from '../engine/standard/schedule.ts';
+import { ksClassOf, ksClassLabel, ksLabelOf } from '../engine/standard/ksData.ts';
+import { nominalOf, unitWeightOf } from '../engine/hbeam_catalog.ts';
 import { designSinglePlate, type ShearResult } from '../engine/shear/singlePlate.ts';
 import { useLang } from '../i18n.ts';
 
 const nf = (v: number) => v.toLocaleString('en-US');
+const fmtW = (w: number) => w.toLocaleString('en-US');
 
 export default function ShearTable({ cond, onSelect, selectedSection }: {
   cond: DesignCondition;
@@ -14,12 +16,14 @@ export default function ShearTable({ cond, onSelect, selectedSection }: {
 }) {
   const lang = useLang();
   const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
+  const isK = cond.mode === 'K';   // SC는 항상 K모드 고정 — KS 라벨·계열 밴드 표시
 
-  const results = useMemo(() => {
+  const rows = useMemo(() => {
     const secs = catalogForCond(cond);
-    return secs.map(s => designSinglePlate(cond, s));
+    return secs.map((s, i) => ({ s, i, r: designSinglePlate(cond, s) }));
   }, [cond]);
 
+  const results = rows.map(x => x.r);
   const ok = results.filter(r => r.ok).length;
 
   return (
@@ -32,36 +36,87 @@ export default function ShearTable({ cond, onSelect, selectedSection }: {
       </div>
 
       <div className="cgrid">
-        <div className="dt-wrap">
+        <div className="tablewrap">
           <table className="design-table shear-table">
+            <colgroup>
+              {isK && <col style={{ width: 78 }} />}
+              <col style={{ width: 150 }} />
+              <col style={{ width: 60 }} />
+              <col style={{ width: 70 }} />
+              <col style={{ width: 70 }} />
+              <col style={{ width: 60 }} />
+              <col style={{ width: 44 }} />
+              <col style={{ width: 44 }} />
+              <col style={{ width: 130 }} />
+              <col style={{ width: 44 }} />
+              <col style={{ width: 44 }} />
+              <col style={{ width: 60 }} />
+            </colgroup>
             <thead>
               <tr>
-                <th className="col-name">{L('단면', 'Section')}</th>
-                <th>{L('소요전단 V', 'Vu')}<br /><small>kN</small></th>
-                <th>{L('볼트', 'Bolt')}</th>
-                <th>{L('열×행', 'NC×NR')}</th>
-                <th>{L('전단판 PL', 'Plate')}<br /><small>t×L×w</small></th>
+                {isK && <th className="g-info" style={{ textAlign: 'center' }}>KS<br /><span className="unit">LABEL</span></th>}
+                <th className="col-name g-info">{L('단면치수', 'Section')}</th>
+                <th className="gcol g-info">{L('단위중량', 'Unit wt')}<br /><span className="unit">kg/m</span></th>
+                <th className="gcol g-str">{L('설계강도', 'Design Strength')}<br />{L('전단력', 'Shear')} <span className="unit">kN</span></th>
+                <th className="gcol g-info">{L('볼트재질', 'Bolt Grade')}</th>
+                <th className="gcol g-bolt">{L('볼트', 'Bolt')}<br />d<sub>b</sub></th>
+                <th className="g-info dcr-h">DCR</th>
+                <th>{L('볼트열', 'Bolts')}<br />NC×NR</th>
+                <th className="gcol">{L('전단판', 'Plate')}<br /><span className="unit">t×L×w</span></th>
                 <th>{L('지배', 'Gov')}</th>
-                <th>MAX<br />DCR</th>
-                <th>{L('판정', 'Check')}</th>
+                <th className="gcol">{L('판정', 'Check')}</th>
                 <th>{L('구분', 'Config')}</th>
               </tr>
             </thead>
             <tbody>
-              {results.map(r => {
+              {rows.map(({ s, r }, idx) => {
+                const nominal = nominalOf(s.H, s.B);
+                const newSeries = idx === 0 || nominal !== nominalOf(rows[idx - 1].s.H, rows[idx - 1].s.B);
                 const sel = r.section === selectedSection;
+                const cls = isK ? ksClassOf(s.name) : undefined;
+                const prevCls = isK && idx > 0 ? ksClassOf(rows[idx - 1].s.name) : undefined;
+                const showBand = !!cls && cls !== prevCls;
+                const ksLabel = isK ? ksLabelOf(s.name) : undefined;
+                const labelFirst = isK && ksLabel !== (idx > 0 ? ksLabelOf(rows[idx - 1].s.name) : undefined);
+                let labelSpan = 1;
+                if (labelFirst) for (let j = idx + 1; j < rows.length && ksLabelOf(rows[j].s.name) === ksLabel; j++) labelSpan++;
                 return (
-                  <tr key={r.section} className={sel ? 'row-sel' : ''} onClick={() => onSelect(r)} style={{ cursor: 'pointer' }}>
-                    <td className="col-name">{sectionByName(r.section)?.label ?? r.section}</td>
-                    <td className="num">{nf(r.V_kN)}</td>
-                    <td>{r.boltName}</td>
-                    <td className="num">{r.NC}×{r.NR}</td>
-                    <td className="num">PL-{r.plate.t}×{r.plate.L}×{r.plate.w}{!r.fitsWeb && <span className="sc-flag" title={`판 춤 ${r.plate.L} > 웨브 T ${r.clearH}`}>▲</span>}</td>
+                  <Fragment key={r.section}>
+                  {showBand && (
+                    <tr className="cls-band">
+                      <td colSpan={isK ? 12 : 11} style={{ fontWeight: 800, textAlign: 'left', padding: '5px 10px', fontSize: '11.5px', letterSpacing: '0.4px', background: 'rgba(127,127,127,0.16)' }}>
+                        {ksClassLabel(cls!)}
+                      </td>
+                    </tr>
+                  )}
+                  <tr onClick={() => onSelect(r)} className={`${newSeries ? 'series-top' : ''}${sel ? ' row-sel' : ''}`} style={{ cursor: 'pointer' }}>
+                    {isK && labelFirst && (
+                      <td rowSpan={labelSpan} className="ks-label" style={{ textAlign: 'center', verticalAlign: 'middle', fontWeight: 500, background: 'rgba(127,127,127,0.06)', borderRight: '0.5px solid var(--border, #ccc)' }}>
+                        {ksLabel}
+                      </td>
+                    )}
+                    <td className="col-name">
+                      <span className={`st-dot${!r.ok ? ' ng' : ''}`} title={r.ok ? L('적합', 'OK') : L('재검토', 'Review')} />
+                      <button className="cn-txt" style={{ fontWeight: ksUsedHB(s.H, s.B) ? 800 : 400 }}
+                        title={ksUsedHB(s.H, s.B) ? `${r.section} · S·H 표준 채택단면` : (s.label ? `${s.label} · ${r.section}` : L('선택', 'Select'))}
+                        onClick={e => { e.stopPropagation(); onSelect(r); }}>
+                        {s.label
+                          ? <span className="cn-two"><span className="cn-nom">{s.label}</span><span className="cn-mm">{r.section}</span></span>
+                          : r.section}
+                      </button>
+                    </td>
+                    <td className="gcol">{fmtW(unitWeightOf(s))}</td>
+                    <td className="gcol">{nf(r.V_kN)}</td>
+                    <td className="gcol">{cond.bolt}</td>
+                    <td className="gcol">{r.boltName}</td>
+                    <td className={`dcr-cell${r.govDcr > 1.0 ? ' ng' : ''}`}>{r.govDcr.toFixed(2)}</td>
+                    <td>{r.NC}×{r.NR}</td>
+                    <td className="gcol">PL-{r.plate.t}×{r.plate.L}×{r.plate.w}{!r.fitsWeb && <span className="sc-flag" title={`판 춤 ${r.plate.L} > 웨브 T ${r.clearH}`}>▲</span>}</td>
                     <td><span className="gov-id">{r.govId}</span></td>
-                    <td className={'num dcr ' + (r.govDcr <= 1 ? 'ok' : 'ng')}>{r.govDcr.toFixed(2)}</td>
-                    <td className={r.ok ? 'ok' : 'ng'}>{r.ok ? 'OK' : (r.fitsWeb ? 'NG' : L('판>T', 'PL>T'))}</td>
+                    <td className={'gcol' + (r.ok ? ' ok' : ' ng')}>{r.ok ? 'OK' : (r.fitsWeb ? 'NG' : L('판>T', 'PL>T'))}</td>
                     <td><small>{r.config === 'Extended' ? L('확장', 'Ext') : L('일반', 'Conv')}</small></td>
                   </tr>
+                  </Fragment>
                 );
               })}
             </tbody>
