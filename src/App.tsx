@@ -55,7 +55,7 @@ export default function App() {
   const [showDetail, setShowDetail] = useState(false);
   const [showQty, setShowQty] = useState(false);
   const [showSens, setShowSens] = useState(false);   // 물량 민감도 분석 팝업
-  const [mode, setMode] = useState<'splice' | 'shear'>('splice');   // 설계 모드: 이음 / 전단접합
+  const [mode, setMode] = useState<'splice' | 'shear'>('shear');   // 설계 모드: 이음 / 전단접합 — 앱 접속 시 SC 기본 진입
   const [girderLock, setGirderLock] = useState(false);   // GS(GIRDER SPLICE) 모드: K모드·보 고정, 구분·부재 세그 숨김
   const [shearSel, setShearSel] = useState<import('./engine/shear/singlePlate.ts').ShearResult | null>(null);
   const [showShearDetail, setShowShearDetail] = useState(false);   // 전단접합 상세검토 모달(오른쪽 패널 '상세검토' 버튼으로 열기 — GS의 상세계산서와 동일 패턴)
