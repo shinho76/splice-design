@@ -35,7 +35,7 @@ export default function ShearViewer({ r, cond, onClose }: { r: ShearResult; cond
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0d1524);
-    const dist = Math.max(P.H, P.segLen, P.B) * 1.9;
+    const dist = Math.max(P.H, P.segLen * 2, P.B) * 1.7;   // GS(ThreeViewer)와 동일 배율(카메라 거리·초기각)
     const camera = new THREE.PerspectiveCamera(38, W / Hh, 1, 9000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(W, Hh); renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
