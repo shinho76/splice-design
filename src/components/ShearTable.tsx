@@ -47,6 +47,7 @@ export default function ShearTable({ cond, onSelect, selectedSection }: {
               <col style={{ width: 60 }} />
               <col style={{ width: 44 }} />
               <col style={{ width: 44 }} />
+              <col style={{ width: 40 }} />
               <col style={{ width: 130 }} />
               <col style={{ width: 44 }} />
               <col style={{ width: 44 }} />
@@ -54,18 +55,22 @@ export default function ShearTable({ cond, onSelect, selectedSection }: {
             </colgroup>
             <thead>
               <tr>
-                {isK && <th className="g-info" style={{ textAlign: 'center' }}>KS<br /><span className="unit">LABEL</span></th>}
-                <th className="col-name g-info">{L('단면치수', 'Section')}</th>
-                <th className="gcol g-info">{L('단위중량', 'Unit wt')}<br /><span className="unit">kg/m</span></th>
-                <th className="gcol g-str">{L('설계강도', 'Design Strength')}<br />{L('전단력', 'Shear')} <span className="unit">kN</span></th>
-                <th className="gcol g-info">{L('볼트재질', 'Bolt Grade')}</th>
-                <th className="gcol g-bolt">{L('볼트', 'Bolt')}<br />d<sub>b</sub></th>
-                <th className="g-info dcr-h">DCR</th>
-                <th>{L('볼트열', 'Bolts')}<br />NC×NR</th>
-                <th className="gcol">{L('전단판', 'Plate')}<br /><span className="unit">t×L×w</span></th>
-                <th>{L('지배', 'Gov')}</th>
-                <th className="gcol">{L('판정', 'Check')}</th>
-                <th>{L('구분', 'Config')}</th>
+                {isK && <th rowSpan={2} className="g-info" style={{ textAlign: 'center' }}>KS<br /><span className="unit">LABEL</span></th>}
+                <th rowSpan={2} className="col-name g-info">{L('단면치수', 'Section')}</th>
+                <th rowSpan={2} className="gcol g-info">{L('단위중량', 'Unit wt')}<br /><span className="unit">kg/m</span></th>
+                <th rowSpan={2} className="gcol g-str">{L('설계강도', 'Design Strength')}<br />{L('전단력', 'Shear')} <span className="unit">kN</span></th>
+                <th rowSpan={2} className="gcol g-info">{L('볼트재질', 'Bolt Grade')}</th>
+                <th rowSpan={2} className="gcol g-bolt">{L('볼트', 'Bolt')}<br />d<sub>b</sub></th>
+                <th rowSpan={2} className="g-info dcr-h">DCR</th>
+                <th colSpan={3} className="gcol g-web">{L('웨브', 'Web')}</th>
+                <th rowSpan={2}>{L('지배', 'Gov')}</th>
+                <th rowSpan={2} className="gcol">{L('판정', 'Check')}</th>
+                <th rowSpan={2}>{L('구분', 'Config')}</th>
+              </tr>
+              <tr>
+                <th>{L('볼트열', 'Bolts')}<br />m×n</th>
+                <th>P<sub>c</sub></th>
+                <th className="gcol">{L('이음판', 'Plate')}<br /><span className="unit">{L('t×춤×너비', 't×d×w')}</span></th>
               </tr>
             </thead>
             <tbody>
@@ -84,7 +89,7 @@ export default function ShearTable({ cond, onSelect, selectedSection }: {
                   <Fragment key={r.section}>
                   {showBand && (
                     <tr className="cls-band">
-                      <td colSpan={isK ? 12 : 11} style={{ fontWeight: 800, textAlign: 'left', padding: '5px 10px', fontSize: '11.5px', letterSpacing: '0.4px', background: 'rgba(127,127,127,0.16)' }}>
+                      <td colSpan={isK ? 13 : 12} style={{ fontWeight: 800, textAlign: 'left', padding: '5px 10px', fontSize: '11.5px', letterSpacing: '0.4px', background: 'rgba(127,127,127,0.16)' }}>
                         {ksClassLabel(cls!)}
                       </td>
                     </tr>
@@ -111,7 +116,8 @@ export default function ShearTable({ cond, onSelect, selectedSection }: {
                     <td className="gcol">{r.boltName}</td>
                     <td className={`dcr-cell${r.govDcr > 1.0 ? ' ng' : ''}`}>{r.govDcr.toFixed(2)}</td>
                     <td>{r.NC}×{r.NR}</td>
-                    <td className="gcol">PL-{r.plate.t}×{r.plate.L}×{r.plate.w}{!r.fitsWeb && <span className="sc-flag" title={`판 춤 ${r.plate.L} > 웨브 T ${r.clearH}`}>▲</span>}</td>
+                    <td>{r.Pc}</td>
+                    <td className="gcol">{r.plate.t}×{r.plate.L}×{r.plate.w}{!r.fitsWeb && <span className="sc-flag" title={`판 춤 ${r.plate.L} > 웨브 T ${r.clearH}`}>▲</span>}</td>
                     <td><span className="gov-id">{r.govId}</span></td>
                     <td className={'gcol' + (r.ok ? ' ok' : ' ng')}>{r.ok ? 'OK' : (r.fitsWeb ? 'NG' : L('판>T', 'PL>T'))}</td>
                     <td><small>{r.config === 'Extended' ? L('확장', 'Ext') : L('일반', 'Conv')}</small></td>

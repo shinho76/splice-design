@@ -57,6 +57,7 @@ export default function App() {
   const [mode, setMode] = useState<'splice' | 'shear'>('splice');   // 설계 모드: 이음 / 전단접합
   const [girderLock, setGirderLock] = useState(false);   // GS(GIRDER SPLICE) 모드: K모드·보 고정, 구분·부재 세그 숨김
   const [shearSel, setShearSel] = useState<import('./engine/shear/singlePlate.ts').ShearResult | null>(null);
+  const [showShearDetail, setShowShearDetail] = useState(false);   // 전단접합 상세검토 모달(오른쪽 패널 '상세검토' 버튼으로 열기 — GS의 상세계산서와 동일 패턴)
   const [showProj, setShowProj] = useState(false);
   const [view3D, setView3D] = useState<DesignResult | null>(null);
   const [zoomPrev, setZoomPrev] = useState(false);   // 접합 상세도 확대 보기
@@ -501,7 +502,32 @@ export default function App() {
           </div>
 
           <aside className="cdetail">
-            {selEff ? (
+            {mode === 'shear' ? (
+              shearSel ? (
+                <>
+                  <div className="dh">{sectionByName(shearSel.section)?.label ?? shearSel.section}
+                    {sectionByName(shearSel.section)?.label && <span className="dh-mm">{shearSel.section}</span>}
+                    <span className="dbadge">{shearSel.ok ? L('선택됨', 'Selected') : L('재검토', 'Review')}</span></div>
+                  <div className="dsub">{L('단일판 전단접합', 'Single-plate shear')} · {cond.steel} · {cond.bolt}</div>
+                  <div className="dspecs">
+                    <div><span>{L('소요전단', 'Shear')}</span><b>{nf(shearSel.V_kN)} kN</b></div>
+                    <div><span>{L('볼트열', 'Bolt array')}</span><b>{shearSel.NC}×{shearSel.NR} · M{shearSel.boltDia}</b></div>
+                    <div><span>{L('이음판', 'Plate')}</span><b>{shearSel.plate.t}×{shearSel.plate.L}×{shearSel.plate.w}</b></div>
+                    <div><span>{L('지배 검토', 'Governing')}</span><b>{shearSel.govId} · DCR {shearSel.govDcr.toFixed(2)}</b></div>
+                    <div><span>{L('판정', 'Check')}</span><b className={shearSel.ok ? undefined : 'ng'}>{shearSel.ok ? 'OK' : (shearSel.fitsWeb ? 'NG' : L('판>T', 'PL>T'))}</b></div>
+                  </div>
+                  <div className="dact">
+                    <button className="db primary" title={L('한계상태별 φRn·DCR을 전개한 상세 검토를 엽니다', 'Open the per-limit-state φRn·DCR breakdown')} onClick={() => setShowShearDetail(true)}>{L('상세검토', 'Details')}</button>
+                  </div>
+                </>
+              ) : (
+                <div className="dempty">
+                  <div className="de-ic">▤</div>
+                  <p>{L(<>좌측 표에서 <b>부재를 선택</b>하면<br />전단접합 상세가 여기에 표시됩니다.</>,
+                        <>Select a <b>member</b> from the table to see<br />shear connection details.</>)}</p>
+                </div>
+              )
+            ) : selEff ? (
               <>
                 <div className="dh">{sectionByName(selEff.section)?.label ?? selEff.section}
                   {sectionByName(selEff.section)?.label && <span className="dh-mm">{selEff.section}</span>}
@@ -559,7 +585,7 @@ export default function App() {
           : <KbcDetailReport result={selEff} cond={cond} onClose={() => setShowDetail(false)} />)}
         {showQty && <QuantityPanel cond={cond} diaAt={diaAt} autoFix={autoFix} onClose={() => setShowQty(false)} />}
         {showSens && <SensitivityPanel onClose={() => setShowSens(false)} girderLock={girderLock} />}
-        {shearSel && <ShearDetail r={shearSel} cond={cond} onClose={() => setShearSel(null)} />}
+        {showShearDetail && shearSel && <ShearDetail r={shearSel} cond={cond} onClose={() => setShowShearDetail(false)} />}
         {showProj && <ProjectPanel items={project} onChange={setProject} onClose={() => setShowProj(false)} />}
         {view3D && <ThreeViewer r={view3D} cond={cond} onClose={() => setView3D(null)} />}
         {dcrView && <DcrPopup r={dcrView.r} cond={cond} fScale={dcrView.fScale} wScale={dcrView.wScale} onClose={() => setDcrView(null)} />}

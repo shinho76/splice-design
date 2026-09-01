@@ -27,6 +27,7 @@ export interface ShearResult {
   boltDia: number;
   NR: number;
   NC: number;
+  Pc: number;           // 볼트 수직피치(≈3d, mm) — GS 웨브의 Pc와 동일 개념
   a: number;
   eBolt: number;       // 지지면→최원단 볼트열 편심("e,bolt", 볼트군 C계수용)
   ePlate: number;       // 지지면→볼트군 도심 편심("e,plate", 판휨 M=V·e용)
@@ -277,7 +278,7 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
   const ePlate = a + (NC === 2 ? sh / 2 : 0);
   const A_MAX = 88.9; // mm (3.5in, AISC Manual Part 10 conventional configuration 상한)
   return {
-    section: sec.name, V_kN: kN(V), boltName: name, boltDia: d, NR, NC, a,
+    section: sec.name, V_kN: kN(V), boltName: name, boltDia: d, NR, NC, Pc: s, a,
     eBolt: +eBolt.toFixed(0), ePlate: +ePlate.toFixed(0),
     plate: { t: tp, L: Lp, w: a + (NC - 1) * sh + Leh }, config: eBolt > A_MAX ? 'Extended' : 'Conventional',
     fitsWeb, clearH: +clearH.toFixed(0), subtype,
