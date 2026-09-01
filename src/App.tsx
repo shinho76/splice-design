@@ -12,7 +12,8 @@ const KbcDetailReport = lazy(() => import('./components/KbcDetailReport.tsx'));
 const QuantityPanel = lazy(() => import('./components/QuantityPanel.tsx'));
 const SensitivityPanel = lazy(() => import('./components/SensitivityPanel.tsx'));
 const ShearTable = lazy(() => import('./components/ShearTable.tsx'));
-const ShearDetail = lazy(() => import('./components/ShearDetail.tsx'));
+const ShearCalcReport = lazy(() => import('./components/ShearCalcReport.tsx'));
+const ShearDetailReport = lazy(() => import('./components/ShearDetailReport.tsx'));
 const ShearViewer = lazy(() => import('./components/ShearViewer.tsx'));
 const ProjectPanel = lazy(() => import('./components/ProjectPanel.tsx'));
 const ThreeViewer = lazy(() => import('./components/ThreeViewer.tsx'));
@@ -59,7 +60,8 @@ export default function App() {
   const [mode, setMode] = useState<'splice' | 'shear'>('shear');   // 설계 모드: 이음 / 전단접합 — 앱 접속 시 SC 기본 진입
   const [girderLock, setGirderLock] = useState(false);   // GS(GIRDER SPLICE) 모드: K모드·보 고정, 구분·부재 세그 숨김
   const [shearSel, setShearSel] = useState<import('./engine/shear/singlePlate.ts').ShearResult | null>(null);
-  const [showShearDetail, setShowShearDetail] = useState(false);   // 전단접합 상세검토 모달(오른쪽 패널 '상세검토' 버튼으로 열기 — GS의 상세계산서와 동일 패턴)
+  const [showShearReport, setShowShearReport] = useState(false);   // SC 요약계산서 모달 — GS의 요약계산서와 동일 패턴
+  const [showShearDetail, setShowShearDetail] = useState(false);   // SC 상세계산서(서술형) 모달 — GS의 상세계산서와 동일 패턴
   const [shearView3D, setShearView3D] = useState<import('./engine/shear/singlePlate.ts').ShearResult | null>(null);
   const [showProj, setShowProj] = useState(false);
   const [view3D, setView3D] = useState<DesignResult | null>(null);
@@ -526,7 +528,8 @@ export default function App() {
                     <div><span>{L('전단판볼트', 'Plate bolts')}</span><b>M{shearSel.boltDia} L{shearSel.boltLen} · {shearSel.boltCount}{L('본', 'ea')} · {shearSel.boltTotalKg} kg</b></div>
                   </div>
                   <div className="dact">
-                    <button className="db primary" title={L('한계상태별 φRn·DCR을 전개한 상세 검토를 엽니다', 'Open the per-limit-state φRn·DCR breakdown')} onClick={() => setShowShearDetail(true)}>{L('상세계산서', 'Detailed')}</button>
+                    <button className="db primary" title={L('소요강도·설계강도·판정을 요약한 계산서를 엽니다', 'Open a summary calc sheet: demand, capacity and check')} onClick={() => setShowShearReport(true)}>{L('요약계산서', 'Summary')}</button>
+                    <button className="db" title={L('수식·대입·근거조항까지 포함한 상세 계산서를 엽니다', 'Open the detailed calc sheet with formulas, substitutions and clauses')} onClick={() => setShowShearDetail(true)}>{L('상세계산서', 'Detailed')}</button>
                     <button className="db" title={L('전단판·볼트군을 3D로 확인합니다(피지지보만 표시)', 'View the plate and bolt group in 3D (supported member only)')} onClick={() => setShearView3D(shearSel)}>3D</button>
                     <button className="db" disabled title={L('준비 중 — 전단탭 개별 상세도(DXF) 생성기 미구축', 'Pending — per-member detail DXF generator not built yet')}>DXF</button>
                     <button className="db" disabled title={L('준비 중 — SC BIM(IFC) 연동 미구축', 'Pending — SC IFC export not built yet')}>IFC</button>
@@ -602,7 +605,8 @@ export default function App() {
           : <KbcDetailReport result={selEff} cond={cond} onClose={() => setShowDetail(false)} />)}
         {showQty && <QuantityPanel cond={cond} diaAt={diaAt} autoFix={autoFix} onClose={() => setShowQty(false)} />}
         {showSens && <SensitivityPanel onClose={() => setShowSens(false)} girderLock={girderLock} />}
-        {showShearDetail && shearSel && <ShearDetail r={shearSel} cond={cond} onClose={() => setShowShearDetail(false)} />}
+        {showShearReport && shearSel && <ShearCalcReport r={shearSel} cond={cond} onClose={() => setShowShearReport(false)} />}
+        {showShearDetail && shearSel && <ShearDetailReport r={shearSel} cond={cond} onClose={() => setShowShearDetail(false)} />}
         {shearView3D && <ShearViewer r={shearView3D} cond={cond} onClose={() => setShearView3D(null)} />}
         {showProj && <ProjectPanel items={project} onChange={setProject} onClose={() => setShowProj(false)} />}
         {view3D && <ThreeViewer r={view3D} cond={cond} onClose={() => setView3D(null)} />}

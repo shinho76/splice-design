@@ -142,6 +142,10 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
         id: 'SB2', region: 'bolt', group: 'A. 볼트', label: '볼트 미끄럼(마찰접합·2면)', clause: 'J3.8',
         phiRn: kN(rnSlip1 * C), demand: kN(V), unit: 'kN',
         detail: `φRn=${kN(rnSlip1)} kN/EA(2면) · 편심계수 C=${C.toFixed(2)}`,
+        steps: [
+          S('볼트 1개 설계미끄럼강도(2면)', 'φ·μ·Du·hf·Tb·ns', `KS B 1010 ${cond.bolt} M${d}`, kN(rnSlip1), 'kN', 'J3.8'),
+          S('편심 볼트군 φRn', 'φrₙ·C', `${kN(rnSlip1)}·${C.toFixed(2)}`, kN(rnSlip1 * C), 'kN'),
+        ],
       });
     }
     // 3. 지압·찢김 — 전단판 J3.10 (양측판 2매 합산두께 tp2 기준 — GS 웨브이음 관례와 동일)
@@ -157,12 +161,22 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
       id: 'SR1', region: 'web', group: 'B. 지압·찢김', label: '지압·찢김 — 전단판(2매)', clause: 'J3.10',
       phiRn: kN(bearMin(tp2, pFu)), demand: kN(V), unit: 'kN',
       detail: `Σ min(φ2.4dtFu, φ1.2Lc·tFu) · t=2×${tp}=${tp2}, Lc,e=${(Lev - dh / 2).toFixed(1)}, Lc,p=${s - dh}`,
+      steps: [
+        S('지압 상한(볼트 1개)', 'φ·2.4·d·t·Fu', `0.75·2.4·${d}·${tp2}·${pFu}`, kN(PHI.V * 2.4 * d * tp2 * pFu), 'kN', 'J3.10'),
+        S('연단볼트 찢김', 'φ·1.2·(Lev−dh/2)·t·Fu', `0.75·1.2·${(Lev - dh / 2).toFixed(1)}·${tp2}·${pFu}`, kN(PHI.V * 1.2 * (Lev - dh / 2) * tp2 * pFu), 'kN', 'J3.10'),
+        S('내부볼트 찢김', 'φ·1.2·(s−dh)·t·Fu', `0.75·1.2·${s - dh}·${tp2}·${pFu}`, kN(PHI.V * 1.2 * (s - dh) * tp2 * pFu), 'kN', 'J3.10'),
+        S('합계 φRn', `${NC}열×[연단 1 + 내부 ${NR - 1}]×min(지압,찢김)`, `${NC}·(edge+${NR - 1}·intr)`, kN(bearMin(tp2, pFu)), 'kN'),
+      ],
     });
     // 4. 지압·찢김 — 보 웨브 J3.10
     push({
       id: 'SR2', region: 'member', group: 'B. 지압·찢김', label: '지압·찢김 — 보 웨브', clause: 'J3.10',
       phiRn: kN(bearMin(sec.tw, mFu)), demand: kN(V), unit: 'kN',
       detail: `보 웨브 tw=${sec.tw} 기준 지압·찢김`,
+      steps: [
+        S('지압 상한(볼트 1개)', 'φ·2.4·d·tw·Fu', `0.75·2.4·${d}·${sec.tw}·${mFu}`, kN(PHI.V * 2.4 * d * sec.tw * mFu), 'kN', 'J3.10'),
+        S('합계 φRn(SR1과 동일 산식, t=tw)', `${NC}열×[연단 1 + 내부 ${NR - 1}]×min(지압,찢김)`, `tw=${sec.tw}`, kN(bearMin(sec.tw, mFu)), 'kN'),
+      ],
     });
     // 4b·4c. 지압·찢김 — 수평방향(J3.10, 원자료 PDF p.20 "Horizontal Direction" 대응).
     //   NC≤2열이라 열간 사이 낀 볼트가 없어(원자료 Spacing Bolt tearout=0) 전 볼트가 연단(Leh) 찢김 대상.
@@ -178,11 +192,18 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
       id: 'SR3', region: 'web', group: 'B. 지압·찢김', label: '지압·찢김(수평) — 전단판(2매)', clause: 'J3.10',
       phiRn: kN(bearMinHoriz(tp2, pFu)), demand: kN(V), unit: 'kN',
       detail: `NC×NR×min(φ2.4dtFu, φ1.2·(Leh−dh/2)·tFu) · t=2×${tp}=${tp2}, Leh=${Leh}`,
+      steps: [
+        S('연단볼트 찢김(수평)', 'φ·1.2·(Leh−dh/2)·t·Fu', `0.75·1.2·${(Leh - dh / 2).toFixed(1)}·${tp2}·${pFu}`, kN(PHI.V * 1.2 * (Leh - dh / 2) * tp2 * pFu), 'kN', 'J3.10'),
+        S('합계 φRn', 'NC×NR×min(지압,찢김)', `${NC}·${NR}·edge`, kN(bearMinHoriz(tp2, pFu)), 'kN'),
+      ],
     });
     push({
       id: 'SR4', region: 'member', group: 'B. 지압·찢김', label: '지압·찢김(수평) — 보 웨브', clause: 'J3.10',
       phiRn: kN(bearMinHoriz(sec.tw, mFu)), demand: kN(V), unit: 'kN',
       detail: `보 웨브 tw=${sec.tw} 기준(무코프 전제 — 실질 미지배, 참고용)`,
+      steps: [
+        S('합계 φRn(SR3과 동일 산식, t=tw)', 'NC×NR×min(지압,찢김)', `tw=${sec.tw}`, kN(bearMinHoriz(sec.tw, mFu)), 'kN'),
+      ],
     });
     // 5. 판 전단항복 J4.3 (2매 합산두께 tp2)
     const Agv = tp2 * Lp;
@@ -190,6 +211,10 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
       id: 'SP1', region: 'web', group: 'C. 전단판', label: '판 전단항복(2매)', clause: 'J4.3',
       phiRn: kN(PHI.SH * 0.6 * pFy * Agv), demand: kN(V), unit: 'kN',
       detail: `φ·0.6·Fy·Ag = 1.0·0.6·${pFy}·${Agv.toFixed(0)} (Ag=2×${tp}×${Lp})`,
+      steps: [
+        S('총전단면적(2매) Ag', '2·tp·Lp', `2·${tp}·${Lp}`, +Agv.toFixed(0), 'mm²'),
+        S('설계전단항복 φVn', 'φv·0.6·Fy·Ag', `1.0·0.6·${pFy}·${Agv.toFixed(0)}`, kN(PHI.SH * 0.6 * pFy * Agv), 'kN', 'J4.3'),
+      ],
     });
     // 6. 판 전단파단 J4.4 (2매)
     const Anv = tp2 * (Lp - NR * dh);
@@ -198,6 +223,10 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
       id: 'SP2', region: 'web', group: 'C. 전단판', label: '판 전단파단(2매)', clause: 'J4.4',
       phiRn: kN(phiVnRup), demand: kN(V), unit: 'kN',
       detail: `φ·0.6·Fu·Anv = 0.75·0.6·${pFu}·${Anv.toFixed(0)} (Anv=2×${tp}×(${Lp}−${NR}·${dh}))`,
+      steps: [
+        S('순전단면적(2매) Anv', '2·tp·(Lp−NR·dh)', `2·${tp}·(${Lp}−${NR}·${dh})`, +Anv.toFixed(0), 'mm²', 'B4.3b'),
+        S('설계전단파단 φVn', 'φ·0.6·Fu·Anv', `0.75·0.6·${pFu}·${Anv.toFixed(0)}`, kN(phiVnRup), 'kN', 'J4.4'),
+      ],
     });
     // 7. 판 휨항복(편심) F11 (2매)
     const Zpl = tp2 * Lp * Lp / 4;
@@ -206,6 +235,11 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
       id: 'SP3', region: 'web', group: 'C. 전단판', label: '판 휨항복(편심·2매)', clause: 'F11',
       phiRn: kNm(phiMy), demand: kNm(Mecc), unit: 'kN·m',
       detail: `φ·Fy·Z = 0.9·${pFy}·${Zpl.toFixed(0)} · M=V·a=${kN(V)}·${a}mm (Z=2×${tp}×${Lp}²/4)`,
+      steps: [
+        S('편심모멘트 Mecc', 'V·e,plate', `${kN(V)}·${eCen.toFixed(0)}`, kNm(Mecc), 'kN·m'),
+        S('소성단면계수(2매) Z', '2·tp·Lp²/4', `2·${tp}·${Lp}²/4`, +Zpl.toFixed(0), 'mm³'),
+        S('설계휨항복 φMn', 'φ·Fy·Z', `0.9·${pFy}·${Zpl.toFixed(0)}`, kNm(phiMy), 'kN·m', 'F11'),
+      ],
     });
     // 8. 판 휨파단(순단면) J4.2 (2매)
     const Znet = Math.max(0, Zpl - tp2 * dh * sumRowDist(NR, s));
@@ -214,6 +248,10 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
       id: 'SP4', region: 'web', group: 'C. 전단판', label: '판 휨파단(순단면·2매)', clause: 'J4.2',
       phiRn: kNm(phiMnRup), demand: kNm(Mecc), unit: 'kN·m',
       detail: `φ·Fu·Znet = 0.75·${pFu}·${Znet.toFixed(0)}`,
+      steps: [
+        S('순단면계수(2매) Znet', 'Z − 2·tp·dh·Σ|yi|', `${Zpl.toFixed(0)} − 2·${tp}·${dh}·${sumRowDist(NR, s).toFixed(0)}`, +Znet.toFixed(0), 'mm³', 'B4.3b'),
+        S('설계휨파단 φMn', 'φ·Fu·Znet', `0.75·${pFu}·${Znet.toFixed(0)}`, kNm(phiMnRup), 'kN·m', 'J4.2'),
+      ],
     });
     // 9. 판 전단+휨 항복 상호작용 (Manual Eq 10-5, 원자료 "Yielding Interaction"에 대응 —
     //    SC는 TF=0·My=0이라 4항[전단·축력·강축휨·약축휨]이 전단+강축휨 2항으로 축소)
@@ -223,6 +261,11 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
       id: 'SP5', region: 'web', group: 'C. 전단판', label: '판 전단+휨 항복 상호작용', clause: 'H1.1/10-5',
       phiRn: 1, demand: +ia.toFixed(3), unit: 'ratio',
       detail: `√[(V/φVn)²+(M/φMn)²] = √[(${kN(V)}/${kN(shY)})²+(${kNm(Mecc)}/${kNm(phiMy)})²]`,
+      steps: [
+        S('전단항 (V/φVn)', 'V / (φv·0.6·Fy·Ag)', `${kN(V)}/${kN(shY)}`, +(V / shY).toFixed(3), '', 'H1.1'),
+        S('휨항 (M/φMn)', 'Mecc / (φ·Fy·Z)', `${kNm(Mecc)}/${kNm(phiMy)}`, +(Mecc / phiMy).toFixed(3), '', 'H1.1'),
+        S('이용률', '√[(V/φVn)²+(M/φMn)²]', '', +ia.toFixed(3), 'ratio'),
+      ],
     });
     // 9b. 판 전단+휨 파단 상호작용 (원자료 "Rupture Interaction"에 대응 — 기존 코드에 누락돼 있던 항목)
     const iaR = Math.sqrt((V / phiVnRup) ** 2 + (Mecc / phiMnRup) ** 2);
@@ -230,6 +273,11 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
       id: 'SP8', region: 'web', group: 'C. 전단판', label: '판 전단+휨 파단 상호작용', clause: 'H1.1/10-5',
       phiRn: 1, demand: +iaR.toFixed(3), unit: 'ratio',
       detail: `√[(V/φVn,파단)²+(M/φMn,파단)²] = √[(${kN(V)}/${kN(phiVnRup)})²+(${kNm(Mecc)}/${kNm(phiMnRup)})²]`,
+      steps: [
+        S('전단항 (V/φVn,파단)', 'V / (φ·0.6·Fu·Anv)', `${kN(V)}/${kN(phiVnRup)}`, +(V / phiVnRup).toFixed(3), '', 'H1.1'),
+        S('휨항 (M/φMn,파단)', 'Mecc / (φ·Fu·Znet)', `${kNm(Mecc)}/${kNm(phiMnRup)}`, +(Mecc / phiMnRup).toFixed(3), '', 'H1.1'),
+        S('이용률', '√[(V/φVn,파단)²+(M/φMn,파단)²]', '', +iaR.toFixed(3), 'ratio'),
+      ],
     });
     // 10. 판 블록전단 J4.5 — 원자료(PDF p.20 Block Shear Case A) 대조 확인: 지배 경로는 단일 볼트열
     //   L형 블록(전단면 1개, Ubs=0.5, 비균일 인장 — 전형적 shear-tab 블록전단 형태)이며,
@@ -242,30 +290,48 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
     const bsL = Math.min(0.6 * pFu * AnvL, 0.6 * pFy * AgvL) + 0.5 * pFu * AntL;
     let phiBs = PHI.R * bsL;
     let bsDetail = `L형(단일열,Ubs=0.5,지배,2매): φ[min(0.6Fu·Anv,0.6Fy·Agv)+0.5Fu·Ant], Agv=2×${tp}×${Lsh.toFixed(0)}, Ant폭=${a}`;
+    let govShape = 'L', govAgv = AgvL, govAnv = AnvL, govAnt = AntL, govUbs = 0.5;
     if (NC === 2) {
       // U형(2열, Ubs=1.0): 전단면=양열, 인장면=열간+양측 연단 전폭 — 2매(tp2) 기준
       const AgvU = 2 * tp2 * Lsh, AnvU = 2 * tp2 * (Lsh - (NR - 0.5) * dh);
       const AntU = tp2 * ((NC - 1) * sh + 2 * Leh - dh);
       const bsU = Math.min(0.6 * pFu * AnvU, 0.6 * pFy * AgvU) + 1.0 * pFu * AntU;
-      if (PHI.R * bsU < phiBs) { phiBs = PHI.R * bsU; bsDetail = `U형(2열,Ubs=1.0,지배,2매): φ[min(0.6Fu·Anv,0.6Fy·Agv)+1.0Fu·Ant]`; }
-      else bsDetail += ` (U형 φRn=${kN(PHI.R * bsU)}kN보다 지배적)`;
+      if (PHI.R * bsU < phiBs) {
+        phiBs = PHI.R * bsU; bsDetail = `U형(2열,Ubs=1.0,지배,2매): φ[min(0.6Fu·Anv,0.6Fy·Agv)+1.0Fu·Ant]`;
+        govShape = 'U'; govAgv = AgvU; govAnv = AnvU; govAnt = AntU; govUbs = 1.0;
+      } else bsDetail += ` (U형 φRn=${kN(PHI.R * bsU)}kN보다 지배적)`;
     }
     push({
       id: 'SP6', region: 'web', group: 'C. 전단판', label: '판 블록전단(2매)', clause: 'J4.5',
       phiRn: kN(phiBs), demand: kN(V), unit: 'kN',
       detail: bsDetail,
+      steps: [
+        S('지배 파단경로', govShape === 'L' ? '단일 근접열(지지측 자유단)' : '2열(열간+양측 연단)', `${govShape}형`, govUbs, 'Ubs'),
+        S('총전단면적 Agv', govShape === 'L' ? '2·tp·Lsh' : '2×(2·tp·Lsh)', `${govAgv.toFixed(0)}`, +govAgv.toFixed(0), 'mm²'),
+        S('순전단면적 Anv', 'Agv 기준 − (NR−0.5)·dh 공제', `${govAnv.toFixed(0)}`, +govAnv.toFixed(0), 'mm²', 'B4.3b'),
+        S('순인장면적 Ant', govShape === 'L' ? '2·tp·(a−0.5dh)' : '2·tp·((NC−1)sh+2Leh−dh)', `${govAnt.toFixed(0)}`, +govAnt.toFixed(0), 'mm²'),
+        S('설계블록전단 φRn', 'φ·[min(0.6FuAnv,0.6FyAgv)+Ubs·Fu·Ant]', `0.75·[...]`, kN(phiBs), 'kN', 'J4.5'),
+      ],
     });
     // 11. 판 두께 연성 (Manual pg 10-89) — 매(枚)당 두께로 검토(볼트 연성은 개별 판 두께에 좌우)
     push({
       id: 'SP7', region: 'web', group: 'C. 전단판', label: '판 두께 연성(매당)', clause: 'Manual 10-89',
       phiRn: +tDuct.toFixed(1), demand: tp, unit: 'mm',
       detail: `t_max = db/2+1.6 = ${tDuct.toFixed(1)} mm ≥ tp=${tp}(매당) (볼트 연성지배 확보)`,
+      steps: [
+        S('연성상한 t_max', 'db/2 + 1.6', `${d}/2 + 1.6`, +tDuct.toFixed(1), 'mm', 'Manual 10-89'),
+        S('채택 판두께(매당) tp', '상용두께 중 t_max 이하 최대', `AVAIL_T ≤ ${tDuct.toFixed(1)}`, tp, 'mm'),
+      ],
     });
     // 12. 보 웨브 전단항복 G2.1
     push({
       id: 'SM1', region: 'member', group: 'D. 보 웨브', label: '보 웨브 전단항복', clause: 'G2.1',
       phiRn: kN(PHI.SH * 0.6 * mFy * sec.H * sec.tw), demand: kN(V), unit: 'kN',
       detail: `φ·0.6·Fy·(H·tw) = 1.0·0.6·${mFy}·${(sec.H * sec.tw).toFixed(0)}`,
+      steps: [
+        S('총전단면적 Aw', 'H·tw', `${sec.H}·${sec.tw}`, +(sec.H * sec.tw).toFixed(0), 'mm²'),
+        S('설계전단항복 φVn', 'φv·0.6·Fy·Aw', `1.0·0.6·${mFy}·${(sec.H * sec.tw).toFixed(0)}`, kN(PHI.SH * 0.6 * mFy * sec.H * sec.tw), 'kN', 'G2.1'),
+      ],
     });
 
     let govId = '', govDcr = 0;
