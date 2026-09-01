@@ -3,6 +3,7 @@ import type { DesignCondition, DesignResult } from './engine/types.ts';
 import FilterBar from './components/FilterBar.tsx';
 import ResultTable from './components/ResultTable.tsx';
 import ConnectionSVG from './components/ConnectionSVG.tsx';
+import ShearConnectionSVG from './components/ShearConnectionSVG.tsx';
 // 모달·무거운 컴포넌트는 지연 로딩(초기 번들에서 three·xlsx 제외)
 const CalcReport = lazy(() => import('./components/CalcReport.tsx'));
 const AiscCalcReport = lazy(() => import('./components/AiscCalcReport.tsx'));
@@ -63,6 +64,7 @@ export default function App() {
   const [showProj, setShowProj] = useState(false);
   const [view3D, setView3D] = useState<DesignResult | null>(null);
   const [zoomPrev, setZoomPrev] = useState(false);   // 접합 상세도 확대 보기
+  const [shearZoomPrev, setShearZoomPrev] = useState(false);   // SC 전단판 상세도 확대 보기
   const [dcrView, setDcrView] = useState<{ r: DesignResult; fScale: number; wScale: number } | null>(null);   // DCR 팝업 대상(+캡핑배율)
   const [boltMode, setBoltMode] = useState<'Default' | 'Custom'>('Default');
   const [boltOv, setBoltOv] = useState<Record<number, number>>({});   // 행index → 지정직경(위 행 따름)
@@ -530,6 +532,10 @@ export default function App() {
                     <button className="db" disabled title={L('준비 중 — SC BIM(IFC) 연동 미구축', 'Pending — SC IFC export not built yet')}>IFC</button>
                     <button className="db" disabled title={L('준비 중 — SC 프로젝트 집계 미구축(GS/MC 전용)', 'Pending — project aggregation not built for SC yet (GS/MC only)')}>＋ {L('프로젝트', 'Project')}</button>
                   </div>
+                  <div className="dprev">
+                    <button className="prev-zoom" title={L('크게 보기', 'Enlarge')} onClick={() => setShearZoomPrev(true)}>🔍</button>
+                    <ShearConnectionSVG r={shearSel} cond={cond} />
+                  </div>
                 </>
               ) : (
                 <div className="dempty">
@@ -613,6 +619,19 @@ export default function App() {
               </div>
             </div>
             <div className="prev-modal-bd"><ConnectionSVG r={selEff} cond={cond} /></div>
+          </div>
+        </div>
+      )}
+      {shearZoomPrev && shearSel && (
+        <div className="prev-back" onClick={() => setShearZoomPrev(false)}>
+          <div className="prev-modal" onClick={e => e.stopPropagation()}>
+            <div className="prev-modal-hd">
+              <span>{shearSel.section} · {tJoint(cond.jointType, lang)}</span>
+              <div className="prev-modal-act">
+                <button className="prev-close" title={L('닫기', 'Close')} onClick={() => setShearZoomPrev(false)}>✕</button>
+              </div>
+            </div>
+            <div className="prev-modal-bd"><ShearConnectionSVG r={shearSel} cond={cond} /></div>
           </div>
         </div>
       )}

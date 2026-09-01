@@ -35,6 +35,9 @@ export interface ShearResult {
   NC: number;
   Pc: number;           // 볼트 수직피치(≈3d, mm) — GS 웨브의 Pc와 동일 개념
   a: number;
+  sh: number;           // 볼트 수평간격(NC=2일 때 열간 거리, mm) — 도면용
+  Lev: number;          // 수직 연단거리(mm) — 도면용
+  Leh: number;          // 수평 연단거리(플레이트 원단, mm) — 도면용
   eBolt: number;       // 지지면→최원단 볼트열 편심("e,bolt", 볼트군 C계수용)
   ePlate: number;       // 지지면→볼트군 도심 편심("e,plate", 판휨 M=V·e용)
   plate: ShearPlate;
@@ -315,7 +318,7 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
   const boltTotalKg = +(boltSetKg * boltCount).toFixed(2);
 
   return {
-    section: sec.name, V_kN: kN(V), boltName: name, boltDia: d, NR, NC, Pc: s, a,
+    section: sec.name, V_kN: kN(V), boltName: name, boltDia: d, NR, NC, Pc: s, a, sh, Lev, Leh,
     eBolt: +eBolt.toFixed(0), ePlate: +ePlate.toFixed(0),
     plate: { t: tp, L: plateL, w: a + (NC - 1) * sh + Leh }, config: eBolt > A_MAX ? 'Extended' : 'Conventional',
     fitsWeb, clearH: +clearH.toFixed(0),
