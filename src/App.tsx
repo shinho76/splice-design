@@ -513,17 +513,22 @@ export default function App() {
                   <div className="dh">{sectionByName(shearSel.section)?.label ?? shearSel.section}
                     {sectionByName(shearSel.section)?.label && <span className="dh-mm">{shearSel.section}</span>}
                     <span className="dbadge">{shearSel.ok ? L('선택됨', 'Selected') : L('재검토', 'Review')}</span></div>
-                  <div className="dsub">{L('전단판 접합(2면전단)', 'Shear tab (double shear)')} · {cond.steel} · {cond.bolt}</div>
+                  <div className="dsub">{L('전단판 접합(2면전단)', 'Shear tab (double shear)')} · {tJoint(cond.jointType, lang)} · {cond.steel} · {cond.bolt}</div>
                   <div className="dspecs">
                     <div><span>{L('소요전단', 'Shear')}</span><b>{nf(shearSel.V_kN)} kN</b></div>
-                    <div><span>{L('볼트열', 'Bolt array')}</span><b>{shearSel.NC}×{shearSel.NR} · M{shearSel.boltDia}</b></div>
-                    <div><span>{L('이음판', 'Plate')}</span><b>2×{shearSel.plate.t}×{shearSel.plate.L}×{shearSel.plate.w}</b></div>
+                    <div><span>{L('전단판 볼트', 'Plate bolts')}</span><b>{shearSel.NC}×{shearSel.NR} · {shearSel.boltCount}-M{shearSel.boltDia}</b></div>
+                    <div><span>{L('전단판', 'Plate')}</span><b>{shearSel.plate.t}×{shearSel.plate.L}×{shearSel.plate.w} ×2</b></div>
                     <div><span>{L('지배 검토', 'Governing')}</span><b>{shearSel.govId} · DCR {shearSel.govDcr.toFixed(2)}</b></div>
                     <div><span>{L('판정', 'Check')}</span><b className={shearSel.ok ? undefined : 'ng'}>{shearSel.ok ? 'OK' : (shearSel.fitsWeb ? 'NG' : L('판>T', 'PL>T'))}</b></div>
+                    <div className="dspec-hd"><span>{L('고력볼트', 'H.S. bolts')} (KS B 1010)</span><b>{shearSel.boltCount}{L('본', 'ea')} · {shearSel.boltTotalKg} kg</b></div>
+                    <div><span>{L('전단판볼트', 'Plate bolts')}</span><b>M{shearSel.boltDia} L{shearSel.boltLen} · {shearSel.boltCount}{L('본', 'ea')} · {shearSel.boltTotalKg} kg</b></div>
                   </div>
                   <div className="dact">
-                    <button className="db primary" title={L('한계상태별 φRn·DCR을 전개한 상세 검토를 엽니다', 'Open the per-limit-state φRn·DCR breakdown')} onClick={() => setShowShearDetail(true)}>{L('상세검토', 'Details')}</button>
+                    <button className="db primary" title={L('한계상태별 φRn·DCR을 전개한 상세 검토를 엽니다', 'Open the per-limit-state φRn·DCR breakdown')} onClick={() => setShowShearDetail(true)}>{L('상세계산서', 'Detailed')}</button>
                     <button className="db" title={L('전단판·볼트군을 3D로 확인합니다(피지지보만 표시)', 'View the plate and bolt group in 3D (supported member only)')} onClick={() => setShearView3D(shearSel)}>3D</button>
+                    <button className="db" disabled title={L('준비 중 — 전단탭 개별 상세도(DXF) 생성기 미구축', 'Pending — per-member detail DXF generator not built yet')}>DXF</button>
+                    <button className="db" disabled title={L('준비 중 — SC BIM(IFC) 연동 미구축', 'Pending — SC IFC export not built yet')}>IFC</button>
+                    <button className="db" disabled title={L('준비 중 — SC 프로젝트 집계 미구축(GS/MC 전용)', 'Pending — project aggregation not built for SC yet (GS/MC only)')}>＋ {L('프로젝트', 'Project')}</button>
                   </div>
                 </>
               ) : (

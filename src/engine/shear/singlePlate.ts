@@ -15,6 +15,7 @@ import type { DesignCondition, HSection, BoltName, BoltDia } from '../types.ts';
 import { Fy, Fu as FuSteel, BOLT_MAT } from '../materials.ts';
 import { Ab, boltNameByDia, designSlipStrength_kN } from '../bolts.ts';
 import { PHI, FNV_FACTOR, holeDia } from '../aisc/constants.ts';
+import { standardLength, boltSetWeight } from '../bolt_spec.ts';
 import type { AiscCheck, AiscStep } from '../aisc/types.ts';
 
 const MIN_EDGE: Record<number, number> = { 16: 22, 18: 24, 20: 26, 22: 28, 24: 30, 27: 34, 30: 38 };
@@ -40,6 +41,11 @@ export interface ShearResult {
   config: 'Conventional' | 'Extended';
   fitsWeb: boolean;    // 판 춤이 보 웨브 순높이 T 이내인가
   clearH: number;      // 보 웨브 순높이 T (mm)
+  boltCount: number;   // 총 볼트 본수(NC×NR — 그립을 2매+웨브가 관통하므로 ×2 아님)
+  boltGrip: number;    // 그립(2×tp+tw, mm)
+  boltLen: number;     // 표준 제작길이(KS B 1010, 5mm 올림)
+  boltSetKg: number;   // 세트 1개 중량(볼트+너트+와셔2매, kg)
+  boltTotalKg: number; // 볼트 총중량(kg)
   subtype: ScSubtype;
   checks: AiscCheck[];
   govId: string;
@@ -300,11 +306,20 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
   const eBolt = a + (NC === 2 ? sh : 0);
   const ePlate = a + (NC === 2 ? sh / 2 : 0);
   const A_MAX = 88.9; // mm (3.5in, AISC Manual Part 10 conventional configuration 상한)
+
+  // 고력볼트 물량(KS B 1010) — 그립=웨브+양측판 2매(2면전단), 본수=NC×NR(볼트 1본이 판 2매+웨브를 관통).
+  const boltCount = NC * NR;
+  const boltGrip = sec.tw + 2 * tp;
+  const boltLen = standardLength(boltGrip, name);
+  const boltSetKg = boltSetWeight(name, boltLen);
+  const boltTotalKg = +(boltSetKg * boltCount).toFixed(2);
+
   return {
     section: sec.name, V_kN: kN(V), boltName: name, boltDia: d, NR, NC, Pc: s, a,
     eBolt: +eBolt.toFixed(0), ePlate: +ePlate.toFixed(0),
     plate: { t: tp, L: plateL, w: a + (NC - 1) * sh + Leh }, config: eBolt > A_MAX ? 'Extended' : 'Conventional',
-    fitsWeb, clearH: +clearH.toFixed(0), subtype,
+    fitsWeb, clearH: +clearH.toFixed(0),
+    boltCount, boltGrip, boltLen, boltSetKg: +boltSetKg.toFixed(3), boltTotalKg, subtype,
     checks: res.checks, govId: res.govId, govDcr: +res.govDcr.toFixed(2),
     ok: res.govDcr <= 1 && fitsWeb,
   };
