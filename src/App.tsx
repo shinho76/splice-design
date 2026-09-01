@@ -49,7 +49,7 @@ function HelpItem({ t, children }: { t: string; children: ReactNode }) {
 }
 
 export default function App() {
-  const [cond, setCond] = useState<DesignCondition>(DEFAULT);
+  const [cond, setCond] = useState<DesignCondition>({ ...DEFAULT, strengthRatio: 0.5 });   // 앱 기본 진입값(SC)의 강도비 50%
   const [selected, setSelected] = useState<DesignResult | null>(null);
   const [showReport, setShowReport] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
@@ -267,13 +267,16 @@ export default function App() {
   // GS(GIRDER SPLICE) 모드 진입/해제 — 진입 시 K모드·보 고정 + 이음 화면으로 전환
   const toggleGirder = () => setGirderLock(v => {
     const next = !v;
-    if (next) { setCond(c => ({ ...c, mode: 'K', member: '보' })); setMode('splice'); }
+    // strengthRatio도 GS 자체 기본값(100%)으로 복원 — 앱이 SC(50%)로 먼저 진입하므로
+    // SC→GS 전환 시 50%가 그대로 남지 않도록 명시적으로 되돌린다.
+    if (next) { setCond(c => ({ ...c, mode: 'K', member: '보', strengthRatio: DEFAULT.strengthRatio })); setMode('splice'); }
     return next;
   });
-  // SC(SHEAR CONNECTION) 모드 전환 — GS와 같이 진입 시 K모드 고정(구분 세그 숨김에 대응)
+  // SC(SHEAR CONNECTION) 모드 전환 — GS와 같이 진입 시 K모드 고정(구분 세그 숨김에 대응).
+  // 강도비 기본값은 50%(SC 전용 — GS/MC의 100%와 별도).
   const toggleSC = () => setMode(m => {
     const next = m === 'shear' ? 'splice' : 'shear';
-    if (next === 'shear') setCond(c => ({ ...c, mode: 'K' }));
+    if (next === 'shear') setCond(c => ({ ...c, mode: 'K', strengthRatio: 0.5 }));
     return next;
   });
 

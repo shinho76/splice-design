@@ -263,9 +263,14 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
   // WG1(1열)↔WG3(2열) 분류 역산 결과와 동일한 판정 기준. 단, T 자체가 최소 2행조차 못 담을
   // 만큼 협소한 단면(fitsAt(2)=false)은 2열로도 해결되지 않으므로(판 길이는 NR에만 좌우, NC
   // 무관) 대상에서 제외 — 종전과 같이 NC=1·fitsWeb=false(NG)로 남겨 별도 소형 상세 필요를 표시.
-  const clearH = sec.H - 2 * sec.tf - 2 * sec.r;                   // 웨브 순높이 T
+  const clearH = sec.H - 2 * sec.tf - 2 * sec.r;                   // 웨브 순높이 T(실치수)
+  // 이음판 최대 높이 = 웨브 순높이를 10mm 단위로 내림(첫째자리 절사) — 제작용 정형 치수.
+  // 볼트군(상하 연단거리 Lev 포함)이 이 최대높이 안에서 위·아래 각 3mm 이상 여장을 남겨야
+  // 채택 가능 → 여장 확보 시 판 높이는 볼트 소요치가 아닌 이 정형 최대높이로 확정.
+  const plateHmax = Math.floor(clearH / 10) * 10;
+  const EDGE_MARGIN = 3;                                            // 상·하 각 여장(mm)
   const MAXR = 12;
-  const fitsAt = (nr: number) => (nr - 1) * s + 2 * Lev <= clearH + 1;
+  const fitsAt = (nr: number) => (nr - 1) * s + 2 * Lev <= plateHmax - 2 * EDGE_MARGIN;
   const solve = (NC: number) => {
     let nr = 2, r = build(nr, NC);
     for (nr = 2; nr <= MAXR; nr++) { r = build(nr, NC); if (r.govDcr <= 1) return { nr, r, ok: true }; }
@@ -282,7 +287,8 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
   const NR = sol.nr, res = sol.r;
 
   const Lp = (NR - 1) * s + 2 * Lev;
-  const fitsWeb = Lp <= clearH + 1;
+  const fitsWeb = fitsAt(NR);
+  const plateL = fitsWeb ? plateHmax : Lp;    // 여장 확보 시 정형 최대높이, 미확보(NG) 시 소요치 그대로 표시
   // Conventional/Extended 판정 — 원자료(PDF p.20) "a,max"=3.5in(88.9mm)와 "e,bolt"(최원단열 편심) 비교.
   const eBolt = a + (NC === 2 ? sh : 0);
   const ePlate = a + (NC === 2 ? sh / 2 : 0);
@@ -290,7 +296,7 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
   return {
     section: sec.name, V_kN: kN(V), boltName: name, boltDia: d, NR, NC, Pc: s, a,
     eBolt: +eBolt.toFixed(0), ePlate: +ePlate.toFixed(0),
-    plate: { t: tp, L: Lp, w: a + (NC - 1) * sh + Leh }, config: eBolt > A_MAX ? 'Extended' : 'Conventional',
+    plate: { t: tp, L: plateL, w: a + (NC - 1) * sh + Leh }, config: eBolt > A_MAX ? 'Extended' : 'Conventional',
     fitsWeb, clearH: +clearH.toFixed(0), subtype,
     checks: res.checks, govId: res.govId, govDcr: +res.govDcr.toFixed(2),
     ok: res.govDcr <= 1 && fitsWeb,
