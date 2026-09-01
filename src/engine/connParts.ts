@@ -28,7 +28,7 @@ export function connParts(r: DesignResult): ConnParts {
   const { H, B, tw, tf } = parseName(r.section);
   const fillet = sectionByName(r.section)?.r ?? Math.round(tf * 0.9);
   const dia = r.boltDia, shankR = dia / 2;
-  const gap = r.flange.gap ?? 10, base = gap / 2 + 40;
+  const gap = r.flange.gap ?? 5, base = gap / 2 + 40;
   const g1 = r.flange.gauge?.g1 ?? 90, g2 = r.flange.gauge?.g2 ?? 0;
   const fB = r.flange.bolt, wB = r.web.bolt;
   const nHi = Math.ceil(fB.n), nLo = Math.floor(fB.n);

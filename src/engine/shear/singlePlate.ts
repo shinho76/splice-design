@@ -16,10 +16,14 @@ import { Fy, Fu as FuSteel, BOLT_MAT } from '../materials.ts';
 import { Ab, boltNameByDia, designSlipStrength_kN } from '../bolts.ts';
 import { PHI, FNV_FACTOR, holeDia } from '../aisc/constants.ts';
 import { standardLength, boltSetWeight } from '../bolt_spec.ts';
+import { WEB_PITCH_OPTIONS } from '../standards.ts';
 import type { AiscCheck, AiscStep } from '../aisc/types.ts';
 
 const MIN_EDGE: Record<number, number> = { 16: 22, 18: 24, 20: 26, 22: 28, 24: 30, 27: 34, 30: 38 };
 const AVAIL_T = [6, 8, 9, 10, 12, 14, 16, 19, 22, 25, 28, 32];
+// 볼트 수평·수직 피치(직경별 고정표, GS 웨브이음과 동일 관례) — M22 이하 60mm, M24 70mm, M27 75mm, M30 80mm.
+const PITCH_BY_DIA: Record<number, number> = { 16: 60, 18: 60, 20: 60, 22: 60, 24: 70, 27: 75, 30: 80 };
+const EDGE = 40;   // 이음판·부재측 공통 연단거리(고정, mm) — GS 웨브이음 EDGE_DIST와 동일 관례
 const kN = (n: number) => +(n / 1e3).toFixed(1);
 const kNm = (n: number) => +(n / 1e6).toFixed(1);
 
@@ -79,11 +83,12 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
   const Fnv = FNV_FACTOR[thread] * Fub;
   const dh = holeDia(d);
 
-  const s = Math.max(60, Math.ceil(3 * d / 5) * 5);     // 볼트 수직피치(≈3d)
-  const sh = Math.max(60, Math.ceil(3 * d / 5) * 5);    // 볼트 수평간격(2열)
+  const sBase = PITCH_BY_DIA[d] ?? 60;                   // 볼트 수직피치 기본값(직경별 고정표)
+  const sh = PITCH_BY_DIA[d] ?? 60;                      // 볼트 수평간격(2열, 직경별 고정표)
   const Lev = Math.max(MIN_EDGE[d], 35);                // 수직 연단
-  const Leh = Math.max(MIN_EDGE[d], 40);                // 수평 연단
-  const a = 75;                                          // 편심(지지면~근접 볼트열)
+  const Leh = EDGE;                                      // 수평 연단(플레이트 원단, 고정 40)
+  const gap = cond.gap ?? 5;                             // 이음부 이격(mm) — 설계조건 공용 갭(기본 5)
+  const a = EDGE + gap;                                  // 편심(지지면~근접 볼트열) = 연단거리(40, 고정) + 갭
 
   // 판두께: 연성상한(db/2+1.6mm) 이하 상용두께 중 최대
   const tDuct = d / 2 + 1.6;
@@ -94,7 +99,7 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
   const rnSlip1 = cond.jointType === '마찰' ? designSlipStrength_kN(cond.bolt, name, Ns) * 1e3 : 0;
 
   // 편심 볼트군 유효계수 C (탄성벡터법, 단열/2열) = V / R_max(임계볼트)
-  const eccC = (NR: number, NC: number): number => {
+  const eccC = (NR: number, NC: number, s: number): number => {
     const n = NR * NC;
     if (n <= 1) return 1;
     const ymax = s * (NR - 1) / 2;
@@ -110,11 +115,11 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
     return 1 / Math.sqrt(Rx * Rx + Ry * Ry);
   };
 
-  // 주어진 (NR,NC)로 전 한계상태 검토 조립
-  const build = (NR: number, NC: number): { checks: AiscCheck[]; govId: string; govDcr: number } => {
+  // 주어진 (NR,NC,s)로 전 한계상태 검토 조립 — s(세로피치)는 강도 재확인을 위해 인자로 받는다.
+  const build = (NR: number, NC: number, s: number): { checks: AiscCheck[]; govId: string; govDcr: number } => {
     const n = NR * NC;
     const Lp = (NR - 1) * s + 2 * Lev;
-    const C = eccC(NR, NC);
+    const C = eccC(NR, NC, s);
     const eCen = a + (NC === 2 ? sh / 2 : 0);
     const Mecc = V * eCen;
     const checks: AiscCheck[] = [];
@@ -352,24 +357,49 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
   const plateHmax = Math.floor(clearH / 10) * 10;
   const EDGE_MARGIN = 3;                                            // 상·하 각 여장(mm)
   const MAXR = 12;
-  const fitsAt = (nr: number) => (nr - 1) * s + 2 * Lev <= plateHmax - 2 * EDGE_MARGIN;
+  const fitsAt = (nr: number, sVal: number) => (nr - 1) * sVal + 2 * Lev <= plateHmax - 2 * EDGE_MARGIN;
   const solve = (NC: number) => {
-    let nr = 2, r = build(nr, NC);
-    for (nr = 2; nr <= MAXR; nr++) { r = build(nr, NC); if (r.govDcr <= 1) return { nr, r, ok: true }; }
+    let nr = 2, r = build(nr, NC, sBase);
+    for (nr = 2; nr <= MAXR; nr++) { r = build(nr, NC, sBase); if (r.govDcr <= 1) return { nr, r, ok: true }; }
     return { nr: MAXR, r, ok: false };
   };
   let NC = 1;
   let sol = solve(1);
   if (!sol.ok) {
     NC = 2; sol = solve(2);
-  } else if (!fitsAt(sol.nr) && fitsAt(2)) {
+  } else if (!fitsAt(sol.nr, sBase) && fitsAt(2, sBase)) {
     const sol2 = solve(2);
     if (sol2.ok) { NC = 2; sol = sol2; }
   }
-  const NR = sol.nr, res = sol.r;
+  let NR = sol.nr, res = sol.r, s = sBase;
+
+  // 최소 이음판 높이 확보(Lp ≥ 0.6·H, 부재 춤 기준) — 볼트 수량(NR)이 강도상으로는 충분하지만
+  // 부재 춤에 비해 이음판이 짧은 경우, 볼트를 더 추가하기 전에 먼저 같은 NR로 WEB_PITCH_OPTIONS
+  // (=[60,90,120], GS 웨브이음과 동일 표)의 더 넓은 피치로 스프레드해 채운다(경제적 — 볼트 추가보다
+  // 저렴). 스프레드는 편심(C계수)·판휨을 악화시킬 수 있어 매 후보마다 build()로 강도(govDcr≤1)를
+  // 재확인한 값만 채택. 가장 넓은 옵션(120)까지 확장해도 0.6H·강도를 동시에 못 채우면 그때 NR을
+  // 1행씩 늘려 재시도(판 높이 상한 도달 시 중단 → 기존과 동일하게 fitsWeb=false(NG)로 노출).
+  const minLp = 0.6 * sec.H;
+  const pitchDesc = [...WEB_PITCH_OPTIONS].filter(p => p >= sBase).sort((x, y) => y - x);
+  for (let guard = 0; guard < MAXR; guard++) {
+    if ((NR - 1) * s + 2 * Lev >= minLp) break;                     // 이미 0.6H 충족
+    let spread: { p: number; r: typeof res } | null = null;
+    for (const p of pitchDesc) {
+      if (!fitsAt(NR, p)) continue;                                 // 판 높이 상한 초과
+      const trial = build(NR, NC, p);
+      if (trial.govDcr > 1) continue;                               // 강도 미달 — 이 피치 채택 불가
+      spread = { p, r: trial };
+      break;                                                        // 넓은 값부터라 첫 적합값 채택
+    }
+    if (spread) { s = spread.p; res = spread.r; }
+    if ((NR - 1) * s + 2 * Lev >= minLp) break;                     // 스프레드만으로 확보 성공
+    if (NR >= MAXR || !fitsAt(NR + 1, sBase)) break;                // 더 늘리면 판 높이 상한 초과 — 타협
+    NR++;
+    s = sBase; res = build(NR, NC, s);                              // 새 행수로 재검토(피치는 기본값부터 재탐색)
+  }
 
   const Lp = (NR - 1) * s + 2 * Lev;
-  const fitsWeb = fitsAt(NR);
+  const fitsWeb = fitsAt(NR, s);
   const plateL = fitsWeb ? plateHmax : Lp;    // 여장 확보 시 정형 최대높이, 미확보(NG) 시 소요치 그대로 표시
   // Conventional/Extended 판정 — 원자료(PDF p.20) "a,max"=3.5in(88.9mm)와 "e,bolt"(최원단열 편심) 비교.
   const eBolt = a + (NC === 2 ? sh : 0);

@@ -14,7 +14,7 @@ export default function ConnectionSVG({ r, cond }: { r: DesignResult; cond: Desi
   const fB = r.flange.bolt, wB = r.web.bolt, dia = r.boltDia;
   const g1 = r.flange.gauge?.g1 ?? 90, g2 = r.flange.gauge?.g2 ?? 0;
   const stag = r.flange.staggered ?? false;   // 엔진의 실제 엇모 여부(공칭300만) — m≥4로 판정 금지
-  const gap = r.flange.gap ?? 10;             // 이음판 길이에 반영된 이격(엔진과 동일)
+  const gap = r.flange.gap ?? 5;              // 이음판 길이에 반영된 이격(엔진과 동일)
   const base = gap / 2 + 40;
   const fp = r.flange.pitch ?? 60, wp = r.web.pitch ?? 60;   // 엔진 피치(Custom 대구경 상향)
 

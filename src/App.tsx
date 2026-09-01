@@ -38,7 +38,7 @@ import { downloadShearCalcSheet } from './engine/shear/calcSheet.ts';
 
 const DEFAULT: DesignCondition = {
   mode: 'K', profile: 'H', member: '보', jointType: '마찰', steel: 'SHN355', plateSteel: 'SM355', bolt: 'F10T', strengthRatio: 1.0, sectionType: '압연',   // 앱 초기 접속 시 K모드 기본. 보 기본 강도비 100%(기둥 전환 시 80%로 자동, FilterBar setMember)
-  designStd: 'AISC', noStagger: false, equalPlateT: true,
+  designStd: 'AISC', noStagger: false, equalPlateT: true, gap: 5,
 };
 const nf = (v?: number) => v == null ? '—' : v.toLocaleString('en-US');
 // 사용자 피드백 구글 폼 링크 — 아래 URL을 발급받은 폼 주소로 교체하세요.
@@ -419,8 +419,8 @@ export default function App() {
                        '“Custom” sets diameter per row. Stagger = zig-zag flange bolts (net section B4.3b, s²/4g). Plate t “Equal” = same inner/outer thickness. Note: for shallow members (H<200 and first web-bolt-to-inner-plate l<60mm) where the wrench interferes, web bolts auto-stagger by half pitch (30mm) with +60 plate width (KBC-09 Fig 3.4).')}
                   </HelpItem>
                   <HelpItem t={L('강도비 α · 갭', 'Ratio α · Gap')}>
-                    {L('α=발현시킬 부재강도 비율(부분강도접합). 갭=이음 이격(0·5·10mm).',
-                       'α = fraction of member strength to develop (partial-strength). Gap = splice opening (0/5/10 mm).')}
+                    {L('α=발현시킬 부재강도 비율(부분강도접합). 갭=이음 이격(0·5·10·15·20mm, 기본 5).',
+                       'α = fraction of member strength to develop (partial-strength). Gap = splice opening (0/5/10/15/20 mm, default 5).')}
                   </HelpItem>
                   <HelpItem t={L('⚙ 최적화 ↔ KBC09 검토 (토글)', '⚙ Optimize ↔ KBC09 check (toggle)')}>
                     {L('AISC/KDS에서만 표시되는 토글. 켜면 「AISC16 최적화」 또는 「KDS22 최적화」 — 철판 물량 최소로 DCR≤1.0을 맞춥니다(볼트로 전강도를 못 내는 초대형 단면은 부분강도 %로 표시). 끄면 「KBC09 검토」 — 표준접합(비최적화) 형상으로 검토합니다.',

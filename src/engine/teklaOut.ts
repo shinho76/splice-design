@@ -49,7 +49,7 @@ function toRow(r: DesignResult, cond: DesignCondition): TeklaRow {
     webT: wp?.t ?? 0, webW: wp?.w ?? 0, webL: wp?.L ?? 0,
     fM: r.flange.bolt.m, fN: r.flange.bolt.n, fG1: r.flange.gauge?.g1 ?? 0, fPitch: r.flange.pitch ?? 60,
     wM: r.web.bolt.m, wN: r.web.bolt.n, wPx: r.web.pitch ?? 60, wPy: r.web.Pc ?? 60,
-    gap: r.flange.gap ?? r.web.gap ?? cond.gap ?? 10,
+    gap: r.flange.gap ?? r.web.gap ?? cond.gap ?? 5,
   };
 }
 

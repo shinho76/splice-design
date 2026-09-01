@@ -306,7 +306,7 @@ export function layout(r: DesignResult, isCol: boolean) {
   const oT = r.flange.outerPlate?.t ?? 9;
   const Lpf = r.flange.outerPlate?.L ?? 300, outerW = r.flange.outerPlate?.w ?? 200;
   const wB = r.web.bolt;
-  const gap = r.flange.gap ?? 10, base = gap / 2 + 40;
+  const gap = r.flange.gap ?? 5, base = gap / 2 + 40;
   const webWid = r.web.webPlate?.L ?? 170;
   const webL = Math.max(webWid, 2 * (base + (wB.n - 1) * 60) + 40) + 40;
   const contentHalf = Math.max(Lpf, webL) / 2;

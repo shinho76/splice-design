@@ -303,7 +303,7 @@ export default function AiscDetailReport({ result, cond, onClose }: { result: De
               </tr>
               <tr>
                 <th>{L('블록전단', 'Block shear')}</th><td>{(cond.bsShare ?? 'balanced') === 'full' ? L('전체력', 'Full') : L('균형', 'Balanced')}</td>
-                <th>{L('강도비 α · 갭', 'Ratio α · gap')}</th><td>{Math.round(cond.strengthRatio * 100)}% · {cond.gap ?? 10}mm</td>
+                <th>{L('강도비 α · 갭', 'Ratio α · gap')}</th><td>{Math.round(cond.strengthRatio * 100)}% · {cond.gap ?? 5}mm</td>
               </tr>
             </tbody>
           </table>

@@ -190,7 +190,7 @@ function designFlange(cond: DesignCondition, sec: HSection, std: ReturnType<type
     { group:'다) 플랜지 볼트 설계강도·배열', label:'플랜지 볼트 배열', value:m, unit:`열 × ${n} 행 = ${m*n}개`, ref:'5.4' },
   );
 
-  const gap = cond.gap ?? 10;
+  const gap = cond.gap ?? 5;
   const pitch = staggered ? PITCH_STAGGERED : alignP;
   const Lpf = staggered ? 2*((2*n-1)*pitch+2*40)+gap : 2*((n-1)*pitch+2*40)+gap;
   steps.push({ group:'라) 플랜지 이음판 길이', label:'이음판 길이', formula: staggered?`2[(2n−1)·45+80]+${gap}`:`2[(n−1)·${alignP}+80]+${gap}`, value:Lpf, unit:'mm', ref:'5.5.2' });
@@ -237,7 +237,7 @@ function designWeb(cond: DesignCondition, sec: HSection, bolt: BoltName, fy: num
   const lWeb = H / 2 - tf - dpw / 2;
   const webBoltStag = H < 200 && lWeb < 60;
   const webP = Math.max(60, Math.ceil(2.667 * boltDiaOf(bolt) / 5) * 5);   // C안: 웨브 가로피치
-  const wpw = 2*((nW-1)*webP + 2*40) + (cond.gap ?? 10) + (webBoltStag ? 60 : 0);   // 엇갈림 시 +60(30mm 이동분, 연단 40 유지)
+  const wpw = 2*((nW-1)*webP + 2*40) + (cond.gap ?? 5) + (webBoltStag ? 60 : 0);   // 엇갈림 시 +60(30mm 이동분, 연단 40 유지)
   // 보=전단(0.6Fy), 기둥=압축(Fy). 양면 이음판이 소요력의 절반씩 분담.
   const nomFactor = cond.member === '기둥' ? 1.0 : 0.6;
   const tpw = roundUpThickness(Math.max(0.5*(soryeok*1e3)/(0.9*nomFactor*pfy*dpw), 6), WEB_PLATE_T);   // 웨브 이음판 강종(pfy)

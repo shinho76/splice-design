@@ -62,7 +62,7 @@ export function aiscOptimize(r0: DesignResult, cond: DesignCondition, limits: Op
   let fScale = 1, wScale = 1, memberLimited = false;
 
   // 지오메트리 상수(재산정용) — 엔진 designFlange/designWeb 식과 반드시 일치해야 연단/필렛 정합
-  const fPitch = r.flange.pitch ?? 60, fEdge = r.flange.edge ?? 40, gap = r.flange.gap ?? 10;
+  const fPitch = r.flange.pitch ?? 60, fEdge = r.flange.edge ?? 40, gap = r.flange.gap ?? 5;
   const fStag = r.flange.staggered ?? false;          // 엇모면 이음판 길이식이 다름((2n−1)·45)
   const Pc = r.web.Pc ?? 60, webP = r.web.pitch ?? 60, wEdge = r.web.edge ?? 40;
   const wStag = r.web.staggered ?? false;   // KBC-09 [그림3.4] 엇갈림(H<200&l<60) → 웨브볼트 30mm 이동 → 첨판폭 +60(엔진 wpw 정합)

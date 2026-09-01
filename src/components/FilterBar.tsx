@@ -159,8 +159,8 @@ export default function FilterBar({ cond, onChange, boltMode, onBoltMode, girder
         </div>
         <div className="fld">
           <label>{L('갭 mm', 'Gap mm')}</label>
-          <select value={cond.gap ?? 10} onChange={e => set('gap', Number(e.target.value))}>
-            <option value={0}>0</option><option value={5}>5</option><option value={10}>10</option>
+          <select value={cond.gap ?? 5} onChange={e => set('gap', Number(e.target.value))}>
+            <option value={0}>0</option><option value={5}>5</option><option value={10}>10</option><option value={15}>15</option><option value={20}>20</option>
           </select>
         </div>
         {(cond.designStd === 'AISC' || cond.designStd === 'KDS') && <Seg label={L('나사부', 'Thread')} value={cond.threadCond ?? 'N'} opts={['N', 'X']} onPick={v => set('threadCond', v as 'N' | 'X')} />}

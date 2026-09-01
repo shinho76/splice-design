@@ -74,7 +74,7 @@ export function flangeChecks(r: DesignResult, cond: DesignCondition, dem: Demand
   const m = r.flange.bolt.m, nrow = Math.max(1, Math.round(r.flange.bolt.n));
   const nb = m * nrow;
   const g1 = r.flange.gauge?.g1 ?? 90, g2 = r.flange.gauge?.g2 ?? 0;
-  const pitch = r.flange.pitch ?? 60, edge = r.flange.edge ?? 40, gap = r.flange.gap ?? 10;
+  const pitch = r.flange.pitch ?? 60, edge = r.flange.edge ?? 40, gap = r.flange.gap ?? 5;
   const nHi = Math.ceil(r.flange.bolt.n), nLo = Math.floor(r.flange.bolt.n);   // 엇모 외/내측 행수(3D/DXF 정합)
   const unbraced = gap + 2 * edge;                    // 압축 좌굴 비지지 길이
   const cols = flangeColumns(m, g1, g2);

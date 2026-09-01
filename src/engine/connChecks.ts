@@ -17,7 +17,7 @@ export function connChecks(r: DesignResult): ConnChecks {
   const sec = sectionByName(r.section);
   const fr = sec?.r ?? Math.round(tf * 0.9);
   const db = r.boltDia;
-  const gap = r.flange.gap ?? 10, base = gap / 2 + 40;
+  const gap = r.flange.gap ?? 5, base = gap / 2 + 40;
   const g1 = r.flange.gauge?.g1 ?? 90, g2 = r.flange.gauge?.g2 ?? 0;
   const fB = r.flange.bolt, wB = r.web.bolt, nHi = Math.ceil(fB.n), nLo = Math.floor(fB.n);
   const stag = r.flange.staggered ?? false;
@@ -51,7 +51,7 @@ export function connChecks(r: DesignResult): ConnChecks {
   const F = (o: Omit<DimAnno, 'region'>): DimAnno => ({ ...o, region: 'flange' });
   const Wd = (o: Omit<DimAnno, 'region'>): DimAnno => ({ ...o, region: 'web' });
   const OUT = 15;                         // 외곽 치수선 이격
-  const oT = outer?.t ?? 9, gp = r.flange.gap ?? 10;
+  const oT = outer?.t ?? 9, gp = r.flange.gap ?? 5;
 
   // ── 플랜지(상부 외부 이음판) : 길이=+X변, 폭/게이지=Z끝, 두께/갭=−X변 ──
   const xE = oW / 2 + OUT, zEn = -oL / 2 - OUT, zEp = oL / 2 + OUT;
