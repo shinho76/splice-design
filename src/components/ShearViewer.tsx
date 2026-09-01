@@ -1,11 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { DesignCondition } from '../engine/types.ts';
 import { sectionByName } from '../engine/sections.ts';
 import { connPartsShear, type ShearPartBolt } from '../engine/shear/connParts.ts';
 import type { ShearResult } from '../engine/shear/singlePlate.ts';
-import { useLang } from '../i18n.ts';
+import { connChecksShear } from '../engine/shear/connChecksShear.ts';
+import { useLang, tr } from '../i18n.ts';
 
 // GS(ThreeViewer.tsx)의 hShape()와 동일 — 단면 프로파일(필렛R 포함) 압출용.
 function hShape(B: number, H: number, tw: number, tf: number, r: number) {
@@ -20,12 +21,38 @@ function hShape(B: number, H: number, tw: number, tf: number, r: number) {
   s.lineTo(-b, yi); s.closePath(); return s;
 }
 
-/** SC(전단판 접합, 2면전단) 3D 뷰어 — GS ThreeViewer의 렌더링 기법을 재사용하되,
- *  피지지보 1개 + 전단판(양측 2매) + 볼트군만 표시(지지부재는 Phase 1 엔진이 산정하지 않아 미표시). */
+// GS(ThreeViewer.tsx)의 makeLabel()과 동일 — 캔버스 텍스처 스프라이트 라벨(멀티뷰포트 대응)
+function makeLabel(text: string, worldH: number): THREE.Sprite {
+  const cv = document.createElement('canvas'), ctx = cv.getContext('2d')!;
+  const fs = 34, pad = 9; ctx.font = `700 ${fs}px monospace`;
+  const tw = Math.ceil(ctx.measureText(text).width);
+  cv.width = tw + pad * 2; cv.height = fs + pad * 2;
+  ctx.font = `700 ${fs}px monospace`;
+  ctx.fillStyle = 'rgba(16,26,46,0.82)';
+  ctx.beginPath(); ctx.roundRect(0, 0, cv.width, cv.height, 8); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,213,74,0.45)'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#ffd54a'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, pad, cv.height / 2 + 1);
+  const tex = new THREE.CanvasTexture(cv); tex.minFilter = THREE.LinearFilter;
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false, transparent: true }));
+  spr.scale.set(worldH * cv.width / cv.height, worldH, 1);
+  return spr;
+}
+
+/** SC(전단판 접합, 2면전단) 3D 뷰어 — GS ThreeViewer와 동일한 2D/3D 토글·치수오버레이·체결검토를 갖춘다.
+ *  피지지보 1개 + 전단판(양측 2매) + 볼트군만 표시(지지부재는 Phase 1 엔진이 산정하지 않아 미표시).
+ *  GS는 플랜지/웨브 두 영역을 갖지만 SC는 웨브(전단판) 하나뿐이라 '웨브' 치수 칩 하나만 제공한다
+ *  (없는 플랜지 이음판을 만들어내지 않음). */
 export default function ShearViewer({ r, cond, onClose }: { r: ShearResult; cond: DesignCondition; onClose: () => void }) {
   const mount = useRef<HTMLDivElement>(null);
+  const dimRef = useRef<{ webG: THREE.Group } | null>(null);
+  const modeRef = useRef<'3D' | '2D'>('3D');
+  const [mode, setMode] = useState<'3D' | '2D'>('3D');
+  const [showDims, setShowDims] = useState(false);
+  const [showChk, setShowChk] = useState(false);
   const lang = useLang();
   const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
+  const C = connChecksShear(r);
 
   useEffect(() => {
     const el = mount.current;
@@ -94,31 +121,87 @@ export default function ShearViewer({ r, cond, onClose }: { r: ShearResult; cond
     camera.position.set(center.x + dist * 0.72, center.y + dist * 0.5, center.z + dist * 0.92);
     camera.lookAt(center);
 
+    // ── 2D 삼각법 카메라(개별 화면 최대 확대) + 등각 ── (GS ThreeViewer와 동일 기법)
+    const sz = bbox.getSize(new THREE.Vector3());
+    const hX = sz.x / 2, hY = sz.y / 2, hZ = sz.z / 2, D = Math.max(sz.x, sz.y, sz.z) * 3;
+    const mkOrtho = (pos: [number, number, number], up: [number, number, number]) => {
+      const c = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 9000);
+      c.position.set(pos[0] + center.x, pos[1] + center.y, pos[2] + center.z); c.up.set(...up); c.lookAt(center); return c;
+    };
+    const planCam = mkOrtho([0, D, 0], [1, 0, 0]);   // 평면도 90° 회전(길이=가로)
+    const frontCam = mkOrtho([D, 0, 0], [0, 1, 0]);  // 정면도(입면)
+    const sideCam = mkOrtho([0, 0, D], [0, 1, 0]);   // 측면도(단면)
+    const isoCam = new THREE.PerspectiveCamera(35, W / Hh, 1, 9000);
+    const isoDir = new THREE.Vector3(1, 0.82, 1).normalize(), sphR = sz.length() / 2;
+    const orthoViews: { cam: THREE.OrthographicCamera; hh: number; vh: number }[] = [
+      { cam: planCam, hh: hZ, vh: hX }, { cam: frontCam, hh: hZ, vh: hY }, { cam: sideCam, hh: hX, vh: hY },
+    ];
+    const fitCams = (a: number) => {
+      for (const v of orthoViews) {
+        const ht = Math.max(v.vh, v.hh / a) * 1.06;
+        v.cam.top = ht; v.cam.bottom = -ht; v.cam.left = -ht * a; v.cam.right = ht * a; v.cam.updateProjectionMatrix();
+      }
+      isoCam.aspect = a; isoCam.updateProjectionMatrix();
+      isoCam.position.copy(center).add(isoDir.clone().multiplyScalar(sphR / Math.sin(THREE.MathUtils.degToRad(35 / 2)) * 1.12));
+      isoCam.lookAt(center);
+    };
+    fitCams(W / Hh);
+
+    // ── 치수(웨브=전단판 영역 하나뿐, 스프라이트) — 3D 토글 전용(2D 제외) ──
+    const webG = new THREE.Group();
+    model.add(webG); dimRef.current = { webG };
+    webG.visible = false;
+    const dimMat = new THREE.LineBasicMaterial({ color: 0xffd54a });
+    const lblH = Math.max(P.H, P.segLen) * 0.05;
+    for (const d of C.dims) {
+      const a = new THREE.Vector3(...d.a), b = new THREE.Vector3(...d.b);
+      webG.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, b]), dimMat));
+      const lbl = makeLabel(tr(d.label, lang), lblH); lbl.position.copy(a.clone().add(b).multiplyScalar(0.5)); webG.add(lbl);
+    }
+
     let raf = 0, spin = true, t = 0;
     controls.addEventListener('start', () => { spin = false; });
     const render = () => {
       raf = requestAnimationFrame(render);
-      if (spin) {
-        t += 0.0035;
-        camera.position.x = center.x + Math.cos(t) * dist * 0.92;
-        camera.position.z = center.z + Math.sin(t) * dist * 0.92;
-        camera.lookAt(center);
+      const w = el.clientWidth, h = el.clientHeight;
+      if (modeRef.current === '3D') {
+        renderer.setScissorTest(false); renderer.setViewport(0, 0, w, h);
+        if (spin) {
+          t += 0.0035;
+          camera.position.x = center.x + Math.cos(t) * dist * 0.92;
+          camera.position.z = center.z + Math.sin(t) * dist * 0.92;
+          camera.lookAt(center);
+        }
+        controls.update(); renderer.render(scene, camera);
+      } else {
+        renderer.setScissorTest(true);
+        const hw = w / 2, hh = h / 2;
+        const quads: [THREE.Camera, number, number][] = [[planCam, 0, hh], [isoCam, hw, hh], [frontCam, 0, 0], [sideCam, hw, 0]];
+        for (const [cam, x, y] of quads) { renderer.setViewport(x, y, hw, hh); renderer.setScissor(x, y, hw, hh); renderer.render(scene, cam); }
+        renderer.setScissorTest(false);
       }
-      controls.update(); renderer.render(scene, camera);
     };
     render();
 
     const ro = new ResizeObserver(() => {
       const w = el.clientWidth, h = el.clientHeight; if (!w || !h) return;
-      renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
+      renderer.setSize(w, h); const a2 = w / h;
+      camera.aspect = a2; camera.updateProjectionMatrix();
+      fitCams(a2);
     });
     ro.observe(el);
 
     return () => {
       cancelAnimationFrame(raf); ro.disconnect(); controls.dispose(); renderer.dispose(); beamGeo.dispose();
-      renderer.domElement.remove();
+      dimRef.current = null; renderer.domElement.remove();
     };
   }, [r, lang]);
+
+  useEffect(() => { modeRef.current = mode; }, [mode]);
+  useEffect(() => {
+    const d = dimRef.current; if (!d) return;
+    d.webG.visible = mode === '3D' && showDims;   // 치수는 3D 토글 전용(2D 제외) — GS와 동일
+  }, [showDims, mode]);
 
   return (
     <div className="v3d-back" onClick={onClose}>
@@ -126,14 +209,41 @@ export default function ShearViewer({ r, cond, onClose }: { r: ShearResult; cond
         <div className="v3d-top">
           <b>{sectionByName(r.section)?.label ?? r.section}</b>{sectionByName(r.section)?.label && <span className="v3d-mm">{r.section}</span>}
           <span>· {L('전단판 접합(2면전단·양측판)', 'Shear tab (double shear, 2 plates)')} · {cond.steel} · {cond.bolt}</span>
+          <div className="v3d-mode">
+            <button className={mode === '2D' ? 'on' : ''} onClick={() => setMode('2D')}>2D</button>
+            <button className={mode === '3D' ? 'on' : ''} onClick={() => setMode('3D')}>3D</button>
+          </div>
+          {mode === '3D' && <div className="v3d-regions">
+            <button className={'v3d-chip' + (showDims ? ' on' : '')} onClick={() => setShowDims(v => !v)}>{L('웨브', 'Web')}</button>
+            <button className={'v3d-chip' + (showChk ? ' on' : '')} onClick={() => setShowChk(v => !v)}>{L('체결', 'Install')}</button>
+          </div>}
           <button className="close" onClick={onClose} aria-label={L('닫기', 'Close')}>✕</button>
         </div>
-        <div className="v3d-canvas" ref={mount} />
+        <div className="v3d-canvas" ref={mount}>
+          {mode === '3D' && showChk && <div className="v3d-checks" onClick={e => e.stopPropagation()}>
+            <div className="v3d-checks-h">{L('체결 검토', 'Installation check')} · AISC clearance (M{C.db})</div>
+            {C.checks.map((c, i) => (
+              <div key={i} className={'v3d-chk' + (c.ok ? '' : ' ng')}>
+                <span className="ck-ic">{c.ok ? '✔' : '⚠'}</span>
+                <span className="ck-lb">{tr(c.label, lang)}</span>
+                <span className="ck-vl">{tr(c.value, lang)}<em>{tr(c.limit, lang)}</em></span>
+                {c.note && <span className="ck-nt">{tr(c.note, lang)}</span>}
+              </div>
+            ))}
+          </div>}
+          {mode === '2D' && <>
+            <span className="v3d-q v3d-q-tl">{L('평면도', 'Plan')}</span>
+            <span className="v3d-q v3d-q-bl">{L('정면도(입면)', 'Front (elev.)')}</span>
+            <span className="v3d-q v3d-q-br">{L('측면도(단면)', 'Side (section)')}</span>
+            <span className="v3d-q v3d-q-tr">{L('3D 등각', '3D iso')}</span>
+            <span className="v3d-cross v3d-cross-v" /><span className="v3d-cross v3d-cross-h" />
+          </>}
+        </div>
         <div className="v3d-legend">
           <span><i style={{ background: '#9aa7b4' }} />{L('H형강(필렛R)', 'H-beam (fillet R)')}</span>
           <span><i style={{ background: '#2bb6d6' }} />{L('전단판(양측 2매)', 'Shear plates (both sides)')}</span>
           <span><i style={{ background: '#2e3138' }} />{L('고력볼트(머리·너트·와셔2·여장)', 'H.S. bolt (head·nut·2 washers·stickout)')}</span>
-          <span className="v3d-hint">{L('드래그=회전 · 휠=줌 (피지지보만 표시 — 지지 부재는 별도 검토)', 'Drag=rotate · Wheel=zoom (supported member only — support side not modeled)')}</span>
+          <span className="v3d-hint">{mode === '2D' ? L('평면(90°)·정면·측면 + 3D 등각 (화면맞춤)', 'Plan(90°)·Front·Side + 3D iso (fit)') : L('드래그=회전 · 휠=줌 · 웨브=치수 (지지 부재는 별도 검토)', 'Drag=rotate · Wheel=zoom · Web=dims (support side not modeled)')}</span>
         </div>
       </div>
     </div>
