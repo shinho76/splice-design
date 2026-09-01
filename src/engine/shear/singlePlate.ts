@@ -1,8 +1,13 @@
 // ────────────────────────────────────────────────────────────────────────────
-// 단일판(Single Plate / Shear Tab) 전단접합 설계 — AISC 360-16 15th Ed (SI)
-//   보 웨브에 전단판 1매를 볼트접합(지지부에는 용접 가정 — 본 모듈은 볼트·판·보 검토).
+// 전단판(Shear Tab) 전단접합 설계 — AISC 360-16 15th Ed (SI)
+//   보 웨브 양측에 전단판 2매를 볼트접합(2면전단, Ns=2 — 지지부에는 용접 가정. 본 모듈은
+//   볼트·판·보 검토). 볼트군 자체는 여전히 편심(지지면~볼트군 offset a, 탄성벡터법 C계수) —
+//   2면전단은 볼트/판의 "전단면·두께" 배수만 바꿀 뿐 지지면 offset에 따른 편심은 그대로 존재.
 //   소요전단 V = α·φv·0.6·Fy·(H·tw)  (기존 splice 앱과 동일한 웨브전단 발현 기준)
-//   PDF p19~20(Thornton Tomasetti Single Plate) 검토항목을 SI·전 부재로 이식.
+//   PDF p19~20(Thornton Tomasetti Single Plate) 검토항목(원래 단전단 1매 기준)을 SI·전
+//   부재로 이식 후 2면전단(양측판)으로 확장 — 볼트 전단·미끄럼 ×Ns(=2), 판 관련 전단적·
+//   단면계수는 2매 합산 두께(tp2=2·tp) 기준(GS 웨브이음 aisc/web.ts와 동일 관례). 판 두께
+//   연성(SP7)만 매(枚)당 tp 그대로 검토(볼트 연성은 개별 판 두께에 좌우).
 //   자동설계: 판두께 tp = 연성상한(db/2+1.6) 이하 상용두께 고정 → 볼트행수 NR을
 //             모든 한계상태 DCR≤1 될 때까지 증가(볼트 연성지배 확보).
 // ────────────────────────────────────────────────────────────────────────────
@@ -17,7 +22,7 @@ const AVAIL_T = [6, 8, 9, 10, 12, 14, 16, 19, 22, 25, 28, 32];
 const kN = (n: number) => +(n / 1e3).toFixed(1);
 const kNm = (n: number) => +(n / 1e6).toFixed(1);
 
-export interface ShearPlate { t: number; L: number; w: number; }
+export interface ShearPlate { t: number; L: number; w: number; }   // t = 판 1매 두께(양측 2매, 2PL-t×L×w)
 /** SC 서브타입 — 이번 phase는 라벨·설명 문구만 분기(볼트/판 계산식은 3타입 공통). */
 export type ScSubtype = 'beam-beam' | 'beam-col-strong' | 'beam-col-weak';
 export interface ShearResult {
@@ -75,8 +80,9 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
   const tDuct = d / 2 + 1.6;
   const tp = [...AVAIL_T].reverse().find(t => t <= tDuct) ?? AVAIL_T[0];
 
-  const phiRnBolt1 = PHI.V * Fnv * ab;                  // 볼트 1개 설계전단(단전단, N)
-  const rnSlip1 = cond.jointType === '마찰' ? designSlipStrength_kN(cond.bolt, name, 1) * 1e3 : 0;
+  const Ns = 2;                                          // 전단면 수(양측판 2면전단)
+  const phiRnBolt1 = PHI.V * Fnv * ab * Ns;             // 볼트 1개 설계전단(2면전단, N)
+  const rnSlip1 = cond.jointType === '마찰' ? designSlipStrength_kN(cond.bolt, name, Ns) * 1e3 : 0;
 
   // 편심 볼트군 유효계수 C (탄성벡터법, 단열/2열) = V / R_max(임계볼트)
   const eccC = (NR: number, NC: number): number => {
@@ -110,26 +116,27 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
       checks.push({ ...c, dcr, ok: dcr <= 1 });
     };
 
-    // 1. 볼트 전단(편심) J3.6
+    // 1. 볼트 전단(편심, 2면전단) J3.6
     push({
-      id: 'SB1', region: 'bolt', group: 'A. 볼트', label: '볼트 전단(편심 볼트군)', clause: 'J3.6',
+      id: 'SB1', region: 'bolt', group: 'A. 볼트', label: '볼트 전단(편심 볼트군·2면전단)', clause: 'J3.6',
       phiRn: kN(phiRnBolt1 * C), demand: kN(V), unit: 'kN',
-      detail: `φrₙ=0.75·${Fnv.toFixed(0)}·${ab}=${kN(phiRnBolt1)} kN/EA · ${NC}열×${NR}행=${n}본 · 편심계수 C=${C.toFixed(2)}(유효 ${C.toFixed(1)}본)`,
+      detail: `φrₙ=0.75·${Fnv.toFixed(0)}·${ab}·${Ns}=${kN(phiRnBolt1)} kN/EA · ${NC}열×${NR}행=${n}본 · 편심계수 C=${C.toFixed(2)}(유효 ${C.toFixed(1)}본)`,
       steps: [
         S('공칭전단응력 Fnv', thread === 'X' ? '0.563·Fu(볼트)' : '0.450·Fu(볼트)', `${FNV_FACTOR[thread]}·${Fub}`, +Fnv.toFixed(0), 'MPa', 'J3.6'),
-        S('볼트 1개 φrₙ', 'φ·Fnv·Ab', `0.75·${Fnv.toFixed(0)}·${ab}`, kN(phiRnBolt1), 'kN', 'J3.6'),
+        S('볼트 1개 φrₙ(2면전단)', 'φ·Fnv·Ab·Ns', `0.75·${Fnv.toFixed(0)}·${ab}·${Ns}`, kN(phiRnBolt1), 'kN', 'J3.6'),
         S('편심 볼트군 φRn', 'φrₙ·C', `${kN(phiRnBolt1)}·${C.toFixed(2)}`, kN(phiRnBolt1 * C), 'kN'),
       ],
     });
-    // 2. 볼트 미끄럼 J3.8 (마찰만)
+    // 2. 볼트 미끄럼 J3.8 (마찰만, 2면)
     if (cond.jointType === '마찰') {
       push({
-        id: 'SB2', region: 'bolt', group: 'A. 볼트', label: '볼트 미끄럼(마찰접합)', clause: 'J3.8',
+        id: 'SB2', region: 'bolt', group: 'A. 볼트', label: '볼트 미끄럼(마찰접합·2면)', clause: 'J3.8',
         phiRn: kN(rnSlip1 * C), demand: kN(V), unit: 'kN',
-        detail: `φRn=${kN(rnSlip1)} kN/EA(단면) · 편심계수 C=${C.toFixed(2)}`,
+        detail: `φRn=${kN(rnSlip1)} kN/EA(2면) · 편심계수 C=${C.toFixed(2)}`,
       });
     }
-    // 3. 지압·찢김 — 전단판 J3.10
+    // 3. 지압·찢김 — 전단판 J3.10 (양측판 2매 합산두께 tp2 기준 — GS 웨브이음 관례와 동일)
+    const tp2 = 2 * tp;
     const bearMin = (t: number, Fu: number): number => {
       const brg = PHI.V * 2.4 * d * t * Fu;
       const tearEdge = PHI.V * 1.2 * (Lev - dh / 2) * t * Fu;
@@ -138,9 +145,9 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
       return NC * (edge + (NR - 1) * intr);             // 전 볼트 지압합(수직 직접전단, NC열)
     };
     push({
-      id: 'SR1', region: 'web', group: 'B. 지압·찢김', label: '지압·찢김 — 전단판', clause: 'J3.10',
-      phiRn: kN(bearMin(tp, pFu)), demand: kN(V), unit: 'kN',
-      detail: `Σ min(φ2.4dtFu, φ1.2Lc·tFu) · t=${tp}, Lc,e=${(Lev - dh / 2).toFixed(1)}, Lc,p=${s - dh}`,
+      id: 'SR1', region: 'web', group: 'B. 지압·찢김', label: '지압·찢김 — 전단판(2매)', clause: 'J3.10',
+      phiRn: kN(bearMin(tp2, pFu)), demand: kN(V), unit: 'kN',
+      detail: `Σ min(φ2.4dtFu, φ1.2Lc·tFu) · t=2×${tp}=${tp2}, Lc,e=${(Lev - dh / 2).toFixed(1)}, Lc,p=${s - dh}`,
     });
     // 4. 지압·찢김 — 보 웨브 J3.10
     push({
@@ -159,43 +166,43 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
       return NC * NR * edge;
     };
     push({
-      id: 'SR3', region: 'web', group: 'B. 지압·찢김', label: '지압·찢김(수평) — 전단판', clause: 'J3.10',
-      phiRn: kN(bearMinHoriz(tp, pFu)), demand: kN(V), unit: 'kN',
-      detail: `NC×NR×min(φ2.4dtFu, φ1.2·(Leh−dh/2)·tFu) · Leh=${Leh}`,
+      id: 'SR3', region: 'web', group: 'B. 지압·찢김', label: '지압·찢김(수평) — 전단판(2매)', clause: 'J3.10',
+      phiRn: kN(bearMinHoriz(tp2, pFu)), demand: kN(V), unit: 'kN',
+      detail: `NC×NR×min(φ2.4dtFu, φ1.2·(Leh−dh/2)·tFu) · t=2×${tp}=${tp2}, Leh=${Leh}`,
     });
     push({
       id: 'SR4', region: 'member', group: 'B. 지압·찢김', label: '지압·찢김(수평) — 보 웨브', clause: 'J3.10',
       phiRn: kN(bearMinHoriz(sec.tw, mFu)), demand: kN(V), unit: 'kN',
       detail: `보 웨브 tw=${sec.tw} 기준(무코프 전제 — 실질 미지배, 참고용)`,
     });
-    // 5. 판 전단항복 J4.3
-    const Agv = tp * Lp;
+    // 5. 판 전단항복 J4.3 (2매 합산두께 tp2)
+    const Agv = tp2 * Lp;
     push({
-      id: 'SP1', region: 'web', group: 'C. 전단판', label: '판 전단항복', clause: 'J4.3',
+      id: 'SP1', region: 'web', group: 'C. 전단판', label: '판 전단항복(2매)', clause: 'J4.3',
       phiRn: kN(PHI.SH * 0.6 * pFy * Agv), demand: kN(V), unit: 'kN',
-      detail: `φ·0.6·Fy·Ag = 1.0·0.6·${pFy}·${Agv.toFixed(0)}`,
+      detail: `φ·0.6·Fy·Ag = 1.0·0.6·${pFy}·${Agv.toFixed(0)} (Ag=2×${tp}×${Lp})`,
     });
-    // 6. 판 전단파단 J4.4
-    const Anv = tp * (Lp - NR * dh);
+    // 6. 판 전단파단 J4.4 (2매)
+    const Anv = tp2 * (Lp - NR * dh);
     const phiVnRup = PHI.R * 0.6 * pFu * Anv;            // SP8(파단 상호작용)에서 재사용
     push({
-      id: 'SP2', region: 'web', group: 'C. 전단판', label: '판 전단파단', clause: 'J4.4',
+      id: 'SP2', region: 'web', group: 'C. 전단판', label: '판 전단파단(2매)', clause: 'J4.4',
       phiRn: kN(phiVnRup), demand: kN(V), unit: 'kN',
-      detail: `φ·0.6·Fu·Anv = 0.75·0.6·${pFu}·${Anv.toFixed(0)} (Anv=${tp}×(${Lp}−${NR}·${dh}))`,
+      detail: `φ·0.6·Fu·Anv = 0.75·0.6·${pFu}·${Anv.toFixed(0)} (Anv=2×${tp}×(${Lp}−${NR}·${dh}))`,
     });
-    // 7. 판 휨항복(편심) F11
-    const Zpl = tp * Lp * Lp / 4;
+    // 7. 판 휨항복(편심) F11 (2매)
+    const Zpl = tp2 * Lp * Lp / 4;
     const phiMy = PHI.F * pFy * Zpl;
     push({
-      id: 'SP3', region: 'web', group: 'C. 전단판', label: '판 휨항복(편심)', clause: 'F11',
+      id: 'SP3', region: 'web', group: 'C. 전단판', label: '판 휨항복(편심·2매)', clause: 'F11',
       phiRn: kNm(phiMy), demand: kNm(Mecc), unit: 'kN·m',
-      detail: `φ·Fy·Z = 0.9·${pFy}·${Zpl.toFixed(0)} · M=V·a=${kN(V)}·${a}mm`,
+      detail: `φ·Fy·Z = 0.9·${pFy}·${Zpl.toFixed(0)} · M=V·a=${kN(V)}·${a}mm (Z=2×${tp}×${Lp}²/4)`,
     });
-    // 8. 판 휨파단(순단면) J4.2
-    const Znet = Math.max(0, Zpl - tp * dh * sumRowDist(NR, s));
+    // 8. 판 휨파단(순단면) J4.2 (2매)
+    const Znet = Math.max(0, Zpl - tp2 * dh * sumRowDist(NR, s));
     const phiMnRup = PHI.R * pFu * Znet;                 // SP8(파단 상호작용)에서 재사용
     push({
-      id: 'SP4', region: 'web', group: 'C. 전단판', label: '판 휨파단(순단면)', clause: 'J4.2',
+      id: 'SP4', region: 'web', group: 'C. 전단판', label: '판 휨파단(순단면·2매)', clause: 'J4.2',
       phiRn: kNm(phiMnRup), demand: kNm(Mecc), unit: 'kN·m',
       detail: `φ·Fu·Znet = 0.75·${pFu}·${Znet.toFixed(0)}`,
     });
@@ -220,30 +227,30 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
     //   기존 코드의 NC열 U형(Ubs=1.0)만으로는 이 경로를 놓친다. AISC J4.5는 전 파단경로 중
     //   최솟값을 지배로 하므로, NC=2일 때 L형·U형을 모두 계산해 governing(최소 φRn)을 채택한다.
     const Lsh = (NR - 1) * s + Lev;
-    // L형(단일 근접열, Ubs=0.5): 전단면=근접열, 인장면=근접열→지지측 자유단(폭 a)
-    const AgvL = tp * Lsh, AnvL = tp * (Lsh - (NR - 0.5) * dh);
-    const AntL = tp * Math.max(0, a - 0.5 * dh);
+    // L형(단일 근접열, Ubs=0.5): 전단면=근접열, 인장면=근접열→지지측 자유단(폭 a) — 2매(tp2) 기준
+    const AgvL = tp2 * Lsh, AnvL = tp2 * (Lsh - (NR - 0.5) * dh);
+    const AntL = tp2 * Math.max(0, a - 0.5 * dh);
     const bsL = Math.min(0.6 * pFu * AnvL, 0.6 * pFy * AgvL) + 0.5 * pFu * AntL;
     let phiBs = PHI.R * bsL;
-    let bsDetail = `L형(단일열,Ubs=0.5,지배): φ[min(0.6Fu·Anv,0.6Fy·Agv)+0.5Fu·Ant], Agv=${tp}×${Lsh.toFixed(0)}, Ant폭=${a}`;
+    let bsDetail = `L형(단일열,Ubs=0.5,지배,2매): φ[min(0.6Fu·Anv,0.6Fy·Agv)+0.5Fu·Ant], Agv=2×${tp}×${Lsh.toFixed(0)}, Ant폭=${a}`;
     if (NC === 2) {
-      // U형(2열, Ubs=1.0): 전단면=양열, 인장면=열간+양측 연단 전폭
-      const AgvU = 2 * tp * Lsh, AnvU = 2 * tp * (Lsh - (NR - 0.5) * dh);
-      const AntU = tp * ((NC - 1) * sh + 2 * Leh - dh);
+      // U형(2열, Ubs=1.0): 전단면=양열, 인장면=열간+양측 연단 전폭 — 2매(tp2) 기준
+      const AgvU = 2 * tp2 * Lsh, AnvU = 2 * tp2 * (Lsh - (NR - 0.5) * dh);
+      const AntU = tp2 * ((NC - 1) * sh + 2 * Leh - dh);
       const bsU = Math.min(0.6 * pFu * AnvU, 0.6 * pFy * AgvU) + 1.0 * pFu * AntU;
-      if (PHI.R * bsU < phiBs) { phiBs = PHI.R * bsU; bsDetail = `U형(2열,Ubs=1.0,지배): φ[min(0.6Fu·Anv,0.6Fy·Agv)+1.0Fu·Ant]`; }
+      if (PHI.R * bsU < phiBs) { phiBs = PHI.R * bsU; bsDetail = `U형(2열,Ubs=1.0,지배,2매): φ[min(0.6Fu·Anv,0.6Fy·Agv)+1.0Fu·Ant]`; }
       else bsDetail += ` (U형 φRn=${kN(PHI.R * bsU)}kN보다 지배적)`;
     }
     push({
-      id: 'SP6', region: 'web', group: 'C. 전단판', label: '판 블록전단', clause: 'J4.5',
+      id: 'SP6', region: 'web', group: 'C. 전단판', label: '판 블록전단(2매)', clause: 'J4.5',
       phiRn: kN(phiBs), demand: kN(V), unit: 'kN',
       detail: bsDetail,
     });
-    // 11. 판 두께 연성 (Manual pg 10-89)
+    // 11. 판 두께 연성 (Manual pg 10-89) — 매(枚)당 두께로 검토(볼트 연성은 개별 판 두께에 좌우)
     push({
-      id: 'SP7', region: 'web', group: 'C. 전단판', label: '판 두께 연성', clause: 'Manual 10-89',
+      id: 'SP7', region: 'web', group: 'C. 전단판', label: '판 두께 연성(매당)', clause: 'Manual 10-89',
       phiRn: +tDuct.toFixed(1), demand: tp, unit: 'mm',
-      detail: `t_max = db/2+1.6 = ${tDuct.toFixed(1)} mm ≥ tp=${tp} (볼트 연성지배 확보)`,
+      detail: `t_max = db/2+1.6 = ${tDuct.toFixed(1)} mm ≥ tp=${tp}(매당) (볼트 연성지배 확보)`,
     });
     // 12. 보 웨브 전단항복 G2.1
     push({

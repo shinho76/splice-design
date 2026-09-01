@@ -20,8 +20,8 @@ function hShape(B: number, H: number, tw: number, tf: number, r: number) {
   s.lineTo(-b, yi); s.closePath(); return s;
 }
 
-/** SC(단일판 전단접합) 3D 뷰어 — GS ThreeViewer의 렌더링 기법을 재사용하되,
- *  피지지보 1개 + 전단판(편측) + 볼트군만 표시(지지부재는 Phase 1 엔진이 산정하지 않아 미표시). */
+/** SC(전단판 접합, 2면전단) 3D 뷰어 — GS ThreeViewer의 렌더링 기법을 재사용하되,
+ *  피지지보 1개 + 전단판(양측 2매) + 볼트군만 표시(지지부재는 Phase 1 엔진이 산정하지 않아 미표시). */
 export default function ShearViewer({ r, cond, onClose }: { r: ShearResult; cond: DesignCondition; onClose: () => void }) {
   const mount = useRef<HTMLDivElement>(null);
   const lang = useLang();
@@ -61,9 +61,11 @@ export default function ShearViewer({ r, cond, onClose }: { r: ShearResult; cond
     const beam = new THREE.Mesh(beamGeo, steel);   // z=0(지지면) → +z
     model.add(beam);
 
-    const pm = new THREE.Mesh(new THREE.BoxGeometry(P.plate.sx, P.plate.sy, P.plate.sz), plateMat);
-    pm.position.set(P.plate.cx, P.plate.cy, P.plate.cz);
-    model.add(pm);
+    for (const pl of P.plates) {
+      const pm = new THREE.Mesh(new THREE.BoxGeometry(pl.sx, pl.sy, pl.sz), plateMat);
+      pm.position.set(pl.cx, pl.cy, pl.cz);
+      model.add(pm);
+    }
 
     const wH = 3.2;
     const makeBolt = (b: ShearPartBolt) => {
@@ -123,13 +125,13 @@ export default function ShearViewer({ r, cond, onClose }: { r: ShearResult; cond
       <div className="v3d-card" onClick={e => e.stopPropagation()}>
         <div className="v3d-top">
           <b>{sectionByName(r.section)?.label ?? r.section}</b>{sectionByName(r.section)?.label && <span className="v3d-mm">{r.section}</span>}
-          <span>· {L('단일판 전단접합', 'Single-plate shear')} · {cond.steel} · {cond.bolt}</span>
+          <span>· {L('전단판 접합(2면전단·양측판)', 'Shear tab (double shear, 2 plates)')} · {cond.steel} · {cond.bolt}</span>
           <button className="close" onClick={onClose} aria-label={L('닫기', 'Close')}>✕</button>
         </div>
         <div className="v3d-canvas" ref={mount} />
         <div className="v3d-legend">
           <span><i style={{ background: '#9aa7b4' }} />{L('H형강(필렛R)', 'H-beam (fillet R)')}</span>
-          <span><i style={{ background: '#2bb6d6' }} />{L('전단판', 'Shear plate')}</span>
+          <span><i style={{ background: '#2bb6d6' }} />{L('전단판(양측 2매)', 'Shear plates (both sides)')}</span>
           <span><i style={{ background: '#2e3138' }} />{L('고력볼트(머리·너트·와셔2·여장)', 'H.S. bolt (head·nut·2 washers·stickout)')}</span>
           <span className="v3d-hint">{L('드래그=회전 · 휠=줌 (피지지보만 표시 — 지지 부재는 별도 검토)', 'Drag=rotate · Wheel=zoom (supported member only — support side not modeled)')}</span>
         </div>

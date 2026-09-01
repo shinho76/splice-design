@@ -248,7 +248,7 @@ export default function App() {
       { label: 'VU(KN)', width: 90, align: 'r' },
       { label: 'BOLT', width: 90, align: 'c' },
       { label: 'NCxNR', width: 75, align: 'c' },
-      { label: 'PLATE(TxLxW)', width: 150, align: 'c' },
+      { label: '2PL(TxLxW)', width: 150, align: 'c' },
       { label: 'GOV', width: 65, align: 'c' },
       { label: 'DCR', width: 75, align: 'r' },
       { label: 'CHECK', width: 65, align: 'c' },
@@ -256,7 +256,7 @@ export default function App() {
     ];
     const rows: DxfTableRow[] = scRows().map(r => [
       r.section, Math.round(r.V_kN), r.boltName, `${r.NC}x${r.NR}`,
-      `${r.plate.t}x${r.plate.L}x${r.plate.w}`, r.govId, isFinite(r.govDcr) ? r.govDcr.toFixed(2) : '-',
+      `2x${r.plate.t}x${r.plate.L}x${r.plate.w}`, r.govId, isFinite(r.govDcr) ? r.govDcr.toFixed(2) : '-',
       r.ok ? 'OK' : 'NG', r.config === 'Extended' ? 'EXT' : 'CONV',
     ]);
     const title = `SHEAR CONNECTION TABLE - ${Math.round(cond.strengthRatio * 100)}% ${cond.steel} ${cond.bolt}  (UNIT: VU kN)`;
@@ -513,11 +513,11 @@ export default function App() {
                   <div className="dh">{sectionByName(shearSel.section)?.label ?? shearSel.section}
                     {sectionByName(shearSel.section)?.label && <span className="dh-mm">{shearSel.section}</span>}
                     <span className="dbadge">{shearSel.ok ? L('선택됨', 'Selected') : L('재검토', 'Review')}</span></div>
-                  <div className="dsub">{L('단일판 전단접합', 'Single-plate shear')} · {cond.steel} · {cond.bolt}</div>
+                  <div className="dsub">{L('전단판 접합(2면전단)', 'Shear tab (double shear)')} · {cond.steel} · {cond.bolt}</div>
                   <div className="dspecs">
                     <div><span>{L('소요전단', 'Shear')}</span><b>{nf(shearSel.V_kN)} kN</b></div>
                     <div><span>{L('볼트열', 'Bolt array')}</span><b>{shearSel.NC}×{shearSel.NR} · M{shearSel.boltDia}</b></div>
-                    <div><span>{L('이음판', 'Plate')}</span><b>{shearSel.plate.t}×{shearSel.plate.L}×{shearSel.plate.w}</b></div>
+                    <div><span>{L('이음판', 'Plate')}</span><b>2×{shearSel.plate.t}×{shearSel.plate.L}×{shearSel.plate.w}</b></div>
                     <div><span>{L('지배 검토', 'Governing')}</span><b>{shearSel.govId} · DCR {shearSel.govDcr.toFixed(2)}</b></div>
                     <div><span>{L('판정', 'Check')}</span><b className={shearSel.ok ? undefined : 'ng'}>{shearSel.ok ? 'OK' : (shearSel.fitsWeb ? 'NG' : L('판>T', 'PL>T'))}</b></div>
                   </div>

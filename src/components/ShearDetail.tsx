@@ -26,11 +26,11 @@ export default function ShearDetail({ r, cond, onClose }: {
         <div className="report-tools">
           <button className="close" onClick={onClose} aria-label={L('닫기', 'Close')}>✕</button>
         </div>
-        <h2>{L('단일판 전단접합 검토', 'Single-Plate Shear Connection')} — {label} <span className="qty-badge">{L(subKo, subEn)}</span></h2>
+        <h2>{L('전단판 접합 검토(2면전단)', 'Shear Tab Connection (Double Shear)')} — {label} <span className="qty-badge">{L(subKo, subEn)}</span></h2>
         <p className="cond-line">
           {L('소요전단', 'Vu')} <b>{r.V_kN} kN</b>
           <span className="qty-badge">
-            {r.boltName} · NR={r.NR} · PL-{r.plate.t}×{r.plate.L}×{r.plate.w} · e,bolt={r.eBolt}mm · e,plate={r.ePlate}mm · {r.config} · MAX DCR {r.govDcr.toFixed(2)} ({r.govId})
+            {r.boltName} · NR={r.NR} · 2PL-{r.plate.t}×{r.plate.L}×{r.plate.w} · e,bolt={r.eBolt}mm · e,plate={r.ePlate}mm · {r.config} · MAX DCR {r.govDcr.toFixed(2)} ({r.govId})
           </span>
         </p>
         <p className="sd-warn">{L(
@@ -39,8 +39,8 @@ export default function ShearDetail({ r, cond, onClose }: {
 
         {!r.fitsWeb && (
           <p className="sd-warn">{L(
-            `▲ 판 춤 ${r.plate.L}mm > 보 웨브 순높이 T ${r.clearH}mm — 소요(웨브전단 85% 발현)가 커서 단일판 전단탭 부적합. 대체접합 또는 α 하향 검토.`,
-            `▲ Plate depth ${r.plate.L} mm > beam web clear height T ${r.clearH} mm — required shear too large for a single-plate tab. Use an alternative connection or lower α.`)}</p>
+            `▲ 판 춤 ${r.plate.L}mm > 보 웨브 순높이 T ${r.clearH}mm — 소요(웨브전단 85% 발현)가 커서 전단탭 부적합. 대체접합 또는 α 하향 검토.`,
+            `▲ Plate depth ${r.plate.L} mm > beam web clear height T ${r.clearH} mm — required shear too large for a shear tab. Use an alternative connection or lower α.`)}</p>
         )}
         {groups.map(g => (
           <div key={g} className="sd-group">

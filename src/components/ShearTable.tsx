@@ -30,7 +30,7 @@ export default function ShearTable({ cond, onSelect, onView3D, selectedSection }
   return (
     <>
       <div className="kpi-strip">
-        <div className="kpi k1"><span className="k">{L('검토 부재', 'Members')}</span> <span className="v num">{results.length}</span> <span className="d">{L('단일판 전단접합', 'Single-plate shear')}</span></div>
+        <div className="kpi k1"><span className="k">{L('검토 부재', 'Members')}</span> <span className="v num">{results.length}</span> <span className="d">{L('전단판 접합(2면전단)', 'Shear tab (double shear)')}</span></div>
         <div className="kpi k2"><span className="k">{L('적합', 'Pass')}</span> <span className="v num ok">{ok}</span> <span className="d ok">{results.length ? Math.round(ok / results.length * 100) : 0}%</span> <span className="k">{L('부적합', 'Fail')}</span> <span className="v num ng">{results.length - ok}</span></div>
         <div className="kpi k3"><span className="k">{L('볼트', 'Bolts')}</span> <span className="v num">{cond.bolt}</span> <span className="d">{L('편심 볼트군', 'Eccentric group')}</span></div>
         <div className="kpi k4"><span className="k">{L('기준', 'Std')}</span> <span className="v num">AISC 360-16</span></div>
@@ -118,7 +118,7 @@ export default function ShearTable({ cond, onSelect, onView3D, selectedSection }
                     <td className={`dcr-cell${r.govDcr > 1.0 ? ' ng' : ''}`}>{r.govDcr.toFixed(2)}</td>
                     <td>{r.NC}×{r.NR}</td>
                     <td>{r.Pc}</td>
-                    <td className="gcol">{r.plate.t}×{r.plate.L}×{r.plate.w}{!r.fitsWeb && <span className="sc-flag" title={`판 춤 ${r.plate.L} > 웨브 T ${r.clearH}`}>▲</span>}</td>
+                    <td className="gcol">2×{r.plate.t}×{r.plate.L}×{r.plate.w}{!r.fitsWeb && <span className="sc-flag" title={`판 춤 ${r.plate.L} > 웨브 T ${r.clearH}`}>▲</span>}</td>
                     <td><span className="gov-id">{r.govId}</span></td>
                     <td className={'gcol' + (r.ok ? ' ok' : ' ng')}>{r.ok ? 'OK' : (r.fitsWeb ? 'NG' : L('판>T', 'PL>T'))}</td>
                     <td><small>{r.config === 'Extended' ? L('확장', 'Ext') : L('일반', 'Conv')}</small></td>
@@ -131,8 +131,8 @@ export default function ShearTable({ cond, onSelect, onView3D, selectedSection }
         </div>
       </div>
       <p className="sc-legend">{L(
-        '▲ 판>T = 소요전단(웨브전단 85% 발현, 기존 splice와 동일 기준)이 커서 전단판 춤이 보 웨브 순높이(T)를 초과 → 단일판 전단탭으로는 부적합, 대체접합(양면앵글·모멘트접합) 또는 α 하향 검토. 소요를 실제 반력으로 낮추려면 좌측 α(강도비)를 조정하세요.',
-        '▲ PL>T = required shear (85% web-shear, same basis as the splice app) is large enough that the plate depth exceeds the beam web clear height T → not suitable as a single-plate shear tab; consider an alternative (double angle / moment) or lower α. Reduce demand to the real reaction via the α (strength ratio) on the left.')}</p>
+        '▲ 판>T = 소요전단(웨브전단 85% 발현, 기존 splice와 동일 기준)이 커서 전단판 춤이 보 웨브 순높이(T)를 초과 → 전단탭으로는 부적합, 대체접합(양면앵글·모멘트접합) 또는 α 하향 검토. 소요를 실제 반력으로 낮추려면 좌측 α(강도비)를 조정하세요.',
+        '▲ PL>T = required shear (85% web-shear, same basis as the splice app) is large enough that the plate depth exceeds the beam web clear height T → not suitable as a shear tab; consider an alternative (double angle / moment) or lower α. Reduce demand to the real reaction via the α (strength ratio) on the left.')}</p>
     </>
   );
 }

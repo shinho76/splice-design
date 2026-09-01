@@ -1,4 +1,4 @@
-// SC(전단접합 단일판) 구조계산요약(Excel) — SheetJS. calcSheet.ts(스플라이스)와 동일 패턴.
+// SC(전단접합, 2면전단·양측판) 구조계산요약(Excel) — SheetJS. calcSheet.ts(스플라이스)와 동일 패턴.
 //   전 부재 1행. 열 그룹: 입력(INPUT) · 설계강도(OUTPUTS, φRn) · 검토비(DCR).
 import * as XLSX from 'xlsx';
 import type { DesignCondition } from '../types.ts';
@@ -62,7 +62,7 @@ export function buildShearCalcWorkbook(rows: ShearResult[], cond: DesignConditio
       i + 1, r.section, SUBTYPE_LABEL[r.subtype], r.config === 'Extended' ? '확장' : '일반',
       steelLabel(cond.steel), steelLabel(cond.plateSteel || cond.steel), `${cond.bolt}-${r.boltName}`,
       num(r.V_kN), num(r.eBolt), num(r.ePlate), `${r.NC}×${r.NR}`,
-      `${r.plate.t}×${r.plate.L}×${r.plate.w}`, r.fitsWeb ? '—' : `초과(T=${num(r.clearH)})`,
+      `2×${r.plate.t}×${r.plate.L}×${r.plate.w}`, r.fitsWeb ? '—' : `초과(T=${num(r.clearH)})`,
       r.ok ? 'OK' : 'NG',
     ];
     const outputs = cols.map(c => { const ck = byId.get(c.id); return ck?.phiRn == null ? 'N/A' : num(ck.phiRn, ck.unit === 'kN·m' || ck.unit === 'ratio' ? 1 : 0); });
@@ -70,7 +70,7 @@ export function buildShearCalcWorkbook(rows: ShearResult[], cond: DesignConditio
     return [...input, ...outputs, ...dcrCells];
   });
 
-  const title = `SC 구조계산요약 — 전단접합(단일판)  |  ${SUBTYPE_LABEL[rows[0]?.subtype ?? 'beam-beam']}  |  모재 ${steelLabel(cond.steel)} · 볼트 ${cond.bolt} · α${Math.round(cond.strengthRatio * 100)}%`;
+  const title = `SC 구조계산요약 — 전단접합(2면전단·양측판)  |  ${SUBTYPE_LABEL[rows[0]?.subtype ?? 'beam-beam']}  |  모재 ${steelLabel(cond.steel)} · 볼트 ${cond.bolt} · α${Math.round(cond.strengthRatio * 100)}%`;
   const totalCols = head.length;
   const aoa: (string | number)[][] = [[title], band, head, ...body];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
