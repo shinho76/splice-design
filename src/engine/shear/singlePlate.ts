@@ -257,10 +257,15 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
     return { checks, govId, govDcr };
   };
 
-  // 자동설계: NC=1(단열) 최소 NR 탐색 → 미달 시 NC=2(2열)로 확장.
-  // 판 춤은 보 웨브 순높이(T) 이내가 원칙 → 판이 웨브를 넘으면 fitsWeb=false 플래그.
+  // 자동설계: NC=1(단열) 최소 NR 탐색(강도 기준) → 강도 미달 시 NC=2(2열)로 확장(기존 로직).
+  // 여기에 더해: 강도는 만족하지만 그 행수의 판 길이가 웨브 순높이(T)를 넘는 경우도 NC=2로
+  // 자동 전환(1열 행수를 2열로 분산 → 같은 강도를 더 짧은 판으로 확보). 실무 표준 상세도의
+  // WG1(1열)↔WG3(2열) 분류 역산 결과와 동일한 판정 기준. 단, T 자체가 최소 2행조차 못 담을
+  // 만큼 협소한 단면(fitsAt(2)=false)은 2열로도 해결되지 않으므로(판 길이는 NR에만 좌우, NC
+  // 무관) 대상에서 제외 — 종전과 같이 NC=1·fitsWeb=false(NG)로 남겨 별도 소형 상세 필요를 표시.
   const clearH = sec.H - 2 * sec.tf - 2 * sec.r;                   // 웨브 순높이 T
   const MAXR = 12;
+  const fitsAt = (nr: number) => (nr - 1) * s + 2 * Lev <= clearH + 1;
   const solve = (NC: number) => {
     let nr = 2, r = build(nr, NC);
     for (nr = 2; nr <= MAXR; nr++) { r = build(nr, NC); if (r.govDcr <= 1) return { nr, r, ok: true }; }
@@ -268,7 +273,12 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
   };
   let NC = 1;
   let sol = solve(1);
-  if (!sol.ok) { NC = 2; sol = solve(2); }
+  if (!sol.ok) {
+    NC = 2; sol = solve(2);
+  } else if (!fitsAt(sol.nr) && fitsAt(2)) {
+    const sol2 = solve(2);
+    if (sol2.ok) { NC = 2; sol = sol2; }
+  }
   const NR = sol.nr, res = sol.r;
 
   const Lp = (NR - 1) * s + 2 * Lev;
