@@ -34,6 +34,7 @@ import { toTeklaMacro } from './engine/teklaOut.ts';
 import { downloadCalcSheet, type SheetRow } from './engine/calcSheet.ts';
 import { quantityOf } from './engine/quantity.ts';
 import { designSinglePlate } from './engine/shear/singlePlate.ts';
+import { toDXFShear } from './engine/shear/dxfShear.ts';
 import { downloadShearCalcSheet } from './engine/shear/calcSheet.ts';
 
 const DEFAULT: DesignCondition = {
@@ -266,6 +267,8 @@ export default function App() {
     const title = `SHEAR CONNECTION TABLE - ${Math.round(cond.strengthRatio * 100)}% ${cond.steel} ${cond.bolt}  (UNIT: VU kN)`;
     downloadFile('BASIC_DXF_SHEAR_CONNECTION.dxf', toDXFTable(title, cols, rows), 'application/dxf');
   };
+  const exportShearDetailDXF = (r: import('./engine/shear/singlePlate.ts').ShearResult) =>
+    downloadFile(`DETAIL_DXF_${r.section}_SC.dxf`, toDXFShear(r, cond), 'application/dxf');
   const isCol = cond.member === '기둥';
   const pct = Math.round(cond.strengthRatio * 100);
   // GS(GIRDER SPLICE) 모드 진입/해제 — 진입 시 K모드·보 고정 + 이음 화면으로 전환
@@ -299,7 +302,7 @@ export default function App() {
             <button type="button" className="rmenu-item" role="menuitem" disabled title={L('준비 중 — SC 전용 민감도 분석 미구축', 'Pending — SC-specific sensitivity study not built yet')}>📄 {L('민감도 분석', 'Sensitivity')}</button>
             <button type="button" className="rmenu-item" role="menuitem" onClick={exportShearCalcSheet} title={L('구조계산요약 Excel(SC)', 'Calc summary Excel (SC)')}>📊 {L('구조계산요약_XLS', 'Calc summary XLS')}</button>
             <button type="button" className="rmenu-item" role="menuitem" onClick={exportShearTableDXF} title={L('메인창 결과표를 DXF 격자표로 출력', 'Export the main results table as a DXF grid')}>📋 BASIC DXF</button>
-            <button type="button" className="rmenu-item" role="menuitem" disabled title={L('준비 중 — 전단탭 개별 상세도 생성기 미구축', 'Pending — single-plate detail drawing generator not built yet')}>🗂 {L('DETAIL DXF(검토용)', 'DETAIL DXF (review)')}</button>
+            <button type="button" className="rmenu-item" role="menuitem" disabled title={L('개별 상세도(DXF)는 사이드바 DXF 버튼에서 단면별로 내려받으세요 — 이 항목(전체 일괄 출력)은 준비 중', 'Per-member detail DXF is available from the sidebar DXF button — this bulk-export item is still pending')}>🗂 {L('DETAIL DXF(검토용)', 'DETAIL DXF (review)')}</button>
             <button type="button" className="rmenu-item" role="menuitem" disabled title={L('준비 중 — 전단탭 Tekla 매크로 미구축', 'Pending — shear-tab Tekla macro not built yet')}>🏗 Tekla Open API</button>
           </div>
         </div>
@@ -530,8 +533,8 @@ export default function App() {
                   <div className="dact">
                     <button className="db primary" title={L('소요강도·설계강도·판정을 요약한 계산서를 엽니다', 'Open a summary calc sheet: demand, capacity and check')} onClick={() => setShowShearReport(true)}>{L('요약계산서', 'Summary')}</button>
                     <button className="db" title={L('수식·대입·근거조항까지 포함한 상세 계산서를 엽니다', 'Open the detailed calc sheet with formulas, substitutions and clauses')} onClick={() => setShowShearDetail(true)}>{L('상세계산서', 'Detailed')}</button>
-                    <button className="db" title={L('전단판·볼트군을 3D로 확인합니다(피지지보만 표시)', 'View the plate and bolt group in 3D (supported member only)')} onClick={() => setShearView3D(shearSel)}>3D</button>
-                    <button className="db" disabled title={L('준비 중 — 전단탭 개별 상세도(DXF) 생성기 미구축', 'Pending — per-member detail DXF generator not built yet')}>DXF</button>
+                    <button className="db" title={L('전단판·볼트군을 3D로 확인합니다(지지부재·RIB·GUSSET은 임의 표시)', 'View the plate and bolt group in 3D (support/RIB/GUSSET are sketch-only)')} onClick={() => setShearView3D(shearSel)}>3D</button>
+                    <button className="db" title={L('전단판 접합 상세도(DXF)를 내려받습니다(참조 CAD 템플릿 기반)', 'Download the shear tab detail drawing as DXF (based on the reference CAD template)')} onClick={() => exportShearDetailDXF(shearSel)}>DXF</button>
                     <button className="db" disabled title={L('준비 중 — SC BIM(IFC) 연동 미구축', 'Pending — SC IFC export not built yet')}>IFC</button>
                     <button className="db" disabled title={L('준비 중 — SC 프로젝트 집계 미구축(GS/MC 전용)', 'Pending — project aggregation not built for SC yet (GS/MC only)')}>＋ {L('프로젝트', 'Project')}</button>
                   </div>

@@ -19,11 +19,26 @@ import { standardLength, boltSetWeight } from '../bolt_spec.ts';
 import { WEB_PITCH_OPTIONS } from '../standards.ts';
 import type { AiscCheck, AiscStep } from '../aisc/types.ts';
 
-const MIN_EDGE: Record<number, number> = { 16: 22, 18: 24, 20: 26, 22: 28, 24: 30, 27: 34, 30: 38 };
 const AVAIL_T = [6, 8, 9, 10, 12, 14, 16, 19, 22, 25, 28, 32];
 // 볼트 수평·수직 피치(직경별 고정표, GS 웨브이음과 동일 관례) — M22 이하 60mm, M24 70mm, M27 75mm, M30 80mm.
 const PITCH_BY_DIA: Record<number, number> = { 16: 60, 18: 60, 20: 60, 22: 60, 24: 70, 27: 75, 30: 80 };
-const EDGE = 40;   // 이음판·부재측 공통 연단거리(고정, mm) — GS 웨브이음 EDGE_DIST와 동일 관례
+const EDGE = 40;   // 이음판·부재측·상하 연단거리(고정, mm) — GS 웨브이음 EDGE_DIST와 동일 관례. 참조 CAD
+                   // (docs/shear connection_detail_01.dxf) 실측 결과 상·하 연단거리도 40으로 확인.
+// 지지부재측 RIB PLATE·GUSSET PLATE 두께 조견표 — 참조 CAD(docs/shear connection_detail_01.dxf)의
+// "BEAM WEB PLATE THK.→GUSSET PLATE THK./RIB PLATE THK." 표를 그대로 이식. 전단판(tp) 두께 구간별로
+// 지지부재에 붙는 두 판의 두께를 결정한다(둘 다 SC 엔진이 강도 검토하지 않는 스케치성 요소 — 참조
+// 표준상세의 관용치수를 그대로 표기만 함). tp≤19 표 범위를 벗어나면(희귀 케이스) 표의 마지막 행을 준용.
+const RIB_GUSSET_TABLE: { max: number; gusset: number; rib: number }[] = [
+  { max: 6, gusset: 6, rib: 0 },     // rib 0 = 해당 구간 RIB PLATE 없음(원표에 공란)
+  { max: 9, gusset: 9, rib: 6 },
+  { max: 12, gusset: 12, rib: 9 },
+  { max: 16, gusset: 16, rib: 9 },
+  { max: 19, gusset: 19, rib: 12 },
+];
+function ribGussetT(tp: number): { gussetT: number; ribT: number } {
+  const row = RIB_GUSSET_TABLE.find(r => tp <= r.max) ?? RIB_GUSSET_TABLE[RIB_GUSSET_TABLE.length - 1];
+  return { gussetT: row.gusset, ribT: row.rib };
+}
 const kN = (n: number) => +(n / 1e3).toFixed(1);
 const kNm = (n: number) => +(n / 1e6).toFixed(1);
 
@@ -39,12 +54,16 @@ export interface ShearResult {
   NC: number;
   Pc: number;           // 볼트 수직피치(≈3d, mm) — GS 웨브의 Pc와 동일 개념
   a: number;
+  gap: number;          // 이음부 이격(mm, cond.gap) — a=EDGE(40)+gap 분해값, 3D/2D 갭 연장 표시용
   sh: number;           // 볼트 수평간격(NC=2일 때 열간 거리, mm) — 도면용
   Lev: number;          // 수직 연단거리(mm) — 도면용
   Leh: number;          // 수평 연단거리(플레이트 원단, mm) — 도면용
   eBolt: number;       // 지지면→최원단 볼트열 편심("e,bolt", 볼트군 C계수용)
   ePlate: number;       // 지지면→볼트군 도심 편심("e,plate", 판휨 M=V·e용)
   plate: ShearPlate;
+  gussetT: number;     // 지지부재측 GUSSET PLATE 두께(mm, 참조 CAD 조견표 — 미산정 스케치 요소)
+  ribT: number;        // 지지부재측 RIB PLATE 두께(mm, 0=해당 구간 미적용) — 상동
+  supportDepth: number;// 지지부재 임의 표시 춤(mm) = 부재 춤(H) + 200(스케치용, 미산정)
   config: 'Conventional' | 'Extended';
   fitsWeb: boolean;    // 판 춤이 보 웨브 순높이 T 이내인가
   clearH: number;      // 보 웨브 순높이 T (mm)
@@ -85,7 +104,7 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
 
   const sBase = PITCH_BY_DIA[d] ?? 60;                   // 볼트 수직피치 기본값(직경별 고정표)
   const sh = PITCH_BY_DIA[d] ?? 60;                      // 볼트 수평간격(2열, 직경별 고정표)
-  const Lev = Math.max(MIN_EDGE[d], 35);                // 수직 연단
+  const Lev = EDGE;                                      // 수직 연단(상·하 볼트~판 끝, 고정 40)
   const Leh = EDGE;                                      // 수평 연단(플레이트 원단, 고정 40)
   const gap = cond.gap ?? 5;                             // 이음부 이격(mm) — 설계조건 공용 갭(기본 5)
   const a = EDGE + gap;                                  // 편심(지지면~근접 볼트열) = 연단거리(40, 고정) + 갭
@@ -413,10 +432,15 @@ export function designSinglePlate(cond: DesignCondition, sec: HSection, subtype:
   const boltSetKg = boltSetWeight(name, boltLen);
   const boltTotalKg = +(boltSetKg * boltCount).toFixed(2);
 
+  // 지지부재측 RIB PLATE·GUSSET PLATE(참조 CAD 조견표, 미산정 스케치 요소) + 지지부재 임의 표시 춤.
+  const { gussetT, ribT } = ribGussetT(tp);
+  const supportDepth = sec.H + 200;
+
   return {
-    section: sec.name, V_kN: kN(V), boltName: name, boltDia: d, NR, NC, Pc: s, a, sh, Lev, Leh,
+    section: sec.name, V_kN: kN(V), boltName: name, boltDia: d, NR, NC, Pc: s, a, gap, sh, Lev, Leh,
     eBolt: +eBolt.toFixed(0), ePlate: +ePlate.toFixed(0),
-    plate: { t: tp, L: plateL, w: a + (NC - 1) * sh + Leh }, config: eBolt > A_MAX ? 'Extended' : 'Conventional',
+    plate: { t: tp, L: plateL, w: a + (NC - 1) * sh + Leh }, gussetT, ribT, supportDepth,
+    config: eBolt > A_MAX ? 'Extended' : 'Conventional',
     fitsWeb, clearH: +clearH.toFixed(0),
     boltCount, boltGrip, boltLen, boltSetKg: +boltSetKg.toFixed(3), boltTotalKg, subtype,
     checks: res.checks, govId: res.govId, govDcr: +res.govDcr.toFixed(2),

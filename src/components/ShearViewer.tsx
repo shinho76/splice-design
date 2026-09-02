@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { DesignCondition } from '../engine/types.ts';
 import { sectionByName } from '../engine/sections.ts';
-import { connPartsShear, type ShearPartBolt } from '../engine/shear/connParts.ts';
+import { connPartsShear, type ShearPartBolt, type ShearPartBox } from '../engine/shear/connParts.ts';
 import type { ShearResult } from '../engine/shear/singlePlate.ts';
 import { connChecksShear } from '../engine/shear/connChecksShear.ts';
 import { useLang, tr } from '../i18n.ts';
@@ -62,7 +62,7 @@ export default function ShearViewer({ r, cond, onClose }: { r: ShearResult; cond
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0d1524);
-    const dist = Math.max(P.H, P.segLen * 2, P.B) * 1.7;   // GS(ThreeViewer)와 동일 배율(카메라 거리·초기각)
+    const dist = Math.max(P.H, P.segLen * 2, P.B, P.supportBox.sy) * 1.7;   // GS(ThreeViewer)와 동일 배율(카메라 거리·초기각)
     const camera = new THREE.PerspectiveCamera(38, W / Hh, 1, 9000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(W, Hh); renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -81,11 +81,17 @@ export default function ShearViewer({ r, cond, onClose }: { r: ShearResult; cond
     const boltMat = new THREE.MeshStandardMaterial({ color: 0x2e3138, metalness: 0.9, roughness: 0.34 });
     const nutMat = new THREE.MeshStandardMaterial({ color: 0x232529, metalness: 0.9, roughness: 0.4 });
     const washMat = new THREE.MeshStandardMaterial({ color: 0x8b929c, metalness: 0.85, roughness: 0.4 });
+    // 지지부재측 요소 — 셋 다 SC 엔진이 강도 검토하지 않는 스케치성 요소(참조 CAD 조견표·임의 춤).
+    // 반투명 + 별색으로 "미산정"임을 시각적으로 구분한다.
+    const supportMat = new THREE.MeshStandardMaterial({ color: 0x6b7580, metalness: 0.6, roughness: 0.55, transparent: true, opacity: 0.55 });
+    const ribMat = new THREE.MeshStandardMaterial({ color: 0xd98a3d, metalness: 0.4, roughness: 0.5, transparent: true, opacity: 0.75 });
+    const gussetMat = new THREE.MeshStandardMaterial({ color: 0xc4c9d1, metalness: 0.4, roughness: 0.5, transparent: true, opacity: 0.75 });
 
     const model = new THREE.Group(); scene.add(model);
     const hSh = hShape(P.B, P.H, P.tw, P.tf, P.r);
-    const beamGeo = new THREE.ExtrudeGeometry(hSh, { depth: P.segLen, bevelEnabled: false });
-    const beam = new THREE.Mesh(beamGeo, steel);   // z=0(지지면) → +z
+    const beamGeo = new THREE.ExtrudeGeometry(hSh, { depth: P.segLen - P.gap, bevelEnabled: false });
+    const beam = new THREE.Mesh(beamGeo, steel);   // 지지면(z=0)에서 갭(gap)만큼 물러난 z=gap → +z
+    beam.position.z = P.gap;
     model.add(beam);
 
     for (const pl of P.plates) {
@@ -93,6 +99,15 @@ export default function ShearViewer({ r, cond, onClose }: { r: ShearResult; cond
       pm.position.set(pl.cx, pl.cy, pl.cz);
       model.add(pm);
     }
+
+    const addBox = (b: ShearPartBox, mat: THREE.Material) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(b.sx, b.sy, b.sz), mat);
+      m.position.set(b.cx, b.cy, b.cz);
+      model.add(m);
+    };
+    addBox(P.supportBox, supportMat);
+    if (P.ribBox) addBox(P.ribBox, ribMat);
+    addBox(P.gussetBox, gussetMat);
 
     const wH = 3.2;
     const makeBolt = (b: ShearPartBolt) => {
@@ -243,7 +258,8 @@ export default function ShearViewer({ r, cond, onClose }: { r: ShearResult; cond
           <span><i style={{ background: '#9aa7b4' }} />{L('H형강(필렛R)', 'H-beam (fillet R)')}</span>
           <span><i style={{ background: '#2bb6d6' }} />{L('전단판(양측 2매)', 'Shear plates (both sides)')}</span>
           <span><i style={{ background: '#2e3138' }} />{L('고력볼트(머리·너트·와셔2·여장)', 'H.S. bolt (head·nut·2 washers·stickout)')}</span>
-          <span className="v3d-hint">{mode === '2D' ? L('평면(90°)·정면·측면 + 3D 등각 (화면맞춤)', 'Plan(90°)·Front·Side + 3D iso (fit)') : L('드래그=회전 · 휠=줌 · 웨브=치수 (지지 부재는 별도 검토)', 'Drag=rotate · Wheel=zoom · Web=dims (support side not modeled)')}</span>
+          <span><i style={{ background: '#6b7580' }} />{L('지지부재·RIB·GUSSET(임의 표시, 미산정)', 'Support/RIB/GUSSET (sketch, not designed)')}</span>
+          <span className="v3d-hint">{mode === '2D' ? L('평면(90°)·정면·측면 + 3D 등각 (화면맞춤)', 'Plan(90°)·Front·Side + 3D iso (fit)') : L('드래그=회전 · 휠=줌 · 웨브=치수', 'Drag=rotate · Wheel=zoom · Web=dims')}</span>
         </div>
       </div>
     </div>

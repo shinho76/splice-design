@@ -27,23 +27,23 @@ function groupBySeries(rows: DesignResult[]): { key: string; items: DesignResult
   return groups;
 }
 
-const round = Math.round;
-const TH = 20;   // 도면 문자높이
+export const round = Math.round;
+export const TH = 20;   // 도면 문자높이
 const TB = 24;   // 정보표 문자높이(셀폭 150 내 라벨 수용 — 겹침 방지)
-const FONT = 'CellBody';  // 라벨/주기 문자 스타일 — 표준 도면 맑은고딕(malgun) TrueType, 한글 렌더. 치수문자는 STANDARD. (R12 심볼명: 공백 불가 → CellBody)
-const ARROW = 5.0;                        // exe DIMSTYLE dimasz(41) = _ARCHTICK INSERT scale
-const PW = 0;                             // 이음판 선 폭(POLYLINE width) — 다른 선과 동일 두께(입면·단면 판)
+export const FONT = 'CellBody';  // 라벨/주기 문자 스타일 — 표준 도면 맑은고딕(malgun) TrueType, 한글 렌더. 치수문자는 STANDARD. (R12 심볼명: 공백 불가 → CellBody)
+export const ARROW = 5.0;                        // exe DIMSTYLE dimasz(41) = _ARCHTICK INSERT scale
+export const PW = 0;                             // 이음판 선 폭(POLYLINE width) — 다른 선과 동일 두께(입면·단면 판)
 
 // ── 좌표 변환(회전+평행이동) : 보 deg=0, 기둥 deg=90 ──
-interface Xf { c: number; s: number; ox: number; oy: number; deg: number; }
-const mkXf = (ox: number, oy: number, deg: number): Xf =>
+export interface Xf { c: number; s: number; ox: number; oy: number; deg: number; }
+export const mkXf = (ox: number, oy: number, deg: number): Xf =>
   ({ c: Math.cos(deg * Math.PI / 180), s: Math.sin(deg * Math.PI / 180), ox, oy, deg });
 const Tx = (t: Xf, x: number, y: number) => x * t.c - y * t.s + t.ox;
 const Ty = (t: Xf, x: number, y: number) => x * t.s + y * t.c + t.oy;
-const pt = (t: Xf, x: number, y: number): [number, number] => [Tx(t, x, y), Ty(t, x, y)];
-const ff = (n: number) => n.toFixed(2);
+export const pt = (t: Xf, x: number, y: number): [number, number] => [Tx(t, x, y), Ty(t, x, y)];
+export const ff = (n: number) => n.toFixed(2);
 // 비ASCII(한글 등) → DXF 유니코드 이스케이프 \U+XXXX. R12(AC1009) 코드페이지 무관하게 AutoCAD·FastView·ezdxf 모두 디코딩.
-const enc = (s: string) => s.replace(/[^\x00-\x7F]/g, ch => '\\U+' + ch.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0'));
+export const enc = (s: string) => s.replace(/[^\x00-\x7F]/g, ch => '\\U+' + ch.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0'));
 
 export interface Doc { e: string[]; blk: string[]; n: number; }
 export const newDoc = (): Doc => ({ e: [], blk: [], n: 0 });
@@ -52,7 +52,7 @@ export const newDoc = (): Doc => ({ e: [], blk: [], n: 0 });
 export interface UniFrame { frameL: number; frameRC: number; frameR: number; frameTop: number; frameBot: number; }
 
 // 채운 원형 치수머리(DOT_FILLED): CIRCLE 외곽 + 정사각·마름모 SOLID 채움 (변환 적용)
-function roundDot(t: Xf, x: number, y: number, lay = 'DIM'): string[] {
+export function roundDot(t: Xf, x: number, y: number, lay = 'DIM'): string[] {
   const r = 2.6, s = 1.85, d = 2.6;
   const P = (a: number, b: number) => [ff(Tx(t, a, b)), ff(Ty(t, a, b))];
   const c0 = P(x, y);
@@ -66,7 +66,7 @@ function roundDot(t: Xf, x: number, y: number, lay = 'DIM'): string[] {
 }
 
 // 치수 화살촉(_ARCHTICK) : 45° 건축 틱을 INSERT. exe 규약(scale 5.0, 치수선 방향 정렬)
-function archtick(t: Xf, x: number, y: number, rotLocal: number): string[] {
+export function archtick(t: Xf, x: number, y: number, rotLocal: number): string[] {
   const px = ff(Tx(t, x, y)), py = ff(Ty(t, x, y));
   const rot = rotLocal + t.deg;
   const tags = ['0', 'INSERT', '8', 'DIM', '2', '_ARCHTICK', '10', px, '20', py, '30', '0', '41', ff(ARROW), '42', ff(ARROW), '43', '1.0'];
@@ -74,7 +74,7 @@ function archtick(t: Xf, x: number, y: number, rotLocal: number): string[] {
   return tags;
 }
 
-function pen(doc: Doc, t: Xf) {
+export function pen(doc: Doc, t: Xf) {
   const PX = (x: number, y: number) => ff(Tx(t, x, y)), PY = (x: number, y: number) => ff(Ty(t, x, y));
   const line = (x1: number, y1: number, x2: number, y2: number, lay: string) =>
     doc.e.push('0', 'LINE', '8', lay, '10', PX(x1, y1), '20', PY(x1, y1), '30', '0', '11', PX(x2, y2), '21', PY(x2, y2), '31', '0');
@@ -114,7 +114,7 @@ function pen(doc: Doc, t: Xf) {
     },
   };
 }
-type Pen = ReturnType<typeof pen>;
+export type Pen = ReturnType<typeof pen>;
 
 // ── 분해치수(선+문자+틱 지오메트리를 직접 엔티티로) ──
 // 연관 DIMENSION/DIMSTYLE을 쓰지 않아 DIMSTYLE 필수변수 누락 오류·엄격파서 폐기를 원천 차단.
@@ -128,7 +128,7 @@ function btext(t: Xf, x: number, y: number, s: string, rot: number): string[] {
   base.push('72', '1', '11', ff(Tx(t, x, y)), '21', ff(Ty(t, x, y)), '31', '0');
   return base;
 }
-function emitDim(doc: Doc, t: Xf, p1: [number, number], p2: [number, number], dl: [number, number], txt: string, vertical: boolean) {
+export function emitDim(doc: Doc, t: Xf, p1: [number, number], p2: [number, number], dl: [number, number], txt: string, vertical: boolean) {
   const [x1, y1] = p1, [x2, y2] = p2, [dlx, dly] = dl;
   const geo: string[] = [];
   if (vertical) {
@@ -149,12 +149,12 @@ function emitDim(doc: Doc, t: Xf, p1: [number, number], p2: [number, number], dl
   }
   doc.e.push(...geo);   // 엔티티로 직접 출력(블록·DIMENSION 미사용)
 }
-function dimChainH(doc: Doc, t: Xf, xs: number[], fy: number, y1: number, y2: number) {
+export function dimChainH(doc: Doc, t: Xf, xs: number[], fy: number, y1: number, y2: number) {
   for (let i = 0; i < xs.length - 1; i++)
     emitDim(doc, t, [xs[i], fy], [xs[i + 1], fy], [(xs[i] + xs[i + 1]) / 2, y1], `${round(xs[i + 1] - xs[i])}`, false);
   emitDim(doc, t, [xs[0], fy], [xs[xs.length - 1], fy], [0, y2], `${round(xs[xs.length - 1] - xs[0])}`, false);
 }
-function dimChainV(doc: Doc, t: Xf, ys: number[], fx: number, x1: number, x2: number) {
+export function dimChainV(doc: Doc, t: Xf, ys: number[], fx: number, x1: number, x2: number) {
   for (let i = 0; i < ys.length - 1; i++)
     emitDim(doc, t, [fx, ys[i]], [fx, ys[i + 1]], [x1, (ys[i] + ys[i + 1]) / 2], `${round(Math.abs(ys[i] - ys[i + 1]))}`, true);
   emitDim(doc, t, [fx, ys[0]], [fx, ys[ys.length - 1]], [x2, 0], `${round(Math.abs(ys[0] - ys[ys.length - 1]))}`, true);
@@ -708,7 +708,7 @@ function assertR12(t: string[]): void {
   if (order.join(',') !== want) throw new Error(`DXF R12 위반 — 섹션 순서 ${order.join('→')} (기대 ${want.replace(/,/g, '→')})`);
 }
 
-function wrap(doc: Doc): string {
+export function wrap(doc: Doc): string {
   // STYLE(표준 도면): STANDARD(micross)·TableHead(맑은고딕 Bold)·CellBody(맑은고딕) — 한글 렌더. (R12 심볼명 공백 불가)
   const styleT = ['0', 'TABLE', '2', 'STYLE', '70', '3',
     '0', 'STYLE', '2', 'STANDARD', '70', '0', '40', '0.0', '41', '1.0', '50', '0.0', '71', '0', '42', '2.5', '3', 'romans', '4', '',
