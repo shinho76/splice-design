@@ -6,20 +6,17 @@ import { useLang, tJoint } from '../i18n.ts';
 /**
  * 전단판(SC) 접합 상세도 — ConnectionSVG(GS)와 동일한 파라메트릭 렌더 방식.
  * 치수는 실제 볼트 좌표·판 치수(ShearResult)에서 직접 도출 → 계산 결과와 항상 일치.
- * 지지부재(컬럼/거더)·RIB PLATE·GUSSET PLATE는 SC 엔진이 강도 검토하지 않으므로 참조 CAD
- * (docs/shear connection_detail_01.dxf)의 조견표·임의 춤(H+200)으로 스케치만 한다
- * (connParts.ts·ShearViewer와 동일한 원칙 — 미산정임을 라벨로 항상 표기).
+ * 지지부재(컬럼/거더)는 SC 엔진이 형상을 산정하지 않으므로 그리지 않는다(참조 샘플
+ * 400200dd.dxf와 동일 관례 — 판의 근접단이 곧 지지면이라는 암묵적 표시만으로 충분).
  *   View1: 전단판 입면도(피지지보 측면 — 플랜지대·전단판(양측 2매, 겹쳐보임)·볼트)
  *   View2: 볼트 단면 상세(전단판 2매 + 웨브 그립 구성 — 2면전단 시각화)
  */
-const SUPPORT_T = 20;   // 지지부재 웨브 임의 표시 두께(mm, 도면용 — 형상 미산정)
-
 export default function ShearConnectionSVG({ r, cond }: { r: ShearResult; cond: DesignCondition }) {
   const lang = useLang();
   const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
   const sec = sectionByName(r.section);
   const H = sec?.H ?? 0, tf = sec?.tf ?? 0, tw = sec?.tw ?? 0;
-  const { NC, NR, Pc, a, sh, Leh, plate, gussetT, ribT, supportDepth, boltDia: dia } = r;
+  const { NC, NR, Pc, a, sh, Leh, plate, boltDia: dia } = r;
   const gap = cond.gap ?? 5;
 
   const colX = NC === 2 ? [a, a + sh] : [a];
@@ -31,13 +28,11 @@ export default function ShearConnectionSVG({ r, cond }: { r: ShearResult; cond: 
   const vCh = [round(margin), ...Array(Math.max(0, NR - 1)).fill(round(Pc)), round(margin)];
   const hCh = NC === 2 ? [round(a), round(sh), round(Leh)] : [round(a), round(Leh)];
 
-  // 레이아웃 (ConnectionSVG와 동일한 카드 폭) — x=0은 전단판(GUSSET PLATE) 원단 기준, 지지부재·
-  // RIB·GUSSET은 x<0(왼쪽)에, 전단판·보는 x≥0(오른쪽)에 배치한다.
+  // 레이아웃 (ConnectionSVG와 동일한 카드 폭) — x=0은 지지면(=전단판 근접단), x≥0에 전단판·보 배치.
   const W = 476, mid = W / 2;
-  const leftW = SUPPORT_T + ribT + gussetT;                 // 지지부재 외측면→거싯판 끝(=0)
   const rightW = plate.w + 40;                              // 0→보 원단+여유
-  const bandH = Math.max(supportDepth, H, plate.L + 20);
-  const sc1 = Math.min(0.62, 300 / (leftW + rightW), 250 / bandH);
+  const bandH = Math.max(H, plate.L + 20);
+  const sc1 = Math.min(0.62, 300 / rightW, 250 / bandH);
   const flT = Math.max(3, tf * sc1);
 
   const secW = 2 * plate.t + tw, secDrawW = secW + 50;      // 볼트 단면 상세(확대)
@@ -48,7 +43,7 @@ export default function ShearConnectionSVG({ r, cond }: { r: ShearResult; cond: 
   const yWeb = yHead + hHead + 26;
   const webBandH = bandH * sc1;
   const ySec = yWeb + webBandH + 60;
-  const yTbl = ySec + secH + 46, Htot = yTbl + 88;
+  const yTbl = ySec + secH + 46, Htot = yTbl + 122;
 
   const Cross = ({ x, y, s = 4.2 }: { x: number; y: number; s?: number }) => (
     <g transform={`translate(${x},${y})`}>
@@ -69,10 +64,6 @@ export default function ShearConnectionSVG({ r, cond }: { r: ShearResult; cond: 
       {st.map((s, i) => <line key={i} x1={s} y1={y - 3} x2={s} y2={y + 3} className="svg-dim-l" />)}
       {vals.map((v, i) => <text key={i} x={(st[i] + st[i + 1]) / 2} y={y + 13} className="svg-dim-t" textAnchor="middle">{v}</text>)}</g>;
   };
-  // x=0(전단판 원단) 기준 왼쪽(음수)에 지지부재→RIB PLATE→GUSSET PLATE를 순서대로 배치.
-  // 참조 CAD(docs/shear connection_detail_01.dxf)의 조견표 두께를 그대로 쓰되, 셋 다 SC 엔진이
-  // 강도 검토하지 않는 스케치성 요소 — 지지부재 춤(H+200)도 임의값임을 라벨로 명시한다.
-  const xSupOuter = -leftW, xSupInner = -(ribT + gussetT), xRibEnd = -gussetT;
 
   return (
     <div className="svg-wrap">
@@ -87,18 +78,8 @@ export default function ShearConnectionSVG({ r, cond }: { r: ShearResult; cond: 
 
         {/* ── 전단판 입면도 ── */}
         <text x={30} y={yWeb - 8} className="svg-cap">{L('전단판 입면도 (피지지보 측면)', 'Shear tab elevation (supported beam side)')}</text>
-        <text x={W - 30} y={yWeb - 8} className="svg-dim-t" textAnchor="end">{L('지지부재·RIB·GUSSET 임의 표시(미산정)', 'Support/RIB/GUSSET are sketch-only (not designed)')}</text>
-        <g transform={`translate(${60 + leftW * sc1},${yWeb + webBandH / 2})`}>
-          {/* 지지부재(임의 표시, 춤=부재춤+200) */}
-          <rect x={xSupOuter * sc1} y={-supportDepth * sc1 / 2} width={(xSupInner - xSupOuter) * sc1} height={supportDepth * sc1} className="svg-flange-band" />
-          <text x={(xSupOuter + xSupInner) * sc1 / 2} y={-supportDepth * sc1 / 2 - 6} className="svg-dim-t" textAnchor="middle">{L('지지부재(임의)', 'Support (sketch)')}</text>
-          {/* RIB PLATE·GUSSET PLATE(참조 CAD 조견표 두께, 미산정) */}
-          {ribT > 0 && <>
-            <rect x={xSupInner * sc1} y={-plate.L * sc1 / 2} width={(xRibEnd - xSupInner) * sc1} height={plate.L * sc1} className="svg-plate-h" />
-            <text x={(xSupInner + xRibEnd) * sc1 / 2} y={-plate.L * sc1 / 2 - 6} className="svg-dim-t" textAnchor="middle">{L(`RIB t${ribT}`, `RIB t${ribT}`)}</text>
-          </>}
-          <rect x={xRibEnd * sc1} y={-plate.L * sc1 / 2} width={-xRibEnd * sc1} height={plate.L * sc1} className="svg-web" />
-          <text x={xRibEnd * sc1 / 2} y={plate.L * sc1 / 2 + 14} className="svg-dim-t" textAnchor="middle">{L(`GUSSET t${gussetT}`, `GUSSET t${gussetT}`)}</text>
+        <text x={W - 30} y={yWeb - 8} className="svg-dim-t" textAnchor="end">{L('지지부재는 미표시(형상 미산정)', 'Support not drawn (not designed)')}</text>
+        <g transform={`translate(60,${yWeb + webBandH / 2})`}>
           {/* 피지지보 플랜지대(측면) — 부재 끝은 지지면에서 갭(gap)만큼 물러나 있다(전단판이 갭 구간을 덮음) */}
           <rect x={gap * sc1} y={-H * sc1 / 2} width={(rightW - gap) * sc1} height={flT} className="svg-flange-band" />
           <rect x={gap * sc1} y={H * sc1 / 2 - flT} width={(rightW - gap) * sc1} height={flT} className="svg-flange-band" />
@@ -132,23 +113,27 @@ export default function ShearConnectionSVG({ r, cond }: { r: ShearResult; cond: 
           })()}
         </g>
 
-        {/* ── 정보표 ── */}
-        <rect x={30} y={yTbl} width={W - 60} height={72} className="svg-cell" />
-        {[1, 2].map(i => <line key={i} x1={30} y1={yTbl + 24 * i} x2={W - 30} y2={yTbl + 24 * i} className="svg-dim-l" />)}
-        {[108, 238, 316].map((x, i) => <line key={i} x1={x} y1={yTbl} x2={x} y2={yTbl + 72} className="svg-dim-l" />)}
+        {/* ── 정보표(H {H}x{B}x{tf}/{tw} (SHEAR CONNECT) 제목 + WEB/FLG(EXT.)/FLG(INT.) 3행 —
+             400200dd.dxf 샘플과 동일 구조. SC는 플랜지 이음판이 없어 FLG 두 행은 "-") ── */}
+        <rect x={30} y={yTbl} width={W - 60} height={26} className="svg-cell" />
+        <text x={mid} y={yTbl + 18} className="svg-title" textAnchor="middle">
+          {sec ? `H ${sec.H}x${sec.B}x${sec.tw}/${sec.tf} (SHEAR CONNECT)` : r.section}
+        </text>
+        <rect x={30} y={yTbl + 26} width={W - 60} height={70} className="svg-cell" />
+        {[1, 2].map(i => <line key={i} x1={30} y1={yTbl + 26 + 23.3 * i} x2={W - 30} y2={yTbl + 26 + 23.3 * i} className="svg-dim-l" />)}
+        <line x1={108} y1={yTbl + 26} x2={108} y2={yTbl + 96} className="svg-dim-l" />
         {([
-          ['Title', r.section, 'Steel', cond.steel],
-          ['Plate', `2-PL ${plate.t}x${plate.L}x${plate.w}`, 'Bolt', `${r.boltCount}-M${dia} H.T.B`],
-          ['Grip', `${r.boltGrip}mm (PL+WEB+PL)`, 'Gov.', `${r.govId} · DCR ${r.govDcr.toFixed(2)} · ${r.ok ? 'OK' : 'NG'}`],
-        ] as const).map(([l1, v1, l2, v2], i) => {
-          const y = yTbl + 24 * i + 16;
+          ['WEB', `${r.boltCount}-M${dia}(${cond.bolt}) / ${plate.w}x${plate.L}x${plate.t}t(${cond.plateSteel ?? cond.steel}, 2EA)`],
+          ['FLG(EXT.)', '-'],
+          ['FLG(INT.)', '-'],
+        ] as const).map(([l1, v1], i) => {
+          const y = yTbl + 26 + 23.3 * i + 15;
           return <g key={i}>
             <text x={35} y={y} className="svg-tblk" style={{ fontSize: '9px' }}>{l1}</text>
             <text x={113} y={y} className="svg-tblv" style={{ fontSize: '8.3px' }}>{v1}</text>
-            <text x={243} y={y} className="svg-tblk" style={{ fontSize: '9px' }}>{l2}</text>
-            <text x={321} y={y} className="svg-tblv" style={{ fontSize: '8.3px' }}>{v2}</text>
           </g>;
         })}
+        <text x={35} y={yTbl + 110} className="svg-dim-t">{L(`지배 ${r.govId} · DCR ${r.govDcr.toFixed(2)} · ${r.ok ? 'OK' : 'NG'} (그립 ${r.boltGrip}mm)`, `Gov. ${r.govId} · DCR ${r.govDcr.toFixed(2)} · ${r.ok ? 'OK' : 'NG'} (grip ${r.boltGrip}mm)`)}</text>
       </svg>
     </div>
   );
