@@ -11,11 +11,24 @@ import { useLang, tJoint } from '../i18n.ts';
  *   View1: 전단판 입면도(피지지보 측면 — 플랜지대·전단판(양측 2매, 겹쳐보임)·볼트)
  *   View2: 볼트 단면 상세(전단판 2매 + 웨브 그립 구성 — 2면전단 시각화)
  */
+/** H형강 단면 외곽선(웨브-플랜지 필렛을 400200dd.dxf 원본과 동일하게 45° 챔퍼로 근사) —
+ *  polygon points 문자열. (cx,cy)=단면 중심, sc=축척. GS 3D(hShape)·DXF(drawHProfile)와
+ *  동일한 실제 단면(B·H·tw·tf·r)을 사용해 세 표현이 서로 어긋나지 않는다. */
+function hProfilePoints(B: number, H: number, tw: number, tf: number, r: number, sc: number): string {
+  const b = B / 2 * sc, h = H / 2 * sc, w = tw / 2 * sc, tfS = tf * sc;
+  const yi = h - tfS, c = Math.max(0, Math.min(r * sc, yi - w, b - w));
+  const pts: [number, number][] = [
+    [-b, -h], [b, -h], [b, -yi], [w + c, -yi], [w, -yi + c], [w, yi - c], [w + c, yi], [b, yi],
+    [b, h], [-b, h], [-b, yi], [-w - c, yi], [-w, yi - c], [-w, -yi + c], [-w - c, -yi], [-b, -yi],
+  ];
+  return pts.map(([x, y]) => `${x},${y}`).join(' ');
+}
+
 export default function ShearConnectionSVG({ r, cond }: { r: ShearResult; cond: DesignCondition }) {
   const lang = useLang();
   const L = (ko: string, en: string) => (lang === 'en' ? en : ko);
   const sec = sectionByName(r.section);
-  const H = sec?.H ?? 0, tf = sec?.tf ?? 0, tw = sec?.tw ?? 0;
+  const H = sec?.H ?? 0, B = sec?.B ?? 0, tf = sec?.tf ?? 0, tw = sec?.tw ?? 0, fillet = sec?.r ?? 0;
   const { NC, NR, Pc, a, sh, Leh, plate, boltDia: dia } = r;
   const gap = cond.gap ?? 5;
 
@@ -35,9 +48,9 @@ export default function ShearConnectionSVG({ r, cond }: { r: ShearResult; cond: 
   const sc1 = Math.min(0.62, 300 / rightW, 250 / bandH);
   const flT = Math.max(3, tf * sc1);
 
-  const secW = 2 * plate.t + tw, secDrawW = secW + 50;      // 볼트 단면 상세(확대)
-  const sc2 = Math.min(4.2, 230 / secDrawW);
-  const secH = 70;
+  const secW = Math.max(B, 2 * plate.t + tw), secDrawW = secW + 60;   // 부재 실단면 상세
+  const sc2 = Math.min(0.62, 260 / secDrawW, 220 / H);
+  const secH = H * sc2;
 
   const yHead = 8, hHead = 34;
   const yWeb = yHead + hHead + 26;
@@ -70,6 +83,9 @@ export default function ShearConnectionSVG({ r, cond }: { r: ShearResult; cond: 
       <svg viewBox={`0 0 ${W} ${Htot}`} className="conn-svg" role="img" aria-label="전단판 접합 상세도">
         <defs><pattern id="hatch" width="5" height="5" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><line x1="0" y1="0" x2="0" y2="5" className="svg-hatch-l" /></pattern></defs>
 
+        {/* 테두리(400200dd.dxf TABLE_MAIN_ 레이어와 동일 관례 — 도면 전체를 감싸는 외곽선) */}
+        <rect x={6} y={6} width={W - 12} height={Htot - 12} className="svg-cell" />
+
         {/* 제목 셀 */}
         <rect x={30} y={yHead} width={(W - 60) / 2} height={hHead} className="svg-cell" />
         <rect x={30 + (W - 60) / 2} y={yHead} width={(W - 60) / 2} height={hHead} className="svg-cell" />
@@ -94,21 +110,26 @@ export default function ShearConnectionSVG({ r, cond }: { r: ShearResult; cond: 
           <DimH y={H * sc1 / 2 + flT + 14} x0={0} vals={hCh} sc={sc1} />
         </g>
 
-        {/* ── 볼트 단면 상세(2면전단) ── */}
-        <text x={30} y={ySec - 8} className="svg-cap">{L('볼트 단면 상세 (2면전단)', 'Bolt section detail (double shear)')}</text>
+        {/* ── 부재 실단면 상세(2면전단) — 지지면 직각 단면(필렛 포함 진짜 H형강) + 웨브 양측
+             전단판 2매 + 행별 볼트(머리·너트) — GS 3D(hShape)·DXF(drawHProfile)와 동일 단면 ── */}
+        <text x={30} y={ySec - 8} className="svg-cap">{L('부재 단면 상세 (2면전단)', 'Member section detail (double shear)')}</text>
         <g transform={`translate(${mid},${ySec + secH / 2})`}>
           {(() => {
-            const pW = plate.t * sc2, wW = tw * sc2, h = 36;
-            const x0 = -secW * sc2 / 2, x1 = x0 + pW, x2 = x1 + wW, x3 = x2 + pW;
+            const pW = plate.t * sc2, wW = tw * sc2 / 2, plateH = plate.L * sc2;
+            const x0 = -wW - pW, x3 = wW + pW;
             return <>
-              <rect x={x0} y={-h / 2} width={pW} height={h} className="svg-plate-h" />
-              <rect x={x1} y={-h / 2} width={wW} height={h} className="svg-web" />
-              <rect x={x2} y={-h / 2} width={pW} height={h} className="svg-plate-h" />
-              {/* 볼트(단면) — 헤드·너트·샹크 개략 표시 */}
-              <rect x={x0 - 7} y={-6} width={7} height={12} className="svg-flg" />
-              <line x1={x0} y1={0} x2={x3} y2={0} className="svg-ver" />
-              <rect x={x3} y={-5} width={6} height={10} className="svg-flg" />
-              <DimH y={h / 2 + 16} x0={x0} vals={[plate.t, tw, plate.t]} sc={sc2} />
+              <polygon points={hProfilePoints(B, H, tw, tf, fillet, sc2)} className="svg-flange-band" />
+              <rect x={x0} y={-plateH / 2} width={pW} height={plateH} className="svg-plate-h" />
+              <rect x={wW} y={-plateH / 2} width={pW} height={plateH} className="svg-plate-h" />
+              {rowY.map((ry, i) => {
+                const y = ry * sc2;
+                return <g key={i}>
+                  <rect x={x0 - 7} y={y - 6} width={7} height={12} className="svg-flg" />
+                  <line x1={x0} y1={y} x2={x3} y2={y} className="svg-ver" />
+                  <rect x={x3} y={y - 5} width={6} height={10} className="svg-flg" />
+                </g>;
+              })}
+              <DimH y={H * sc2 / 2 + 16} x0={x0} vals={[plate.t, tw, plate.t]} sc={sc2} />
             </>;
           })()}
         </g>

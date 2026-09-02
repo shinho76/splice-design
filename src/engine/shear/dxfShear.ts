@@ -12,6 +12,7 @@ import { nominalOf } from '../hbeam_catalog.ts';
 import { holeDia } from '../aisc/constants.ts';
 import {
   newDoc, wrap, pen, mkXf, dimChainH, dimChainV, emitDim, round, TH, FONT,
+  drawHProfile, boltSide,
   type Doc, type Pen,
 } from '../dxf.ts';
 
@@ -48,7 +49,7 @@ interface ShearFrame { left: number; right: number; top: number; bottom: number;
  *  소스: 실제로 그린 좌표에서 그대로 산출하므로 레이아웃 수식이 두 곳에서 어긋날 일이 없다). */
 function emitShearMember(doc: Doc, r: ShearResult, cond: DesignCondition, ox: number, oy: number): ShearFrame {
   const sec = sectionByName(r.section);
-  const H = sec?.H ?? 0, tf = sec?.tf ?? 0, tw = sec?.tw ?? 0;
+  const H = sec?.H ?? 0, B = sec?.B ?? 0, tf = sec?.tf ?? 0, tw = sec?.tw ?? 0, fr = sec?.r ?? 0;
   const { NC, NR, Pc, a, gap, sh, Lev, Leh, plate, boltDia: dia } = r;
   const dh = holeDia(dia);
 
@@ -88,22 +89,23 @@ function emitShearMember(doc: Doc, r: ShearResult, cond: DesignCondition, ox: nu
   // 부재 춤(H) 참고 치수 — 파단선 우측, 단일 치수라 emitDim 직접 사용
   emitDim(doc, t0, [breakX + 60, y0 + H / 2], [breakX + 60, y0 - H / 2], [breakX + 90, 0], `${round(H)}`, true);
 
-  // ── View2: 볼트 단면 상세(2면전단) — View1 아래쪽에 배치 ──
-  const secY = y0 - topMargin - 260;
-  const secW = 2 * plate.t + tw;
-  P.text(-secW / 2, secY + 60, TH, '볼트 단면 상세 (2면전단)', 'NOTE');
-  const sx0 = -secW / 2, sx1 = sx0 + plate.t, sx2 = sx1 + tw, sx3 = sx2 + plate.t;
-  const sh2 = 60;
-  P.rect(sx0, secY - sh2 / 2, plate.t, sh2, 'FLG_PL');
-  P.rect(sx1, secY - sh2 / 2, tw, sh2, 'WEB_PL');
-  P.rect(sx2, secY - sh2 / 2, plate.t, sh2, 'FLG_PL');
-  P.circle(sx0 - 10, secY, dh / 2, 'BOLT');
-  P.line(sx0, secY, sx3, secY, 'BOLT');
-  dimChainH(doc, t0, [sx0, sx1, sx2, sx3], secY - sh2 / 2 - 30, secY - sh2 / 2 - 55, secY - sh2 / 2 - 110);
+  // ── View2: 부재 실단면 상세(2면전단) — 지지면 직각으로 자른 진짜 H형강 단면(필렛 포함,
+  //    400200dd.dxf와 동일하게 플레이트 형상으로 대체하지 않고 GS drawHProfile을 그대로 재사용)
+  //    + 웨브 양측 전단판 2매 + 행(NR)별 볼트 측면(머리/너트) 실척 심볼 — View1 아래쪽에 배치 ──
+  const secW = Math.max(B, 2 * plate.t + tw);
+  const secY = y0 - topMargin - 180 - H / 2;
+  P.text(-secW / 2, secY + H / 2 + 40, TH, '부재 단면 상세 (2면전단)', 'NOTE');
+  drawHProfile(P, 0, secY, H, B, tw, tf, fr, 'MAIN');
+  const sx0 = -tw / 2 - plate.t, sx1 = -tw / 2, sx2 = tw / 2, sx3 = tw / 2 + plate.t;
+  P.rect(sx0, secY - plate.L / 2, plate.t, plate.L, 'FLG_PL');
+  P.rect(sx2, secY - plate.L / 2, plate.t, plate.L, 'FLG_PL');
+  const grip = tw + 2 * plate.t;
+  for (const ry of rowY) boltSide(P, 0, secY + ry, grip / 2, false, dia);
+  dimChainH(doc, t0, [sx0, sx1, sx2, sx3], secY - H / 2 - 30, secY - H / 2 - 55, secY - H / 2 - 110);
 
   // ── 정보표: "H {H}x{B}x{tf}/{tw} (SHEAR CONNECT)" 제목 + WEB/FLG(EXT.)/FLG(INT.) 3행
   //    (400200dd.dxf와 동일 구조 — SC는 플랜지 이음판이 없어 FLG 두 행은 "-") ──
-  const tbY = secY - 220;
+  const tbY = secY - H / 2 - 220;
   const title = sec ? `H ${sec.H}x${sec.B}x${sec.tw}/${sec.tf} (SHEAR CONNECT)` : `${r.section} (SHEAR CONNECT)`;
   P.text(0, tbY, TH * 1.2, title, 'MINI_HEAD', { align: 'c' });
   const rows: [string, string][] = [
@@ -120,7 +122,12 @@ function emitShearMember(doc: Doc, r: ShearResult, cond: DesignCondition, ox: nu
   const govY = tbY - 34 - 3 * 34 - 10;
   P.text(c0, govY, TH * 0.7, `Gov. ${r.govId} · DCR ${r.govDcr.toFixed(2)} · ${r.ok ? 'OK' : 'NG'} (그립 ${r.boltGrip}mm)`, 'NOTE');
 
-  return { left: -Math.max(secW / 2 + 60, 60), right: breakX + 140, top: topMargin + 90, bottom: govY - 30 };
+  // ── 테두리(400200dd.dxf TABLE_MAIN_ 레이어와 동일 관례 — 도면 전체를 감싸는 외곽 사각형) ──
+  const frame = { left: -Math.max(secW / 2 + 60, 60), right: breakX + 140, top: topMargin + 90, bottom: govY - 30 };
+  const pad = 30;
+  P.rect(frame.left - pad, frame.bottom - pad, (frame.right - frame.left) + 2 * pad, (frame.top - frame.bottom) + 2 * pad, 'MINI_BOX');
+
+  return frame;
 }
 
 /** 전단판(2면전단) 상세도 DXF(R12) 문자열 생성(개별 단면 1건). */

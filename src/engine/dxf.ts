@@ -202,7 +202,7 @@ const BOLT_GEOM: Record<number, { s: number; hk: number; nm: number; wo: number;
 // 볼트 측면(단면·입면) — 실사이즈: 축 + 와셔 + 챔퍼 육각머리 / (와셔+너트+나사여장). 직경별 실치수 반영.
 // (cx,cy)=그립 중심, half=그립 반(체결 판두께합/2). vertical=true 수직(플랜지)/false 수평(웨브).
 // hd=머리방향(+1: +u쪽 머리 / −1: −u쪽 머리). 상부플랜지 hd=+1, 하부플랜지 hd=−1(머리는 항상 바깥).
-function boltSide(p: Pen, cx: number, cy: number, half: number, vertical: boolean, dia: number, hd = 1) {
+export function boltSide(p: Pen, cx: number, cy: number, half: number, vertical: boolean, dia: number, hd = 1) {
   const g = BOLT_GEOM[dia] ?? { s: dia * 1.6, hk: dia * 0.65, nm: dia * 0.85, wo: dia * 1.9, wt: dia * 0.2, pj: dia * 0.4 };
   const ac = g.s * 1.1547, hw = ac / 2, hf = ac * 0.30, ww = g.wo / 2, sh = dia * 0.42, pjw = dia * 0.5;   // 대각·머리반폭·facet·와셔반폭·축반폭·여장반폭
   // 볼트축 u(+=머리쪽), 폭 v. vertical=세로(u=y,v=x) / 수평(u=x,v=y).
@@ -226,7 +226,7 @@ function boltSide(p: Pen, cx: number, cy: number, half: number, vertical: boolea
   washer(-hd * half, -hd); hexH(-hd * (half + g.wt), -hd, g.nm); proj(-hd * (half + g.wt + g.nm), -hd);   // 너트쪽: 와셔 + 너트 + 여장
 }
 // H형강 단면 프로파일(웨브-플랜지 필렛 반경 fr 반영). layer=외곽선.
-function drawHProfile(p: Pen, cx: number, cy: number, H: number, B: number, tw: number, tf: number, fr: number, lay: string) {
+export function drawHProfile(p: Pen, cx: number, cy: number, H: number, B: number, tw: number, tf: number, fr: number, lay: string) {
   const yi = H / 2 - tf, wt2 = tw / 2, r = Math.max(0, Math.min(fr, yi - 1, B / 2 - wt2 - 1));
   ([1, -1] as const).forEach(sy => {                               // 상·하 플랜지
     const yo = cy + sy * H / 2, yin = cy + sy * yi;
